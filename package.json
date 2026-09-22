@@ -5,6 +5,7 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @eox/evidence-store migrate",
-    "demo": "pnpm --filter @eox/evidence-store demo"
+    "demo": "pnpm --filter @eox/evidence-store demo",
+    "test": "pnpm --filter @eox/evidence-store test"
   }
 }
