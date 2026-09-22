@@ -19,4 +19,4 @@ pnpm db:migrate
 pnpm demo
 ```
 
-Requires Node 20+, pnpm 9+, Docker. See `docs/IMPLEMENTATION.md` for the full evidence-store build guide.
+Requires Node 20+, pnpm 9+, Docker.
