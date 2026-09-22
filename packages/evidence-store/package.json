@@ -1,0 +1,21 @@
+{
+  "name": "@eox/evidence-store",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "migrate": "tsx src/migrate.ts",
+    "demo": "tsx scripts/demo.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
