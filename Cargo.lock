@@ -217,6 +217,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "eox-oracle"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "eox-engine",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "errno"
 version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -438,21 +453,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
 dependencies = [
  "bitflags",
-]
-
-[[package]]
-name = "resolution-oracle"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "eox-engine",
- "hex",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
- "tokio",
 ]
 
 [[package]]
