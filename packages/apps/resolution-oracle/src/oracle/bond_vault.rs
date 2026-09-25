@@ -7,6 +7,7 @@ pub struct BondVault {
     balances: BTreeMap<String, u64>,
     deposits: BTreeMap<String, u64>,
     total_deposited: u64,
+    total_credited: u64,
     burned_total: u64,
     security_ratio_numerator: u64,
     security_ratio_denominator: u64,
@@ -21,6 +22,7 @@ impl BondVault {
             balances: BTreeMap::new(),
             deposits: BTreeMap::new(),
             total_deposited: 0,
+            total_credited: 0,
             burned_total: 0,
             security_ratio_numerator: security_ratio_num,
             security_ratio_denominator: security_ratio_den,
@@ -65,18 +67,18 @@ impl BondVault {
     }
 
     fn credit_balance(&mut self, recipient: &str, amount: u64) -> Result<(), OracleError> {
-        let total_credited: u64 = self
-            .balances
-            .values()
-            .try_fold(0u64, |acc, b| acc.checked_add(*b))
-            .ok_or(OracleError::ArithmeticOverflow)?;
-        let would_credit = total_credited
+        let would_credit = self
+            .total_credited
             .checked_add(self.burned_total)
             .and_then(|t| t.checked_add(amount))
             .ok_or(OracleError::ArithmeticOverflow)?;
         if would_credit > self.total_deposited {
             return Err(OracleError::ArithmeticOverflow);
         }
+        self.total_credited = self
+            .total_credited
+            .checked_add(amount)
+            .ok_or(OracleError::ArithmeticOverflow)?;
         let entry = self.balances.entry(recipient.to_string()).or_insert(0);
         *entry = entry
             .checked_add(amount)
