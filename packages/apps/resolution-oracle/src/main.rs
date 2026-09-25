@@ -22,6 +22,8 @@ enum Commands {
         epoch_id: String,
         #[arg(short, long, default_value = "v0.1")]
         version: String,
+        #[arg(short, long)]
+        methodology_image_id: String,
     },
     Propose {
         #[arg(short, long)]
@@ -36,6 +38,10 @@ enum Commands {
         bond: u64,
         #[arg(short, long, default_value_t = 7200)]
         liveness: u64,
+        #[arg(short, long)]
+        methodology_image_id: String,
+        #[arg(short, long)]
+        resolution_uri: String,
     },
 }
 
@@ -48,10 +54,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             snapshot_file,
             epoch_id,
             version,
+            methodology_image_id,
         } => {
             let content = fs::read_to_string(snapshot_file)?;
-            let snapshot: Snapshot = serde_json::from_str(&content)?;
-            let bundle = evaluate_methodology(&snapshot, &epoch_id, &version)?;
+            let mut snapshot: Snapshot = serde_json::from_str(&content)?;
+            let computed_root = resolution_oracle::services::compute_evidence_root(&snapshot.observations)?;
+            if snapshot.evidence_root != [0u8; 32] && snapshot.evidence_root != computed_root {
+                return Err(format!(
+                    "Supplied evidence root (0x{}) does not match computed root (0x{})",
+                    hex::encode(snapshot.evidence_root),
+                    hex::encode(computed_root)
+                ).into());
+            }
+            snapshot.evidence_root = computed_root;
+            let image_id_bytes = hex::decode(methodology_image_id.trim_start_matches("0x"))?;
+            let image_id: [u8; 32] = image_id_bytes
+                .try_into()
+                .map_err(|_| "methodology_image_id must be exactly 32 bytes (64 hex characters)")?;
+
+            let bundle = evaluate_methodology(&snapshot, &epoch_id, &version, image_id)?;
             let ho = hash_output_bundle(&bundle)?;
 
             println!("Evidence Root R: 0x{}", hex::encode(snapshot.evidence_root));
@@ -65,21 +86,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             proposer,
             bond,
             liveness,
+            methodology_image_id,
+            resolution_uri,
         } => {
             let content = fs::read_to_string(snapshot_file)?;
-            let snapshot: Snapshot = serde_json::from_str(&content)?;
-            let image_id = [0u8; 32];
-            let uri = format!("ipfs://resolution/{}/{}", epoch_id, version);
+            let mut snapshot: Snapshot = serde_json::from_str(&content)?;
+            let computed_root = resolution_oracle::services::compute_evidence_root(&snapshot.observations)?;
+            if snapshot.evidence_root != [0u8; 32] && snapshot.evidence_root != computed_root {
+                return Err(format!(
+                    "Supplied evidence root (0x{}) does not match computed root (0x{})",
+                    hex::encode(snapshot.evidence_root),
+                    hex::encode(computed_root)
+                ).into());
+            }
+            snapshot.evidence_root = computed_root;
+            let image_id_bytes = hex::decode(methodology_image_id.trim_start_matches("0x"))?;
+            let image_id: [u8; 32] = image_id_bytes
+                .try_into()
+                .map_err(|_| "methodology_image_id must be exactly 32 bytes (64 hex characters)")?;
 
             let (claim, bundle) = ProposerService::create_proposal(
                 &snapshot,
-                &epoch_id,
-                &version,
-                image_id,
-                &uri,
-                &proposer,
-                bond,
-                liveness,
+                resolution_oracle::services::ProposalParams {
+                    epoch_id: &epoch_id,
+                    version: &version,
+                    methodology_image_id: image_id,
+                    resolution_uri: &resolution_uri,
+                    proposer: &proposer,
+                    bond,
+                    liveness_seconds: liveness,
+                },
             )?;
 
             println!("Proposal created successfully:");

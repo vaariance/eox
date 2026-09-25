@@ -13,7 +13,7 @@ impl CrankService {
         let now = Utc::now();
         let settled = ClaimManager::check_and_settle(claim, now)?;
         if settled {
-            vault.reward_proposer(&claim.proposer, claim.bond);
+            vault.payout_settlement(&claim.proposer, claim.bond, None, 0, &claim.status)?;
         }
         Ok(settled)
     }

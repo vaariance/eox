@@ -20,24 +20,30 @@ impl WatchtowerService {
         disputer_bond: u64,
         vault: &mut BondVault,
     ) -> Result<WatchtowerResult, OracleError> {
-        if snapshot.evidence_root != claim.evidence_root {
+        let computed_root = crate::services::compute_evidence_root(&snapshot.observations)?;
+        if computed_root != claim.evidence_root {
             ClaimManager::dispute(claim, disputer_bond)?;
-            vault.reward_disputer(disputer, claim.bond, disputer_bond);
+            vault.deposit(disputer, disputer_bond)?;
             return Ok(WatchtowerResult::Disputed {
                 reason: format!(
                     "Evidence root mismatch: expected {}, proposed {}",
-                    hex::encode(snapshot.evidence_root),
+                    hex::encode(computed_root),
                     hex::encode(claim.evidence_root)
                 ),
             });
         }
 
-        let bundle = evaluate_methodology(snapshot, &claim.epoch_id, version)?;
+        let bundle = evaluate_methodology(
+            snapshot,
+            &claim.epoch_id,
+            version,
+            claim.methodology_image_id,
+        )?;
         let expected_ho = hash_output_bundle(&bundle)?;
 
         if expected_ho != claim.output_hash {
             ClaimManager::dispute(claim, disputer_bond)?;
-            vault.reward_disputer(disputer, claim.bond, disputer_bond);
+            vault.deposit(disputer, disputer_bond)?;
             return Ok(WatchtowerResult::Disputed {
                 reason: format!(
                     "Output hash Ho mismatch: expected {}, proposed {}",

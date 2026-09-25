@@ -1,26 +1,50 @@
 use crate::error::OracleError;
+use crate::types::ClaimStatus;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct BondVault {
     balances: BTreeMap<String, u64>,
+    deposits: BTreeMap<String, u64>,
+    total_deposited: u64,
     burned_total: u64,
     security_ratio_numerator: u64,
     security_ratio_denominator: u64,
 }
 
 impl BondVault {
-    pub fn new(security_ratio_num: u64, security_ratio_den: u64) -> Self {
-        Self {
+    pub fn new(security_ratio_num: u64, security_ratio_den: u64) -> Result<Self, OracleError> {
+        if security_ratio_den == 0 {
+            return Err(OracleError::DivisionByZero);
+        }
+        Ok(Self {
             balances: BTreeMap::new(),
+            deposits: BTreeMap::new(),
+            total_deposited: 0,
             burned_total: 0,
             security_ratio_numerator: security_ratio_num,
             security_ratio_denominator: security_ratio_den,
-        }
+        })
     }
 
-    pub fn max_epoch_tvl(&self, effective_bond: u64) -> u64 {
-        (effective_bond * self.security_ratio_numerator) / self.security_ratio_denominator
+    pub fn deposit(&mut self, depositor: &str, amount: u64) -> Result<(), OracleError> {
+        let entry = self.deposits.entry(depositor.to_string()).or_insert(0);
+        *entry = entry
+            .checked_add(amount)
+            .ok_or(OracleError::ArithmeticOverflow)?;
+        self.total_deposited = self
+            .total_deposited
+            .checked_add(amount)
+            .ok_or(OracleError::ArithmeticOverflow)?;
+        Ok(())
+    }
+
+    pub fn max_epoch_tvl(&self, effective_bond: u64) -> Result<u64, OracleError> {
+        effective_bond
+            .checked_mul(self.security_ratio_numerator)
+            .ok_or(OracleError::ArithmeticOverflow)?
+            .checked_div(self.security_ratio_denominator)
+            .ok_or(OracleError::DivisionByZero)
     }
 
     pub fn check_deposit_limit(
@@ -29,33 +53,98 @@ impl BondVault {
         deposit_amount: u64,
         effective_bond: u64,
     ) -> Result<(), OracleError> {
-        let cap = self.max_epoch_tvl(effective_bond);
-        if current_tvl + deposit_amount > cap {
-            Err(OracleError::MaxTvlExceeded {
-                cap,
-                attempted: current_tvl + deposit_amount,
-            })
+        let attempted = current_tvl
+            .checked_add(deposit_amount)
+            .ok_or(OracleError::ArithmeticOverflow)?;
+        let cap = self.max_epoch_tvl(effective_bond)?;
+        if attempted > cap {
+            Err(OracleError::MaxTvlExceeded { cap, attempted })
         } else {
             Ok(())
         }
     }
 
-    pub fn reward_disputer(
-        &mut self,
-        disputer: &str,
-        proposer_bond: u64,
-        disputer_bond: u64,
-    ) {
-        let burn_amount = proposer_bond / 10;
-        let disputer_reward = proposer_bond - burn_amount;
-        let total_credit = disputer_bond + disputer_reward;
-
-        self.burned_total += burn_amount;
-        *self.balances.entry(disputer.to_string()).or_insert(0) += total_credit;
+    fn credit_balance(&mut self, recipient: &str, amount: u64) -> Result<(), OracleError> {
+        let total_credited: u64 = self
+            .balances
+            .values()
+            .try_fold(0u64, |acc, b| acc.checked_add(*b))
+            .ok_or(OracleError::ArithmeticOverflow)?;
+        let would_credit = total_credited
+            .checked_add(self.burned_total)
+            .and_then(|t| t.checked_add(amount))
+            .ok_or(OracleError::ArithmeticOverflow)?;
+        if would_credit > self.total_deposited {
+            return Err(OracleError::ArithmeticOverflow);
+        }
+        let entry = self.balances.entry(recipient.to_string()).or_insert(0);
+        *entry = entry
+            .checked_add(amount)
+            .ok_or(OracleError::ArithmeticOverflow)?;
+        Ok(())
     }
 
-    pub fn reward_proposer(&mut self, proposer: &str, proposer_bond: u64) {
-        *self.balances.entry(proposer.to_string()).or_insert(0) += proposer_bond;
+    pub fn payout_settlement(
+        &mut self,
+        proposer: &str,
+        proposer_bond: u64,
+        disputer: Option<&str>,
+        disputer_bond: u64,
+        outcome: &ClaimStatus,
+    ) -> Result<(), OracleError> {
+        match outcome {
+            ClaimStatus::SettledTrue => {
+                if let Some(_d) = disputer {
+                    let burn = disputer_bond
+                        .checked_div(10)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    let reward = disputer_bond
+                        .checked_sub(burn)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    self.burned_total = self
+                        .burned_total
+                        .checked_add(burn)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    let total_prop = proposer_bond
+                        .checked_add(reward)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    self.credit_balance(proposer, total_prop)?;
+                } else {
+                    self.credit_balance(proposer, proposer_bond)?;
+                }
+            }
+            ClaimStatus::SettledFalse => {
+                if let Some(d) = disputer {
+                    let burn = proposer_bond
+                        .checked_div(10)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    let reward = proposer_bond
+                        .checked_sub(burn)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    self.burned_total = self
+                        .burned_total
+                        .checked_add(burn)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    let total_disp = disputer_bond
+                        .checked_add(reward)
+                        .ok_or(OracleError::ArithmeticOverflow)?;
+                    self.credit_balance(d, total_disp)?;
+                }
+            }
+            ClaimStatus::Voided => {
+                self.credit_balance(proposer, proposer_bond)?;
+                if let Some(d) = disputer {
+                    self.credit_balance(d, disputer_bond)?;
+                }
+            }
+            _ => {
+                return Err(OracleError::InvalidStateTransition {
+                    from: format!("{:?}", outcome),
+                    to: "Payout".to_string(),
+                })
+            }
+        }
+        Ok(())
     }
 
     pub fn withdraw(&mut self, recipient: &str) -> u64 {
@@ -70,6 +159,10 @@ impl BondVault {
 
     pub fn get_balance(&self, recipient: &str) -> u64 {
         self.balances.get(recipient).copied().unwrap_or(0)
+    }
+
+    pub fn get_deposit(&self, depositor: &str) -> u64 {
+        self.deposits.get(depositor).copied().unwrap_or(0)
     }
 
     pub fn get_burned_total(&self) -> u64 {
