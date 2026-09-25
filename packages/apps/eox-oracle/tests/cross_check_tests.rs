@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
-use resolution_oracle::engine::Wad;
-use resolution_oracle::services::{cross_check, CrossCheckOutcome};
-use resolution_oracle::types::Observation;
+use eox_oracle::engine::Wad;
+use eox_oracle::services::{cross_check, CrossCheckOutcome};
+use eox_oracle::types::Observation;
 
 fn observation(source: &str, value: &str, known_at_offset_secs: i64) -> Observation {
     let base = Utc::now();

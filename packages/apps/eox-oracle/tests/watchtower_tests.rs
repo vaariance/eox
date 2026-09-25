@@ -1,9 +1,9 @@
 use chrono::Utc;
-use resolution_oracle::oracle::{ArbiterVote, BondVault, PanelArbiter, Resolution};
-use resolution_oracle::services::{
+use eox_oracle::oracle::{ArbiterVote, BondVault, PanelArbiter, Resolution};
+use eox_oracle::services::{
     build_snapshot, ProposalParams, ProposerService, WatchtowerResult, WatchtowerService,
 };
-use resolution_oracle::types::{ClaimStatus, Observation};
+use eox_oracle::types::{ClaimStatus, Observation};
 
 fn sample_obs(country: &str, indicator: &str, val: &str) -> Observation {
     let now = Utc::now();
@@ -206,6 +206,6 @@ fn test_panel_arbiter_resolution() {
     ];
     assert!(matches!(
         arbiter.arbitrate(&repeat_votes, [1u8; 32], [2u8; 32]),
-        Err(resolution_oracle::OracleError::ArbitrationFailed(_))
+        Err(eox_oracle::OracleError::ArbitrationFailed(_))
     ));
 }

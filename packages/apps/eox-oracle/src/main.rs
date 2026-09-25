@@ -1,12 +1,12 @@
 use clap::{Parser, Subcommand};
-use resolution_oracle::engine::{evaluate_methodology, hash_output_bundle};
-use resolution_oracle::services::ProposerService;
-use resolution_oracle::types::Snapshot;
+use eox_oracle::engine::{evaluate_methodology, hash_output_bundle};
+use eox_oracle::services::ProposerService;
+use eox_oracle::types::Snapshot;
 use std::fs;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "resolution-oracle")]
+#[command(name = "eox-oracle")]
 #[command(about = "EOX Deterministic Resolution Oracle CLI", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             let content = fs::read_to_string(snapshot_file)?;
             let mut snapshot: Snapshot = serde_json::from_str(&content)?;
-            let computed_root = resolution_oracle::services::compute_evidence_root(&snapshot.observations)?;
+            let computed_root = eox_oracle::services::compute_evidence_root(&snapshot.observations)?;
             if snapshot.evidence_root != [0u8; 32] && snapshot.evidence_root != computed_root {
                 return Err(format!(
                     "Supplied evidence root (0x{}) does not match computed root (0x{})",
@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             let content = fs::read_to_string(snapshot_file)?;
             let mut snapshot: Snapshot = serde_json::from_str(&content)?;
-            let computed_root = resolution_oracle::services::compute_evidence_root(&snapshot.observations)?;
+            let computed_root = eox_oracle::services::compute_evidence_root(&snapshot.observations)?;
             if snapshot.evidence_root != [0u8; 32] && snapshot.evidence_root != computed_root {
                 return Err(format!(
                     "Supplied evidence root (0x{}) does not match computed root (0x{})",
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let (claim, bundle) = ProposerService::create_proposal(
                 &snapshot,
-                resolution_oracle::services::ProposalParams {
+                eox_oracle::services::ProposalParams {
                     epoch_id: &epoch_id,
                     version: &version,
                     methodology_image_id: image_id,

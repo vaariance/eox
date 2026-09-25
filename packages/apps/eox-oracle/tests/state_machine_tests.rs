@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
-use resolution_oracle::error::OracleError;
-use resolution_oracle::oracle::{BondVault, ClaimManager, NewClaimParams, Resolution};
-use resolution_oracle::types::ClaimStatus;
+use eox_oracle::error::OracleError;
+use eox_oracle::oracle::{BondVault, ClaimManager, NewClaimParams, Resolution};
+use eox_oracle::types::ClaimStatus;
 
 #[test]
 fn test_liveness_settlement_and_dispute_ladder() {

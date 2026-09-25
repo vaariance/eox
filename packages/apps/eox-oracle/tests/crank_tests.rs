@@ -1,9 +1,9 @@
 use chrono::Utc;
-use resolution_oracle::oracle::BondVault;
-use resolution_oracle::services::{
+use eox_oracle::oracle::BondVault;
+use eox_oracle::services::{
     build_snapshot, CrankService, ProposalParams, ProposerService,
 };
-use resolution_oracle::types::{ClaimStatus, Observation};
+use eox_oracle::types::{ClaimStatus, Observation};
 
 fn observation(country: &str, value: &str) -> Observation {
     let now = Utc::now();
@@ -34,7 +34,7 @@ fn params(proposer: &str) -> ProposalParams<'_> {
     }
 }
 
-fn snapshot() -> resolution_oracle::types::Snapshot {
+fn snapshot() -> eox_oracle::types::Snapshot {
     build_snapshot(
         Utc::now(),
         vec![
