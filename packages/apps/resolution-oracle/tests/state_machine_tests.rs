@@ -101,3 +101,18 @@ fn test_pull_payment_bond_vault() {
     assert_eq!(withdrawn, 1900);
     assert_eq!(vault.get_balance("honest_disputer"), 0);
 }
+
+#[test]
+fn test_vault_cannot_credit_more_than_deposited_after_withdrawal() {
+    let mut vault = BondVault::new(1, 1).unwrap();
+    vault.deposit("proposer_a", 1000).unwrap();
+
+    vault
+        .payout_settlement("proposer_a", 1000, None, 0, &ClaimStatus::SettledTrue)
+        .unwrap();
+    assert_eq!(vault.withdraw("proposer_a"), 1000);
+
+    let second = vault.payout_settlement("proposer_a", 1000, None, 0, &ClaimStatus::SettledTrue);
+    assert!(matches!(second, Err(OracleError::ArithmeticOverflow)));
+    assert_eq!(vault.get_balance("proposer_a"), 0);
+}
