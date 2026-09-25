@@ -6,7 +6,7 @@ Monorepo for EOX. pnpm workspaces, three packages under `packages/`, apps under 
 |---|---|---|
 | `packages/ingestion` | Peter | Fetch data from sources |
 | `packages/evidence-store` | Joel | Store facts forever, append-only |
-| `packages/methodology` | Godwin | Turn facts into scores |
+| `packages/apps/methodology` | Godwin | Turn facts into scores (Rust crate `eox-engine`) |
 | `apps/` | later | API, web app |
 | `docs/` | everyone | Guides |
 
