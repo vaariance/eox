@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "packages/eox-engine",
+    "packages/methodology",
     "packages/apps/resolution-oracle",
 ]
 resolver = "2"
