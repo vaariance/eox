@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "packages/methodology",
+    "packages/apps/methodology",
     "packages/apps/resolution-oracle",
 ]
 resolver = "2"
