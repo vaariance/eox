@@ -51,6 +51,7 @@ pub struct OutputBundle {
     pub methodology_version: String,
     pub evidence_root: [u8; 32],
     pub methodology_image_id: [u8; 32],
+    pub excluded_countries: Vec<String>,
     pub country_scores: Vec<CountryScore>,
     pub world_benchmark: String,
     pub relative_scores: Vec<RelativeScore>,

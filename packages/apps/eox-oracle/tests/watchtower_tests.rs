@@ -3,34 +3,14 @@ use eox_oracle::oracle::{ArbiterVote, BondVault, PanelArbiter, Resolution};
 use eox_oracle::services::{
     build_snapshot, ProposalParams, ProposerService, WatchtowerResult, WatchtowerService,
 };
-use eox_oracle::types::{ClaimStatus, Observation};
+use eox_oracle::types::ClaimStatus;
 
-fn sample_obs(country: &str, indicator: &str, val: &str) -> Observation {
-    let now = Utc::now();
-    Observation {
-        country_iso3: country.to_string(),
-        indicator_id: indicator.to_string(),
-        period_start: "2025-01-01".to_string(),
-        period_end: "2025-03-31".to_string(),
-        value: val.to_string(),
-        source_id: "official".to_string(),
-        vintage: "first".to_string(),
-        published_at: now,
-        known_at: now,
-        recipe_id: Some(1),
-        raw_sha256: Some("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()),
-    }
-}
+mod common;
 
 #[test]
 fn test_watchtower_approves_honest_proposal() {
     let now = Utc::now();
-    let obs = vec![
-        sample_obs("NGA", "gdp_real_growth_yoy", "3.2"),
-        sample_obs("USA", "gdp_real_growth_yoy", "2.1"),
-        sample_obs("CHN", "gdp_real_growth_yoy", "5.0"),
-        sample_obs("IND", "gdp_real_growth_yoy", "6.8"),
-    ];
+    let obs = common::full_observations();
 
     let snapshot = build_snapshot(now, obs).unwrap();
     let (mut claim, _) = ProposerService::create_proposal(
@@ -65,12 +45,7 @@ fn test_watchtower_approves_honest_proposal() {
 #[test]
 fn test_watchtower_catches_dishonest_evidence_root() {
     let now = Utc::now();
-    let obs = vec![
-        sample_obs("NGA", "gdp_real_growth_yoy", "3.2"),
-        sample_obs("USA", "gdp_real_growth_yoy", "2.1"),
-        sample_obs("CHN", "gdp_real_growth_yoy", "5.0"),
-        sample_obs("IND", "gdp_real_growth_yoy", "6.8"),
-    ];
+    let obs = common::full_observations();
 
     let snapshot = build_snapshot(now, obs).unwrap();
     let (mut claim, _) = ProposerService::create_proposal(
@@ -114,12 +89,7 @@ fn test_watchtower_catches_dishonest_evidence_root() {
 #[test]
 fn test_watchtower_catches_dishonest_output_hash() {
     let now = Utc::now();
-    let obs = vec![
-        sample_obs("NGA", "gdp_real_growth_yoy", "3.2"),
-        sample_obs("USA", "gdp_real_growth_yoy", "2.1"),
-        sample_obs("CHN", "gdp_real_growth_yoy", "5.0"),
-        sample_obs("IND", "gdp_real_growth_yoy", "6.8"),
-    ];
+    let obs = common::full_observations();
 
     let snapshot = build_snapshot(now, obs).unwrap();
     let (mut claim, _) = ProposerService::create_proposal(

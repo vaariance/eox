@@ -31,6 +31,11 @@ pub fn canonicalize_output_bundle(bundle: &OutputBundle) -> Vec<u8> {
         encode_field(&mut buf, rs.relative_performance.as_bytes());
     }
 
+    buf.extend_from_slice(&(bundle.excluded_countries.len() as u32).to_be_bytes());
+    for country in &bundle.excluded_countries {
+        encode_field(&mut buf, country.as_bytes());
+    }
+
     buf.extend_from_slice(&(bundle.attribution.len() as u32).to_be_bytes());
     for trace in &bundle.attribution {
         encode_field(&mut buf, trace.country_iso3.as_bytes());

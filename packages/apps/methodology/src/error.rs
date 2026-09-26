@@ -20,8 +20,8 @@ pub enum EngineError {
     #[error("Missing raw_sha256 for observation")]
     MissingRawSha256,
 
-    #[error("Observation not found: country {country}, indicator {indicator}")]
-    ObservationNotFound { country: String, indicator: String },
+    #[error("No country reports enough indicators to be scored")]
+    InsufficientCoverage,
 
     #[error("Duplicate observation for country {country}, indicator {indicator}")]
     DuplicateObservation { country: String, indicator: String },

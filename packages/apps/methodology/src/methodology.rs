@@ -4,47 +4,61 @@ use crate::merkle::compute_evidence_root;
 use crate::types::{CountryScore, IndicatorTrace, OutputBundle, RelativeScore, Snapshot};
 use std::collections::{BTreeMap, BTreeSet};
 
+const MIN_INDICATORS_PER_COUNTRY: usize = 5;
+
+// 1 means a higher value is better, -1 means lower is better.
+const V0_1_INDICATORS: [(&str, i128); 25] = [
+    ("nighttime_lights", 1),
+    ("tropospheric_no2", 1),
+    ("power_grid_load", 1),
+    ("ndvi_crop_health", 1),
+    ("water_inundation", -1),
+    ("container_throughput", 1),
+    ("air_freight_capacity", 1),
+    ("heavy_vehicle_crossings", 1),
+    ("fleet_destination_intent", 1),
+    ("commodity_storage", -1),
+    ("interbank_transaction_inflows", 1),
+    ("sovereign_bond_spreads", -1),
+    ("overnight_lending_rates", -1),
+    ("parallel_fx_deltas", -1),
+    ("bankruptcy_velocities", -1),
+    ("pmi", 1),
+    ("real_estate_valuation", 1),
+    ("retail_search_propensity", 1),
+    ("passenger_mobility", 1),
+    ("corporate_job_openings", 1),
+    ("gdp_real_growth_yoy", 1),
+    ("cpi_core_yoy", -1),
+    ("unemployment_rate", -1),
+    ("policy_rate", -1),
+    ("fiscal_deficit_gdp", -1),
+];
+
 #[derive(Debug, Clone)]
 pub struct MethodologyConfig {
     pub universe: Vec<String>,
     pub indicator_weights: BTreeMap<String, Wad>,
     pub indicator_polarities: BTreeMap<String, Wad>,
-    pub optional_indicators: BTreeSet<String>,
+    pub min_indicators_per_country: usize,
 }
 
 pub fn get_methodology_config(version: &str) -> Result<MethodologyConfig, EngineError> {
     match version {
-        "v0.1" => {
-            let mut weights = BTreeMap::new();
-            let mut polarities = BTreeMap::new();
-
-            weights.insert("gdp_real_growth_yoy".to_string(), Wad::ONE);
-            polarities.insert("gdp_real_growth_yoy".to_string(), Wad::ONE);
-
-            weights.insert("cpi_core_yoy".to_string(), Wad::ONE);
-            polarities.insert("cpi_core_yoy".to_string(), Wad(-WAD));
-
-            weights.insert("unemployment_rate".to_string(), Wad::ONE);
-            polarities.insert("unemployment_rate".to_string(), Wad(-WAD));
-
-            weights.insert("policy_rate".to_string(), Wad::ONE);
-            polarities.insert("policy_rate".to_string(), Wad(-WAD));
-
-            weights.insert("fiscal_deficit_gdp".to_string(), Wad::ONE);
-            polarities.insert("fiscal_deficit_gdp".to_string(), Wad(-WAD));
-
-            Ok(MethodologyConfig {
-                universe: vec![
-                    "CHN".to_string(),
-                    "IND".to_string(),
-                    "NGA".to_string(),
-                    "USA".to_string(),
-                ],
-                indicator_weights: weights,
-                indicator_polarities: polarities,
-                optional_indicators: BTreeSet::new(),
-            })
-        }
+        "v0.1" => Ok(MethodologyConfig {
+            universe: ["CHN", "DEU", "GHA", "NGA", "USA"]
+                .map(String::from)
+                .to_vec(),
+            indicator_weights: V0_1_INDICATORS
+                .iter()
+                .map(|(id, _)| (id.to_string(), Wad::ONE))
+                .collect(),
+            indicator_polarities: V0_1_INDICATORS
+                .iter()
+                .map(|(id, polarity)| (id.to_string(), Wad(polarity * WAD)))
+                .collect(),
+            min_indicators_per_country: MIN_INDICATORS_PER_COUNTRY,
+        }),
         _ => Err(EngineError::InvalidMethodologyVersion(version.to_string())),
     }
 }
@@ -63,8 +77,6 @@ pub fn evaluate_methodology(
     }
 
     let mut observation_map: BTreeMap<(&str, &str), (Wad, &str)> = BTreeMap::new();
-    let mut indicator_values: BTreeMap<&str, Vec<Wad>> = BTreeMap::new();
-
     for obs in &snapshot.observations {
         let country = obs.country_iso3.as_str();
         let indicator = obs.indicator_id.as_str();
@@ -86,34 +98,61 @@ pub fn evaluate_methodology(
                 indicator: indicator.to_string(),
             });
         }
-        indicator_values.entry(indicator).or_default().push(parsed);
     }
 
-    for country in &config.universe {
-        for indicator in indicator_values.keys() {
-            if !config.optional_indicators.contains(*indicator)
-                && !observation_map.contains_key(&(country.as_str(), *indicator))
-            {
-                return Err(EngineError::ObservationNotFound {
-                    country: country.clone(),
-                    indicator: indicator.to_string(),
-                });
+    // An indicator needs two reporting countries to be normalized, and a country needs
+    // enough scoreable indicators to be ranked. Dropping a country can leave an indicator
+    // with a single reporter, so repeat until the set stops shrinking.
+    let mut included: BTreeSet<&str> = config.universe.iter().map(String::as_str).collect();
+    let scoreable: BTreeSet<&str> = loop {
+        let mut reporters: BTreeMap<&str, usize> = BTreeMap::new();
+        for (country, indicator) in observation_map.keys() {
+            if included.contains(country) {
+                *reporters.entry(indicator).or_default() += 1;
             }
         }
+        let scoreable: BTreeSet<&str> = reporters
+            .into_iter()
+            .filter(|(_, count)| *count >= 2)
+            .map(|(indicator, _)| indicator)
+            .collect();
+        let next: BTreeSet<&str> = included
+            .iter()
+            .copied()
+            .filter(|country| {
+                scoreable
+                    .iter()
+                    .filter(|indicator| observation_map.contains_key(&(*country, **indicator)))
+                    .count()
+                    >= config.min_indicators_per_country
+            })
+            .collect();
+        if next.len() == included.len() {
+            break scoreable;
+        }
+        included = next;
+    };
+    if included.is_empty() {
+        return Err(EngineError::InsufficientCoverage);
     }
 
     let mut stats: BTreeMap<&str, (Wad, Wad)> = BTreeMap::new();
-    for (indicator, values) in &indicator_values {
+    for indicator in &scoreable {
+        let values: Vec<Wad> = included
+            .iter()
+            .filter_map(|country| observation_map.get(&(*country, *indicator)))
+            .map(|(value, _)| *value)
+            .collect();
         let count_wad = Wad::from_i128(values.len() as i128)?;
 
         let mut sum = Wad::ZERO;
-        for val in values {
+        for val in &values {
             sum = sum.checked_add(*val)?;
         }
         let mean = sum.checked_div(count_wad)?;
 
         let mut variance_sum = Wad::ZERO;
-        for val in values {
+        for val in &values {
             let diff = val.checked_sub(mean)?;
             variance_sum = variance_sum.checked_add(diff.checked_mul(diff)?)?;
         }
@@ -125,7 +164,7 @@ pub fn evaluate_methodology(
     let mut country_scores_map: BTreeMap<&str, Wad> = BTreeMap::new();
     let mut attribution: Vec<IndicatorTrace> = Vec::new();
 
-    for country in &config.universe {
+    for country in config.universe.iter().filter(|c| included.contains(c.as_str())) {
         let mut total_score = Wad::ZERO;
         let mut indicator_count = 0i128;
 
@@ -155,11 +194,7 @@ pub fn evaluate_methodology(
             });
         }
 
-        let country_score = if indicator_count > 0 {
-            total_score.checked_div(Wad::from_i128(indicator_count)?)?
-        } else {
-            Wad::ZERO
-        };
+        let country_score = total_score.checked_div(Wad::from_i128(indicator_count)?)?;
         country_scores_map.insert(country, country_score);
     }
 
@@ -189,6 +224,12 @@ pub fn evaluate_methodology(
         methodology_version: version.to_string(),
         evidence_root: computed_root,
         methodology_image_id,
+        excluded_countries: config
+            .universe
+            .iter()
+            .filter(|c| !included.contains(c.as_str()))
+            .cloned()
+            .collect(),
         country_scores,
         world_benchmark: world_benchmark.to_string(),
         relative_scores,
