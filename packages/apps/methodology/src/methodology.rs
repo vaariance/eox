@@ -4,7 +4,7 @@ use crate::merkle::compute_evidence_root;
 use crate::types::{CountryScore, IndicatorTrace, OutputBundle, RelativeScore, Snapshot};
 use std::collections::{BTreeMap, BTreeSet};
 
-const MIN_INDICATORS_PER_COUNTRY: usize = 5;
+const MIN_INDICATORS_PER_COUNTRY: usize = 3;
 
 // 1 means a higher value is better, -1 means lower is better.
 const V0_1_INDICATORS: [(&str, i128); 25] = [

@@ -1,6 +1,8 @@
 use chrono::Utc;
 use eox_engine::types::Observation;
-use eox_engine::{build_snapshot, evaluate_methodology, hash_output_bundle, EngineError, Wad};
+use eox_engine::{
+    build_snapshot, evaluate_methodology, get_methodology_config, hash_output_bundle, EngineError, Wad,
+};
 
 fn sample_obs(country: &str, indicator: &str, val: &str) -> Observation {
     let now = Utc::now();
@@ -59,6 +61,10 @@ fn full_set() -> Vec<Observation> {
         }
     }
     obs
+}
+
+fn min_indicators() -> usize {
+    get_methodology_config("v0.1").unwrap().min_indicators_per_country
 }
 
 fn evaluate(obs: Vec<Observation>) -> Result<eox_engine::OutputBundle, EngineError> {
@@ -159,10 +165,15 @@ fn test_all_countries_scored_when_each_reports_the_minimum() {
     assert_eq!(bundle.country_scores.len(), 5);
 }
 
+fn without_indicators_beyond(mut obs: Vec<Observation>, country: &str, keep: usize) -> Vec<Observation> {
+    let kept: Vec<&str> = CORE_INDICATORS.iter().take(keep).copied().collect();
+    obs.retain(|o| o.country_iso3 != country || kept.contains(&o.indicator_id.as_str()));
+    obs
+}
+
 #[test]
 fn test_country_below_minimum_is_excluded() {
-    let mut obs = full_set();
-    obs.retain(|o| !(o.country_iso3 == "GHA" && o.indicator_id == "policy_rate"));
+    let obs = without_indicators_beyond(full_set(), "GHA", min_indicators() - 1);
 
     let bundle = evaluate(obs).unwrap();
     assert_eq!(bundle.excluded_countries, vec!["GHA".to_string()]);
@@ -172,11 +183,19 @@ fn test_country_below_minimum_is_excluded() {
 }
 
 #[test]
+fn test_country_at_the_minimum_is_scored() {
+    let obs = without_indicators_beyond(full_set(), "GHA", min_indicators());
+
+    let bundle = evaluate(obs).unwrap();
+    assert!(bundle.excluded_countries.is_empty());
+    assert_eq!(bundle.country_scores.len(), 5);
+}
+
+#[test]
 fn test_excluded_country_does_not_move_other_scores() {
     let mut without_gha = full_set();
     without_gha.retain(|o| o.country_iso3 != "GHA");
-    let mut gha_short = full_set();
-    gha_short.retain(|o| !(o.country_iso3 == "GHA" && o.indicator_id == "policy_rate"));
+    let gha_short = without_indicators_beyond(full_set(), "GHA", min_indicators() - 1);
 
     let a = evaluate(without_gha).unwrap();
     let b = evaluate(gha_short).unwrap();
@@ -186,18 +205,20 @@ fn test_excluded_country_does_not_move_other_scores() {
 
 #[test]
 fn test_exclusion_cascades_when_an_indicator_loses_its_second_reporter() {
+    let m = min_indicators();
+    let value = |ci: usize, ii: usize| format!("{}.5", (ci * 3 + ii * 7) % 11 + 1);
     let mut obs = Vec::new();
     for (ci, country) in ["CHN", "NGA", "USA"].iter().enumerate() {
-        for (ii, indicator) in CORE_INDICATORS.iter().enumerate() {
-            obs.push(sample_obs(country, indicator, &format!("{}.5", (ci * 3 + ii * 7) % 11 + 1)));
+        for (ii, indicator) in CORE_INDICATORS.iter().take(m).enumerate() {
+            obs.push(sample_obs(country, indicator, &value(ci, ii)));
         }
     }
-    for (ii, indicator) in CORE_INDICATORS.iter().take(4).enumerate() {
-        obs.push(sample_obs("DEU", indicator, &format!("{}.25", ii + 2)));
+    for (ii, indicator) in CORE_INDICATORS.iter().take(m - 1).enumerate() {
+        obs.push(sample_obs("DEU", indicator, &value(4, ii)));
     }
     obs.push(sample_obs("DEU", "pmi", "51.0"));
-    for indicator in ["gdp_real_growth_yoy", "cpi_core_yoy"] {
-        obs.push(sample_obs("GHA", indicator, "4.0"));
+    for (ii, indicator) in CORE_INDICATORS.iter().take(m - 2).enumerate() {
+        obs.push(sample_obs("GHA", indicator, &value(5, ii)));
     }
     obs.push(sample_obs("GHA", "pmi", "49.0"));
 
@@ -222,7 +243,7 @@ fn test_indicator_reported_by_one_country_is_ignored() {
 fn test_no_country_meeting_the_minimum_is_an_error() {
     let mut obs = Vec::new();
     for country in COUNTRIES {
-        for indicator in &CORE_INDICATORS[..3] {
+        for indicator in &CORE_INDICATORS[..min_indicators() - 1] {
             obs.push(sample_obs(country, indicator, "2.5"));
         }
     }
