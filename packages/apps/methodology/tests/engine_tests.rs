@@ -200,7 +200,10 @@ fn test_excluded_country_does_not_move_other_scores() {
     let a = evaluate(without_gha).unwrap();
     let b = evaluate(gha_short).unwrap();
     assert_eq!(a.country_scores, b.country_scores);
-    assert_eq!(a.world_benchmark, b.world_benchmark);
+    for rel in &a.relative_scores {
+        let other = b.relative_scores.iter().find(|r| r.country_iso3 == rel.country_iso3).unwrap();
+        assert_eq!(rel.world_excluding_self, other.world_excluding_self);
+    }
 }
 
 #[test]
@@ -312,4 +315,44 @@ fn test_country_outside_the_universe_rejected() {
     obs.push(sample_obs("IND", "gdp_real_growth_yoy", "6.8"));
     let err = evaluate(obs).unwrap_err();
     assert_eq!(err, EngineError::UnknownCountry("IND".to_string()));
+}
+
+#[test]
+fn test_world_excludes_the_country_it_is_shown_against() {
+    let bundle = evaluate(full_set()).unwrap();
+
+    for rel in &bundle.relative_scores {
+        let own_score = Wad::from_decimal_str(
+            &bundle
+                .country_scores
+                .iter()
+                .find(|s| s.country_iso3 == rel.country_iso3)
+                .unwrap()
+                .score,
+        )
+        .unwrap();
+        let others_sum: Wad = bundle
+            .country_scores
+            .iter()
+            .filter(|s| s.country_iso3 != rel.country_iso3)
+            .map(|s| Wad::from_decimal_str(&s.score).unwrap())
+            .fold(Wad::ZERO, |a, b| a.checked_add(b).unwrap());
+        let expected_world =
+            others_sum.checked_div(Wad::from_i128(4).unwrap()).unwrap();
+
+        assert_eq!(rel.world_excluding_self, expected_world.to_string());
+        assert_eq!(
+            rel.relative_performance,
+            own_score.checked_sub(expected_world).unwrap().to_string()
+        );
+    }
+}
+
+#[test]
+fn test_single_included_country_is_an_error() {
+    let mut obs = Vec::new();
+    for indicator in CORE_INDICATORS {
+        obs.push(sample_obs("USA", indicator, "2.5"));
+    }
+    assert_eq!(evaluate(obs).unwrap_err(), EngineError::InsufficientCoverage);
 }

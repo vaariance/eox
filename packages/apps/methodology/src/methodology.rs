@@ -132,7 +132,7 @@ pub fn evaluate_methodology(
         }
         included = next;
     };
-    if included.is_empty() {
+    if included.len() < 2 {
         return Err(EngineError::InsufficientCoverage);
     }
 
@@ -198,11 +198,11 @@ pub fn evaluate_methodology(
         country_scores_map.insert(country, country_score);
     }
 
-    let mut world_sum = Wad::ZERO;
+    let mut score_sum = Wad::ZERO;
     for score in country_scores_map.values() {
-        world_sum = world_sum.checked_add(*score)?;
+        score_sum = score_sum.checked_add(*score)?;
     }
-    let world_benchmark = world_sum.checked_div(Wad::from_i128(country_scores_map.len() as i128)?)?;
+    let others_count = Wad::from_i128(country_scores_map.len() as i128 - 1)?;
 
     let mut country_scores = Vec::new();
     let mut relative_scores = Vec::new();
@@ -212,9 +212,11 @@ pub fn evaluate_methodology(
             country_iso3: country.to_string(),
             score: score.to_string(),
         });
+        let world_excluding_self = score_sum.checked_sub(*score)?.checked_div(others_count)?;
         relative_scores.push(RelativeScore {
             country_iso3: country.to_string(),
-            relative_performance: score.checked_sub(world_benchmark)?.to_string(),
+            world_excluding_self: world_excluding_self.to_string(),
+            relative_performance: score.checked_sub(world_excluding_self)?.to_string(),
         });
     }
 
@@ -231,7 +233,6 @@ pub fn evaluate_methodology(
             .cloned()
             .collect(),
         country_scores,
-        world_benchmark: world_benchmark.to_string(),
         relative_scores,
         attribution,
     })

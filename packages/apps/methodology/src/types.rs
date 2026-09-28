@@ -32,6 +32,7 @@ pub struct CountryScore {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RelativeScore {
     pub country_iso3: String,
+    pub world_excluding_self: String,
     pub relative_performance: String,
 }
 
@@ -53,7 +54,6 @@ pub struct OutputBundle {
     pub methodology_image_id: [u8; 32],
     pub excluded_countries: Vec<String>,
     pub country_scores: Vec<CountryScore>,
-    pub world_benchmark: String,
     pub relative_scores: Vec<RelativeScore>,
     pub attribution: Vec<IndicatorTrace>,
 }

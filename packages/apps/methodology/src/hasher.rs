@@ -23,11 +23,10 @@ pub fn canonicalize_output_bundle(bundle: &OutputBundle) -> Vec<u8> {
         encode_field(&mut buf, cs.score.as_bytes());
     }
 
-    encode_field(&mut buf, bundle.world_benchmark.as_bytes());
-
     buf.extend_from_slice(&(bundle.relative_scores.len() as u32).to_be_bytes());
     for rs in &bundle.relative_scores {
         encode_field(&mut buf, rs.country_iso3.as_bytes());
+        encode_field(&mut buf, rs.world_excluding_self.as_bytes());
         encode_field(&mut buf, rs.relative_performance.as_bytes());
     }
 

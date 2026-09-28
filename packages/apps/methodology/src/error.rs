@@ -20,7 +20,7 @@ pub enum EngineError {
     #[error("Missing raw_sha256 for observation")]
     MissingRawSha256,
 
-    #[error("No country reports enough indicators to be scored")]
+    #[error("Fewer than two countries meet the coverage rule; relative performance needs at least two")]
     InsufficientCoverage,
 
     #[error("Duplicate observation for country {country}, indicator {indicator}")]
