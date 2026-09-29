@@ -9,7 +9,7 @@ fn observation(source: &str, value: &str, known_at_offset_secs: i64) -> Observat
         country_iso3: "NGA".to_string(),
         indicator_id: "cpi_headline_yoy".to_string(),
         period_start: "2025-01-01".to_string(),
-        period_end: "2025-03-31".to_string(),
+        period_end: "2025-12-31".to_string(),
         value: value.to_string(),
         source_id: source.to_string(),
         vintage: "first".to_string(),

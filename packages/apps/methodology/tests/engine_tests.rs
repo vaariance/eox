@@ -10,7 +10,7 @@ fn sample_obs(country: &str, indicator: &str, val: &str) -> Observation {
         country_iso3: country.to_string(),
         indicator_id: indicator.to_string(),
         period_start: "2025-01-01".to_string(),
-        period_end: "2025-03-31".to_string(),
+        period_end: "2025-12-31".to_string(),
         value: val.to_string(),
         source_id: "official".to_string(),
         vintage: "first".to_string(),
@@ -69,7 +69,7 @@ fn min_indicators() -> usize {
 
 fn evaluate(obs: Vec<Observation>) -> Result<eox_engine::OutputBundle, EngineError> {
     let snap = build_snapshot(Utc::now(), obs).unwrap();
-    evaluate_methodology(&snap, "epoch_2025_q1", "v0.1", [0u8; 32])
+    evaluate_methodology(&snap, "epoch_2025", "v0.1", [0u8; 32])
 }
 
 #[test]
@@ -83,15 +83,15 @@ fn test_permutation_invariance_bit_identical() {
     let snap_2 = build_snapshot(now, obs_set_2).unwrap();
     assert_eq!(snap_1.evidence_root, snap_2.evidence_root, "Merkle root R must be bit-identical");
 
-    let bundle_1 = evaluate_methodology(&snap_1, "epoch_2025_q1", "v0.1", [0u8; 32]).unwrap();
-    let bundle_2 = evaluate_methodology(&snap_2, "epoch_2025_q1", "v0.1", [0u8; 32]).unwrap();
+    let bundle_1 = evaluate_methodology(&snap_1, "epoch_2025", "v0.1", [0u8; 32]).unwrap();
+    let bundle_2 = evaluate_methodology(&snap_2, "epoch_2025", "v0.1", [0u8; 32]).unwrap();
     let ho_1 = hash_output_bundle(&bundle_1).unwrap();
     assert_eq!(ho_1, hash_output_bundle(&bundle_2).unwrap());
 
     let mut rotated = obs_set_1;
     rotated.rotate_left(7);
     let snap_rotated = build_snapshot(now, rotated).unwrap();
-    let bundle_rotated = evaluate_methodology(&snap_rotated, "epoch_2025_q1", "v0.1", [0u8; 32]).unwrap();
+    let bundle_rotated = evaluate_methodology(&snap_rotated, "epoch_2025", "v0.1", [0u8; 32]).unwrap();
     assert_eq!(ho_1, hash_output_bundle(&bundle_rotated).unwrap());
 }
 
@@ -268,7 +268,7 @@ fn test_relative_performance_sums_to_zero() {
 #[test]
 fn test_bundle_commits_to_evidence_root_methodology_image_and_exclusions() {
     let snap = build_snapshot(Utc::now(), full_set()).unwrap();
-    let bundle = evaluate_methodology(&snap, "epoch_2025_q1", "v0.1", [1u8; 32]).unwrap();
+    let bundle = evaluate_methodology(&snap, "epoch_2025", "v0.1", [1u8; 32]).unwrap();
     let base_hash = hash_output_bundle(&bundle).unwrap();
 
     let mut tampered_root = bundle.clone();
@@ -288,7 +288,7 @@ fn test_bundle_commits_to_evidence_root_methodology_image_and_exclusions() {
 fn test_engine_rejects_root_not_matching_observations() {
     let mut snap = build_snapshot(Utc::now(), full_set()).unwrap();
     snap.observations[0].value = "9.9".to_string();
-    let err = evaluate_methodology(&snap, "epoch_2025_q1", "v0.1", [0u8; 32]).unwrap_err();
+    let err = evaluate_methodology(&snap, "epoch_2025", "v0.1", [0u8; 32]).unwrap_err();
     assert_eq!(err, EngineError::EvidenceRootMismatch);
 }
 
@@ -297,7 +297,7 @@ fn test_engine_computes_root_when_unset() {
     let mut snap = build_snapshot(Utc::now(), full_set()).unwrap();
     let expected_root = snap.evidence_root;
     snap.evidence_root = [0u8; 32];
-    let bundle = evaluate_methodology(&snap, "epoch_2025_q1", "v0.1", [0u8; 32]).unwrap();
+    let bundle = evaluate_methodology(&snap, "epoch_2025", "v0.1", [0u8; 32]).unwrap();
     assert_eq!(bundle.evidence_root, expected_root);
 }
 

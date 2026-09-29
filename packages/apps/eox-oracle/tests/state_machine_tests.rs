@@ -11,7 +11,7 @@ fn test_liveness_settlement_and_dispute_ladder() {
     let output_hash = [3u8; 32];
 
     let mut claim = ClaimManager::new_claim(NewClaimParams {
-        epoch_id: "epoch_2025_q1",
+        epoch_id: "epoch_2025",
         evidence_root,
         methodology_image_id: image_id,
         output_hash,
@@ -37,7 +37,7 @@ fn test_liveness_settlement_and_dispute_ladder() {
 fn test_dispute_auto_reset_and_escalation() {
     let now = Utc::now();
     let mut claim = ClaimManager::new_claim(NewClaimParams {
-        epoch_id: "epoch_2025_q1",
+        epoch_id: "epoch_2025",
         evidence_root: [1u8; 32],
         methodology_image_id: [2u8; 32],
         output_hash: [3u8; 32],

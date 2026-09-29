@@ -16,7 +16,7 @@ fn test_watchtower_approves_honest_proposal() {
     let (mut claim, _) = ProposerService::create_proposal(
         &snapshot,
         ProposalParams {
-            epoch_id: "epoch_2025_q1",
+            epoch_id: "epoch_2025",
             version: "v0.1",
             methodology_image_id: [0u8; 32],
             resolution_uri: "uri://claim",
@@ -51,7 +51,7 @@ fn test_watchtower_catches_dishonest_evidence_root() {
     let (mut claim, _) = ProposerService::create_proposal(
         &snapshot,
         ProposalParams {
-            epoch_id: "epoch_2025_q1",
+            epoch_id: "epoch_2025",
             version: "v0.1",
             methodology_image_id: [0u8; 32],
             resolution_uri: "uri://claim",
@@ -95,7 +95,7 @@ fn test_watchtower_catches_dishonest_output_hash() {
     let (mut claim, _) = ProposerService::create_proposal(
         &snapshot,
         ProposalParams {
-            epoch_id: "epoch_2025_q1",
+            epoch_id: "epoch_2025",
             version: "v0.1",
             methodology_image_id: [0u8; 32],
             resolution_uri: "uri://claim",

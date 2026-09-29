@@ -9,7 +9,7 @@ mod common;
 
 fn params(proposer: &str) -> ProposalParams<'_> {
     ProposalParams {
-        epoch_id: "epoch_2025_q1",
+        epoch_id: "epoch_2025",
         version: "v0.1",
         methodology_image_id: [0u8; 32],
         resolution_uri: "uri://claim",

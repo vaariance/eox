@@ -19,7 +19,7 @@ pub fn full_observations() -> Vec<Observation> {
                 country_iso3: country.to_string(),
                 indicator_id: indicator.to_string(),
                 period_start: "2025-01-01".to_string(),
-                period_end: "2025-03-31".to_string(),
+                period_end: "2025-12-31".to_string(),
                 value: format!("{}.5", (ci * 3 + ii * 7) % 11 + 1),
                 source_id: "official".to_string(),
                 vintage: "first".to_string(),
