@@ -46,9 +46,9 @@ fn test_fixed_point_arithmetic() {
 const COUNTRIES: [&str; 5] = ["CHN", "DEU", "GHA", "NGA", "USA"];
 const CORE_INDICATORS: [&str; 5] = [
     "gdp_real_growth_yoy",
-    "cpi_core_yoy",
+    "cpi_headline_yoy",
     "unemployment_rate",
-    "policy_rate",
+    "overnight_lending_rates",
     "fiscal_deficit_gdp",
 ];
 
@@ -142,12 +142,12 @@ fn test_display_min_does_not_panic() {
 fn test_indicator_polarity() {
     let mut obs = Vec::new();
     for country in COUNTRIES {
-        for indicator in ["gdp_real_growth_yoy", "unemployment_rate", "policy_rate", "fiscal_deficit_gdp"] {
+        for indicator in ["gdp_real_growth_yoy", "unemployment_rate", "overnight_lending_rates", "fiscal_deficit_gdp"] {
             obs.push(sample_obs(country, indicator, "1.0"));
         }
     }
     for (country, value) in [("NGA", "30.0"), ("USA", "2.0"), ("CHN", "5.0"), ("DEU", "10.0"), ("GHA", "15.0")] {
-        obs.push(sample_obs(country, "cpi_core_yoy", value));
+        obs.push(sample_obs(country, "cpi_headline_yoy", value));
     }
 
     let bundle = evaluate(obs).unwrap();

@@ -7,31 +7,19 @@ use std::collections::{BTreeMap, BTreeSet};
 const MIN_INDICATORS_PER_COUNTRY: usize = 3;
 
 // 1 means a higher value is better, -1 means lower is better.
-const V0_1_INDICATORS: [(&str, i128); 25] = [
+//
+// Limited to the indicators with a confirmed, currently-accessible primary
+// source for every v0.1 country (see the source-coverage research). The
+// other 17 audited indicators are deferred: most have no source at all for
+// Ghana or Nigeria, or only a commercial or discontinued one.
+const V0_1_INDICATORS: [(&str, i128); 8] = [
     ("nighttime_lights", 1),
-    ("tropospheric_no2", 1),
-    ("power_grid_load", 1),
     ("ndvi_crop_health", 1),
-    ("water_inundation", -1),
-    ("container_throughput", 1),
-    ("air_freight_capacity", 1),
-    ("heavy_vehicle_crossings", 1),
-    ("fleet_destination_intent", 1),
-    ("commodity_storage", -1),
-    ("interbank_transaction_inflows", 1),
-    ("sovereign_bond_spreads", -1),
     ("overnight_lending_rates", -1),
-    ("parallel_fx_deltas", -1),
-    ("bankruptcy_velocities", -1),
     ("pmi", 1),
-    ("real_estate_valuation", 1),
-    ("retail_search_propensity", 1),
-    ("passenger_mobility", 1),
-    ("corporate_job_openings", 1),
     ("gdp_real_growth_yoy", 1),
-    ("cpi_core_yoy", -1),
+    ("cpi_headline_yoy", -1),
     ("unemployment_rate", -1),
-    ("policy_rate", -1),
     ("fiscal_deficit_gdp", -1),
 ];
 

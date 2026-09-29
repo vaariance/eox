@@ -4,9 +4,9 @@ use eox_oracle::types::Observation;
 const COUNTRIES: [&str; 5] = ["CHN", "DEU", "GHA", "NGA", "USA"];
 const INDICATORS: [&str; 5] = [
     "gdp_real_growth_yoy",
-    "cpi_core_yoy",
+    "cpi_headline_yoy",
     "unemployment_rate",
-    "policy_rate",
+    "overnight_lending_rates",
     "fiscal_deficit_gdp",
 ];
 
