@@ -282,6 +282,10 @@ fn test_bundle_commits_to_evidence_root_methodology_image_and_exclusions() {
     let mut tampered_exclusions = bundle.clone();
     tampered_exclusions.excluded_countries.push("GHA".to_string());
     assert_ne!(base_hash, hash_output_bundle(&tampered_exclusions).unwrap());
+
+    let mut tampered_coverage = bundle.clone();
+    tampered_coverage.country_scores[0].indicators_scored += 1;
+    assert_ne!(base_hash, hash_output_bundle(&tampered_coverage).unwrap());
 }
 
 #[test]
@@ -355,4 +359,17 @@ fn test_single_included_country_is_an_error() {
         obs.push(sample_obs("USA", indicator, "2.5"));
     }
     assert_eq!(evaluate(obs).unwrap_err(), EngineError::InsufficientCoverage);
+}
+
+#[test]
+fn test_each_country_reports_how_many_indicators_it_was_scored_on() {
+    let obs = without_indicators_beyond(full_set(), "GHA", min_indicators());
+    let bundle = evaluate(obs).unwrap();
+
+    for cs in &bundle.country_scores {
+        let expected = if cs.country_iso3 == "GHA" { min_indicators() } else { CORE_INDICATORS.len() };
+        assert_eq!(cs.indicators_scored as usize, expected, "{}", cs.country_iso3);
+        let attribution_rows = bundle.attribution.iter().filter(|t| t.country_iso3 == cs.country_iso3).count();
+        assert_eq!(cs.indicators_scored as usize, attribution_rows);
+    }
 }

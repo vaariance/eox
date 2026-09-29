@@ -21,6 +21,7 @@ pub fn canonicalize_output_bundle(bundle: &OutputBundle) -> Vec<u8> {
     for cs in &bundle.country_scores {
         encode_field(&mut buf, cs.country_iso3.as_bytes());
         encode_field(&mut buf, cs.score.as_bytes());
+        buf.extend_from_slice(&cs.indicators_scored.to_be_bytes());
     }
 
     buf.extend_from_slice(&(bundle.relative_scores.len() as u32).to_be_bytes());

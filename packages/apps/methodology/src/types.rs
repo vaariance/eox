@@ -27,6 +27,7 @@ pub struct Snapshot {
 pub struct CountryScore {
     pub country_iso3: String,
     pub score: String,
+    pub indicators_scored: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

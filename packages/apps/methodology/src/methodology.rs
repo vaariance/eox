@@ -149,12 +149,12 @@ pub fn evaluate_methodology(
         stats.insert(indicator, (mean, std_dev));
     }
 
-    let mut country_scores_map: BTreeMap<&str, Wad> = BTreeMap::new();
+    let mut country_scores_map: BTreeMap<&str, (Wad, u32)> = BTreeMap::new();
     let mut attribution: Vec<IndicatorTrace> = Vec::new();
 
     for country in config.universe.iter().filter(|c| included.contains(c.as_str())) {
         let mut total_score = Wad::ZERO;
-        let mut indicator_count = 0i128;
+        let mut indicator_count = 0u32;
 
         for (indicator, (mean, std_dev)) in &stats {
             let Some((val, raw)) = observation_map.get(&(country.as_str(), *indicator)) else {
@@ -182,12 +182,12 @@ pub fn evaluate_methodology(
             });
         }
 
-        let country_score = total_score.checked_div(Wad::from_i128(indicator_count)?)?;
-        country_scores_map.insert(country, country_score);
+        let country_score = total_score.checked_div(Wad::from_i128(indicator_count.into())?)?;
+        country_scores_map.insert(country, (country_score, indicator_count));
     }
 
     let mut score_sum = Wad::ZERO;
-    for score in country_scores_map.values() {
+    for (score, _) in country_scores_map.values() {
         score_sum = score_sum.checked_add(*score)?;
     }
     let others_count = Wad::from_i128(country_scores_map.len() as i128 - 1)?;
@@ -195,10 +195,11 @@ pub fn evaluate_methodology(
     let mut country_scores = Vec::new();
     let mut relative_scores = Vec::new();
 
-    for (country, score) in &country_scores_map {
+    for (country, (score, indicators_scored)) in &country_scores_map {
         country_scores.push(CountryScore {
             country_iso3: country.to_string(),
             score: score.to_string(),
+            indicators_scored: *indicators_scored,
         });
         let world_excluding_self = score_sum.checked_sub(*score)?.checked_div(others_count)?;
         relative_scores.push(RelativeScore {
