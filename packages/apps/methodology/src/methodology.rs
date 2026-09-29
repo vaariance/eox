@@ -2,9 +2,11 @@ use crate::error::EngineError;
 use crate::fixed_point::{Wad, WAD};
 use crate::merkle::compute_evidence_root;
 use crate::types::{CountryScore, IndicatorTrace, OutputBundle, RelativeScore, Snapshot};
+use chrono::{Datelike, Timelike};
 use std::collections::{BTreeMap, BTreeSet};
 
 const MIN_INDICATORS_PER_COUNTRY: usize = 3;
+const EVIDENCE_CUTOFF_MONTH_DAY: (u32, u32) = (7, 31);
 
 // 1 means a higher value is better, -1 means lower is better.
 //
@@ -29,6 +31,7 @@ pub struct MethodologyConfig {
     pub indicator_weights: BTreeMap<String, Wad>,
     pub indicator_polarities: BTreeMap<String, Wad>,
     pub min_indicators_per_country: usize,
+    pub evidence_cutoff_month_day: (u32, u32),
 }
 
 pub fn get_methodology_config(version: &str) -> Result<MethodologyConfig, EngineError> {
@@ -46,6 +49,7 @@ pub fn get_methodology_config(version: &str) -> Result<MethodologyConfig, Engine
                 .map(|(id, polarity)| (id.to_string(), Wad(polarity * WAD)))
                 .collect(),
             min_indicators_per_country: MIN_INDICATORS_PER_COUNTRY,
+            evidence_cutoff_month_day: EVIDENCE_CUTOFF_MONTH_DAY,
         }),
         _ => Err(EngineError::InvalidMethodologyVersion(version.to_string())),
     }
@@ -64,6 +68,20 @@ pub fn evaluate_methodology(
         return Err(EngineError::EvidenceRootMismatch);
     }
 
+    // The proposer supplies `as_of`, so it is pinned to the methodology's cutoff; otherwise a
+    // later `as_of` would admit evidence that arrived after the deadline. An epoch is the
+    // calendar year before the cutoff.
+    let as_of = snapshot.as_of;
+    if (as_of.month(), as_of.day()) != config.evidence_cutoff_month_day
+        || as_of.num_seconds_from_midnight() != 0
+        || as_of.nanosecond() != 0
+    {
+        return Err(EngineError::InvalidCutoff(as_of.to_rfc3339()));
+    }
+    let epoch_year = as_of.year() - 1;
+    let epoch_start = format!("{epoch_year:04}-01-01");
+    let epoch_end = format!("{epoch_year:04}-12-31");
+
     let mut observation_map: BTreeMap<(&str, &str), (Wad, &str)> = BTreeMap::new();
     for obs in &snapshot.observations {
         let country = obs.country_iso3.as_str();
@@ -75,6 +93,18 @@ pub fn evaluate_methodology(
             || !config.indicator_polarities.contains_key(indicator)
         {
             return Err(EngineError::UnknownIndicator(indicator.to_string()));
+        }
+        if obs.known_at > as_of {
+            return Err(EngineError::ObservationAfterCutoff {
+                country: country.to_string(),
+                indicator: indicator.to_string(),
+            });
+        }
+        if obs.period_start != epoch_start || obs.period_end != epoch_end {
+            return Err(EngineError::ObservationOutsideEpoch {
+                country: country.to_string(),
+                indicator: indicator.to_string(),
+            });
         }
         let parsed = Wad::from_decimal_str(&obs.value)?;
         if observation_map

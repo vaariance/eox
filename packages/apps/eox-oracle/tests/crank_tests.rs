@@ -1,4 +1,3 @@
-use chrono::Utc;
 use eox_oracle::oracle::BondVault;
 use eox_oracle::services::{
     build_snapshot, CrankService, ProposalParams, ProposerService,
@@ -20,7 +19,7 @@ fn params(proposer: &str) -> ProposalParams<'_> {
 }
 
 fn snapshot() -> eox_oracle::types::Snapshot {
-    build_snapshot(Utc::now(), common::full_observations()).unwrap()
+    build_snapshot(common::cutoff(), common::full_observations()).unwrap()
 }
 
 #[test]

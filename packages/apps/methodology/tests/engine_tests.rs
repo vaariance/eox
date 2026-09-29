@@ -1,11 +1,19 @@
-use chrono::Utc;
+use chrono::{DateTime, TimeZone, Utc};
 use eox_engine::types::Observation;
 use eox_engine::{
     build_snapshot, evaluate_methodology, get_methodology_config, hash_output_bundle, EngineError, Wad,
 };
 
+fn cutoff() -> DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 7, 31, 0, 0, 0).unwrap()
+}
+
+fn recorded() -> DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 7, 13, 0, 0, 0).unwrap()
+}
+
 fn sample_obs(country: &str, indicator: &str, val: &str) -> Observation {
-    let now = Utc::now();
+    let now = recorded();
     Observation {
         country_iso3: country.to_string(),
         indicator_id: indicator.to_string(),
@@ -68,13 +76,13 @@ fn min_indicators() -> usize {
 }
 
 fn evaluate(obs: Vec<Observation>) -> Result<eox_engine::OutputBundle, EngineError> {
-    let snap = build_snapshot(Utc::now(), obs).unwrap();
+    let snap = build_snapshot(cutoff(), obs).unwrap();
     evaluate_methodology(&snap, "epoch_2025", "v0.1", [0u8; 32])
 }
 
 #[test]
 fn test_permutation_invariance_bit_identical() {
-    let now = Utc::now();
+    let now = cutoff();
     let obs_set_1 = full_set();
     let mut obs_set_2 = obs_set_1.clone();
     obs_set_2.reverse();
@@ -267,7 +275,7 @@ fn test_relative_performance_sums_to_zero() {
 
 #[test]
 fn test_bundle_commits_to_evidence_root_methodology_image_and_exclusions() {
-    let snap = build_snapshot(Utc::now(), full_set()).unwrap();
+    let snap = build_snapshot(cutoff(), full_set()).unwrap();
     let bundle = evaluate_methodology(&snap, "epoch_2025", "v0.1", [1u8; 32]).unwrap();
     let base_hash = hash_output_bundle(&bundle).unwrap();
 
@@ -290,7 +298,7 @@ fn test_bundle_commits_to_evidence_root_methodology_image_and_exclusions() {
 
 #[test]
 fn test_engine_rejects_root_not_matching_observations() {
-    let mut snap = build_snapshot(Utc::now(), full_set()).unwrap();
+    let mut snap = build_snapshot(cutoff(), full_set()).unwrap();
     snap.observations[0].value = "9.9".to_string();
     let err = evaluate_methodology(&snap, "epoch_2025", "v0.1", [0u8; 32]).unwrap_err();
     assert_eq!(err, EngineError::EvidenceRootMismatch);
@@ -298,7 +306,7 @@ fn test_engine_rejects_root_not_matching_observations() {
 
 #[test]
 fn test_engine_computes_root_when_unset() {
-    let mut snap = build_snapshot(Utc::now(), full_set()).unwrap();
+    let mut snap = build_snapshot(cutoff(), full_set()).unwrap();
     let expected_root = snap.evidence_root;
     snap.evidence_root = [0u8; 32];
     let bundle = evaluate_methodology(&snap, "epoch_2025", "v0.1", [0u8; 32]).unwrap();

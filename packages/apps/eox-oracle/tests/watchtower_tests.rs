@@ -1,4 +1,3 @@
-use chrono::Utc;
 use eox_oracle::oracle::{ArbiterVote, BondVault, PanelArbiter, Resolution};
 use eox_oracle::services::{
     build_snapshot, ProposalParams, ProposerService, WatchtowerResult, WatchtowerService,
@@ -9,10 +8,9 @@ mod common;
 
 #[test]
 fn test_watchtower_approves_honest_proposal() {
-    let now = Utc::now();
     let obs = common::full_observations();
 
-    let snapshot = build_snapshot(now, obs).unwrap();
+    let snapshot = build_snapshot(common::cutoff(), obs).unwrap();
     let (mut claim, _) = ProposerService::create_proposal(
         &snapshot,
         ProposalParams {
@@ -44,10 +42,9 @@ fn test_watchtower_approves_honest_proposal() {
 
 #[test]
 fn test_watchtower_catches_dishonest_evidence_root() {
-    let now = Utc::now();
     let obs = common::full_observations();
 
-    let snapshot = build_snapshot(now, obs).unwrap();
+    let snapshot = build_snapshot(common::cutoff(), obs).unwrap();
     let (mut claim, _) = ProposerService::create_proposal(
         &snapshot,
         ProposalParams {
@@ -88,10 +85,9 @@ fn test_watchtower_catches_dishonest_evidence_root() {
 
 #[test]
 fn test_watchtower_catches_dishonest_output_hash() {
-    let now = Utc::now();
     let obs = common::full_observations();
 
-    let snapshot = build_snapshot(now, obs).unwrap();
+    let snapshot = build_snapshot(common::cutoff(), obs).unwrap();
     let (mut claim, _) = ProposerService::create_proposal(
         &snapshot,
         ProposalParams {

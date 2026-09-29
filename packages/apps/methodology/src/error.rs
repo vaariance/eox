@@ -23,6 +23,15 @@ pub enum EngineError {
     #[error("Fewer than two countries meet the coverage rule; relative performance needs at least two")]
     InsufficientCoverage,
 
+    #[error("Snapshot cutoff {0} is not the methodology's evidence cutoff (31 July, 00:00 UTC)")]
+    InvalidCutoff(String),
+
+    #[error("Observation for country {country}, indicator {indicator} was recorded after the cutoff")]
+    ObservationAfterCutoff { country: String, indicator: String },
+
+    #[error("Observation for country {country}, indicator {indicator} does not cover the epoch's year")]
+    ObservationOutsideEpoch { country: String, indicator: String },
+
     #[error("Duplicate observation for country {country}, indicator {indicator}")]
     DuplicateObservation { country: String, indicator: String },
 
