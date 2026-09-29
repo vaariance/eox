@@ -381,3 +381,45 @@ fn test_each_country_reports_how_many_indicators_it_was_scored_on() {
         assert_eq!(cs.indicators_scored as usize, attribution_rows);
     }
 }
+
+fn evaluate_at(as_of: DateTime<Utc>, obs: Vec<Observation>) -> Result<eox_engine::OutputBundle, EngineError> {
+    let snap = build_snapshot(as_of, obs).unwrap();
+    evaluate_methodology(&snap, "epoch_2025", "v0.1", [0u8; 32])
+}
+
+#[test]
+fn test_snapshot_must_be_taken_at_the_evidence_cutoff() {
+    let one_day_late = Utc.with_ymd_and_hms(2026, 8, 1, 0, 0, 0).unwrap();
+    assert!(matches!(evaluate_at(one_day_late, full_set()), Err(EngineError::InvalidCutoff(_))));
+
+    let noon_on_cutoff_day = Utc.with_ymd_and_hms(2026, 7, 31, 12, 0, 0).unwrap();
+    assert!(matches!(evaluate_at(noon_on_cutoff_day, full_set()), Err(EngineError::InvalidCutoff(_))));
+
+    assert!(evaluate_at(cutoff(), full_set()).is_ok());
+}
+
+#[test]
+fn test_observation_recorded_after_the_cutoff_is_rejected() {
+    let mut obs = full_set();
+    obs[0].known_at = cutoff() + chrono::Duration::seconds(1);
+    assert!(matches!(evaluate(obs), Err(EngineError::ObservationAfterCutoff { .. })));
+}
+
+#[test]
+fn test_observation_recorded_exactly_at_the_cutoff_is_accepted() {
+    let mut obs = full_set();
+    obs[0].known_at = cutoff();
+    assert!(evaluate(obs).is_ok());
+}
+
+#[test]
+fn test_observation_for_another_year_is_rejected() {
+    let mut obs = full_set();
+    obs[0].period_start = "2024-01-01".to_string();
+    obs[0].period_end = "2024-12-31".to_string();
+    assert!(matches!(evaluate(obs), Err(EngineError::ObservationOutsideEpoch { .. })));
+
+    let mut partial_year = full_set();
+    partial_year[0].period_end = "2025-06-30".to_string();
+    assert!(matches!(evaluate(partial_year), Err(EngineError::ObservationOutsideEpoch { .. })));
+}
