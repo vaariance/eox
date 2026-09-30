@@ -3,5 +3,5 @@ members = [
     "packages/apps/methodology",
     "packages/apps/eox-oracle",
 ]
-exclude = ["packages/apps/programs"]
+exclude = ["packages/apps/onchain"]
 resolver = "2"
