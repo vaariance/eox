@@ -1258,7 +1258,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "eox_oracle"
+name = "eox_settlement_oracle"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
