@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-eox_oracle = "GFZe6fv5iVwJ772JKVhYMWP4mMgHBzoCdcR2Z5QY5DCf"
+eox_settlement_oracle = "FgEEu53fcPs7Xc1yV3BiwtKeU2eDt89yEsFY7brbLrzd"
 
 [provider]
 cluster = "localnet"

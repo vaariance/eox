@@ -1,5 +1,5 @@
 [package]
-name = "eox_oracle"
+name = "eox_settlement_oracle"
 version = "0.1.0"
 description = "EOX settlement oracle: yearly epoch claims, bonds and pull payments"
 edition.workspace = true
@@ -7,7 +7,7 @@ rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "eox_oracle"
+name = "eox_settlement_oracle"
 
 [features]
 default = []

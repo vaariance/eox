@@ -2,7 +2,7 @@ mod common;
 
 use {
     common::*,
-    eox_oracle::{constants::*, error::ErrorCode, state::EpochStatus},
+    eox_settlement_oracle::{constants::*, error::ErrorCode, state::EpochStatus},
     solana_signer::Signer,
 };
 

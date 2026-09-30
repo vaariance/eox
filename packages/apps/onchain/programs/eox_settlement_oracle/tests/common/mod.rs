@@ -12,7 +12,7 @@ use {
         self,
         state::{Account as TokenAccount, AccountState, Mint},
     },
-    eox_oracle::{constants::*, error::ErrorCode, instructions::ProposeArgs, state::*},
+    eox_settlement_oracle::{constants::*, error::ErrorCode, instructions::ProposeArgs, state::*},
     litesvm::{
         types::{FailedTransactionMetadata, TransactionMetadata},
         LiteSVM,
@@ -37,7 +37,7 @@ pub struct TestEnv {
 }
 
 pub fn pda(seeds: &[&[u8]]) -> Pubkey {
-    Pubkey::find_program_address(seeds, &eox_oracle::id()).0
+    Pubkey::find_program_address(seeds, &eox_settlement_oracle::id()).0
 }
 
 pub fn config_pda() -> Pubkey {
@@ -80,9 +80,9 @@ impl TestEnv {
         let mut svm = LiteSVM::new();
         let bytes = include_bytes!(concat!(
             env!("CARGO_TARGET_TMPDIR"),
-            "/../deploy/eox_oracle.so"
+            "/../deploy/eox_settlement_oracle.so"
         ));
-        svm.add_program(eox_oracle::id(), bytes).unwrap();
+        svm.add_program(eox_settlement_oracle::id(), bytes).unwrap();
 
         let authority = Keypair::new();
         let proposer = Keypair::new();
@@ -119,13 +119,13 @@ impl TestEnv {
         };
 
         let ix = Instruction::new_with_bytes(
-            eox_oracle::id(),
-            &eox_oracle::instruction::Initialize {
+            eox_settlement_oracle::id(),
+            &eox_settlement_oracle::instruction::Initialize {
                 arbiter: Pubkey::new_unique(),
                 proposers: vec![env.proposer.pubkey()],
             }
             .data(),
-            eox_oracle::accounts::Initialize {
+            eox_settlement_oracle::accounts::Initialize {
                 authority: env.authority.pubkey(),
                 config: config_pda(),
                 bond_mint: env.mint,
@@ -208,9 +208,9 @@ impl TestEnv {
 
     pub fn open_epoch(&mut self, year: u16, bond: u64) -> TxResult {
         let ix = Instruction::new_with_bytes(
-            eox_oracle::id(),
-            &eox_oracle::instruction::OpenEpoch { year, bond }.data(),
-            eox_oracle::accounts::OpenEpoch {
+            eox_settlement_oracle::id(),
+            &eox_settlement_oracle::instruction::OpenEpoch { year, bond }.data(),
+            eox_settlement_oracle::accounts::OpenEpoch {
                 authority: self.authority.pubkey(),
                 config: config_pda(),
                 epoch: epoch_pda(year),
@@ -230,9 +230,9 @@ impl TestEnv {
         args: ProposeArgs,
     ) -> TxResult {
         let ix = Instruction::new_with_bytes(
-            eox_oracle::id(),
-            &eox_oracle::instruction::Propose { args }.data(),
-            eox_oracle::accounts::Propose {
+            eox_settlement_oracle::id(),
+            &eox_settlement_oracle::instruction::Propose { args }.data(),
+            eox_settlement_oracle::accounts::Propose {
                 proposer: proposer.pubkey(),
                 config: config_pda(),
                 epoch: epoch_pda(year),
@@ -249,9 +249,9 @@ impl TestEnv {
 
     pub fn settle(&mut self, year: u16, proposer: &Pubkey) -> TxResult {
         let ix = Instruction::new_with_bytes(
-            eox_oracle::id(),
-            &eox_oracle::instruction::Settle {}.data(),
-            eox_oracle::accounts::Settle {
+            eox_settlement_oracle::id(),
+            &eox_settlement_oracle::instruction::Settle {}.data(),
+            eox_settlement_oracle::accounts::Settle {
                 epoch: epoch_pda(year),
                 proposer_balance: balance_pda(proposer),
             }
@@ -263,9 +263,9 @@ impl TestEnv {
 
     pub fn withdraw(&mut self, owner: &Keypair, destination: Pubkey) -> TxResult {
         let ix = Instruction::new_with_bytes(
-            eox_oracle::id(),
-            &eox_oracle::instruction::Withdraw {}.data(),
-            eox_oracle::accounts::Withdraw {
+            eox_settlement_oracle::id(),
+            &eox_settlement_oracle::instruction::Withdraw {}.data(),
+            eox_settlement_oracle::accounts::Withdraw {
                 owner: owner.pubkey(),
                 config: config_pda(),
                 balance: balance_pda(&owner.pubkey()),

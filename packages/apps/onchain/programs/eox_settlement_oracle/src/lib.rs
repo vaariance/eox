@@ -9,10 +9,10 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("GFZe6fv5iVwJ772JKVhYMWP4mMgHBzoCdcR2Z5QY5DCf");
+declare_id!("FgEEu53fcPs7Xc1yV3BiwtKeU2eDt89yEsFY7brbLrzd");
 
 #[program]
-pub mod eox_oracle {
+pub mod eox_settlement_oracle {
     use super::*;
 
     pub fn initialize(
