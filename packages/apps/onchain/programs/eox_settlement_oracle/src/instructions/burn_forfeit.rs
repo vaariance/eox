@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
 
 use crate::{
     constants::*,
@@ -8,40 +8,33 @@ use crate::{
 };
 
 #[derive(Accounts)]
-pub struct Withdraw<'info> {
-    pub owner: Signer<'info>,
+pub struct BurnForfeit<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [EPOCH_SEED, &epoch.year.to_le_bytes()], bump = epoch.bump)]
     pub epoch: Account<'info, Epoch>,
     #[account(mut, seeds = [VAULT_SEED], bump)]
     pub vault: Account<'info, TokenAccount>,
-    #[account(mut, token::mint = config.bond_mint)]
-    pub destination: Account<'info, TokenAccount>,
+    #[account(mut, address = config.bond_mint)]
+    pub bond_mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
 }
 
-pub fn handle_withdraw(ctx: Context<Withdraw>) -> Result<()> {
+pub fn handle_burn_forfeit(ctx: Context<BurnForfeit>) -> Result<()> {
     let epoch = &mut ctx.accounts.epoch;
     require!(epoch.is_resolved(), ErrorCode::EpochNotResolved);
 
-    let owner = ctx.accounts.owner.key();
-    let payout = epoch
-        .payouts
-        .iter_mut()
-        .find(|p| p.owner == owner)
-        .ok_or(ErrorCode::NothingToWithdraw)?;
-    let amount = payout.amount;
-    require!(amount > 0, ErrorCode::NothingToWithdraw);
-    payout.amount = 0;
+    let amount = epoch.burn_owed;
+    require!(amount > 0, ErrorCode::NothingToBurn);
+    epoch.burn_owed = 0;
 
     let signer_seeds: &[&[&[u8]]] = &[&[CONFIG_SEED, &[ctx.accounts.config.bump]]];
-    token::transfer(
+    token::burn(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.key(),
-            Transfer {
+            Burn {
+                mint: ctx.accounts.bond_mint.to_account_info(),
                 from: ctx.accounts.vault.to_account_info(),
-                to: ctx.accounts.destination.to_account_info(),
                 authority: ctx.accounts.config.to_account_info(),
             },
             signer_seeds,

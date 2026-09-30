@@ -1,10 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{
-    constants::*,
-    error::ErrorCode,
-    state::{Config, Epoch, EpochStatus},
-};
+use crate::{constants::*, error::ErrorCode, state::{Config, Epoch}};
 
 #[derive(Accounts)]
 #[instruction(year: u16)]
@@ -27,12 +23,6 @@ pub struct OpenEpoch<'info> {
 pub fn handle_open_epoch(ctx: Context<OpenEpoch>, year: u16, bond: u64) -> Result<()> {
     require!(bond > 0, ErrorCode::ZeroBond);
 
-    let epoch = &mut ctx.accounts.epoch;
-    epoch.year = year;
-    epoch.cutoff = cutoff_timestamp(year);
-    epoch.bond = bond;
-    epoch.status = EpochStatus::Requested;
-    epoch.claim = None;
-    epoch.bump = ctx.bumps.epoch;
+    *ctx.accounts.epoch = Epoch::new(year, cutoff_timestamp(year), bond, ctx.bumps.epoch);
     Ok(())
 }

@@ -1,6 +1,7 @@
 pub mod constants;
 pub mod error;
 pub mod instructions;
+pub mod settlement;
 pub mod state;
 
 use anchor_lang::prelude::*;
@@ -27,15 +28,34 @@ pub mod eox_settlement_oracle {
         crate::instructions::open_epoch::handle_open_epoch(ctx, year, bond)
     }
 
-    pub fn propose(ctx: Context<Propose>, args: ProposeArgs) -> Result<()> {
-        crate::instructions::propose::handle_propose(ctx, args)
+    pub fn propose(ctx: Context<Propose>, body: ClaimBody) -> Result<()> {
+        crate::instructions::propose::handle_propose(ctx, body)
+    }
+
+    pub fn dispute(ctx: Context<DisputeClaim>, candidate: ClaimBody) -> Result<()> {
+        crate::instructions::dispute::handle_dispute(ctx, candidate)
     }
 
     pub fn settle(ctx: Context<Settle>) -> Result<()> {
         crate::instructions::settle::handle_settle(ctx)
     }
 
+    pub fn resolve_arbitration(
+        ctx: Context<ResolveArbitration>,
+        resolution: Resolution,
+    ) -> Result<()> {
+        crate::instructions::resolve_arbitration::handle_resolve_arbitration(ctx, resolution)
+    }
+
+    pub fn void_epoch(ctx: Context<VoidEpoch>) -> Result<()> {
+        crate::instructions::void_epoch::handle_void_epoch(ctx)
+    }
+
     pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
         crate::instructions::withdraw::handle_withdraw(ctx)
+    }
+
+    pub fn burn_forfeit(ctx: Context<BurnForfeit>) -> Result<()> {
+        crate::instructions::burn_forfeit::handle_burn_forfeit(ctx)
     }
 }

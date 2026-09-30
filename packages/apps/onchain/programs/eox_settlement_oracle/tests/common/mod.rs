@@ -12,7 +12,7 @@ use {
         self,
         state::{Account as TokenAccount, AccountState, Mint},
     },
-    eox_settlement_oracle::{constants::*, error::ErrorCode, instructions::ProposeArgs, state::*},
+    eox_settlement_oracle::{constants::*, error::ErrorCode, state::*},
     litesvm::{
         types::{FailedTransactionMetadata, TransactionMetadata},
         LiteSVM,
@@ -28,11 +28,30 @@ pub type TxResult = Result<TransactionMetadata, Box<FailedTransactionMetadata>>;
 
 pub const YEAR: u16 = 2025;
 pub const BOND: u64 = 10_000_000_000;
+pub const START: u64 = 5 * BOND;
+pub const MINT_SUPPLY: u64 = 1_000_000_000_000_000;
+
+pub fn cutoff() -> i64 {
+    cutoff_timestamp(YEAR)
+}
+
+pub struct Party {
+    pub wallet: Keypair,
+    pub token: Pubkey,
+}
+
+impl Party {
+    pub fn key(&self) -> Pubkey {
+        self.wallet.pubkey()
+    }
+}
 
 pub struct TestEnv {
     pub svm: LiteSVM,
     pub authority: Keypair,
-    pub proposer: Keypair,
+    pub arbiter: Keypair,
+    pub proposer: Party,
+    pub second_proposer: Party,
     pub mint: Pubkey,
 }
 
@@ -52,15 +71,11 @@ pub fn epoch_pda(year: u16) -> Pubkey {
     pda(&[EPOCH_SEED, &year.to_le_bytes()])
 }
 
-pub fn balance_pda(owner: &Pubkey) -> Pubkey {
-    pda(&[BALANCE_SEED, owner.as_ref()])
-}
-
-pub fn claim_args(output_hash: [u8; 32]) -> ProposeArgs {
-    ProposeArgs {
+pub fn body(n: u8) -> ClaimBody {
+    ClaimBody {
         evidence_root: [1u8; 32],
         methodology_image_id: [2u8; 32],
-        output_hash,
+        output_hash: [n; 32],
         resolution_uri_hash: [4u8; 32],
     }
 }
@@ -75,6 +90,14 @@ pub fn assert_error(result: TxResult, expected: ErrorCode) {
     );
 }
 
+fn ix<A: InstructionData, M: ToAccountMetas>(data: A, accounts: M) -> Instruction {
+    Instruction::new_with_bytes(
+        eox_settlement_oracle::id(),
+        &data.data(),
+        accounts.to_account_metas(None),
+    )
+}
+
 impl TestEnv {
     pub fn new() -> Self {
         let mut svm = LiteSVM::new();
@@ -85,15 +108,15 @@ impl TestEnv {
         svm.add_program(eox_settlement_oracle::id(), bytes).unwrap();
 
         let authority = Keypair::new();
-        let proposer = Keypair::new();
+        let arbiter = Keypair::new();
         svm.airdrop(&authority.pubkey(), 10_000_000_000).unwrap();
-        svm.airdrop(&proposer.pubkey(), 10_000_000_000).unwrap();
+        svm.airdrop(&arbiter.pubkey(), 10_000_000_000).unwrap();
 
         let mint = Pubkey::new_unique();
         let mut data = vec![0u8; Mint::LEN];
         Mint {
             mint_authority: COption::Some(authority.pubkey()),
-            supply: 0,
+            supply: MINT_SUPPLY,
             decimals: 6,
             is_initialized: true,
             freeze_authority: COption::Some(authority.pubkey()),
@@ -114,17 +137,19 @@ impl TestEnv {
         let mut env = Self {
             svm,
             authority,
-            proposer,
+            arbiter,
+            proposer: Party { wallet: Keypair::new(), token: Pubkey::default() },
+            second_proposer: Party { wallet: Keypair::new(), token: Pubkey::default() },
             mint,
         };
+        env.proposer = env.fund(env.proposer.wallet.insecure_clone(), START);
+        env.second_proposer = env.fund(env.second_proposer.wallet.insecure_clone(), START);
 
-        let ix = Instruction::new_with_bytes(
-            eox_settlement_oracle::id(),
-            &eox_settlement_oracle::instruction::Initialize {
-                arbiter: Pubkey::new_unique(),
-                proposers: vec![env.proposer.pubkey()],
-            }
-            .data(),
+        let initialize = ix(
+            eox_settlement_oracle::instruction::Initialize {
+                arbiter: env.arbiter.pubkey(),
+                proposers: vec![env.proposer.key(), env.second_proposer.key()],
+            },
             eox_settlement_oracle::accounts::Initialize {
                 authority: env.authority.pubkey(),
                 config: config_pda(),
@@ -132,11 +157,10 @@ impl TestEnv {
                 vault: vault_pda(),
                 token_program: spl_token::ID,
                 system_program: system_program::ID,
-            }
-            .to_account_metas(None),
+            },
         );
         let authority = env.authority.insecure_clone();
-        env.send(ix, &authority).unwrap();
+        env.send(initialize, &authority).unwrap();
         env
     }
 
@@ -154,10 +178,14 @@ impl TestEnv {
         self.svm.set_sysvar(&clock);
     }
 
-    pub fn funded_wallet(&mut self) -> Keypair {
-        let wallet = Keypair::new();
+    pub fn fund(&mut self, wallet: Keypair, tokens: u64) -> Party {
         self.svm.airdrop(&wallet.pubkey(), 10_000_000_000).unwrap();
-        wallet
+        let token = self.token_account(&wallet.pubkey(), tokens);
+        Party { wallet, token }
+    }
+
+    pub fn party(&mut self, tokens: u64) -> Party {
+        self.fund(Keypair::new(), tokens)
     }
 
     pub fn token_account(&mut self, owner: &Pubkey, amount: u64) -> Pubkey {
@@ -189,9 +217,26 @@ impl TestEnv {
         address
     }
 
+    pub fn freeze(&mut self, address: &Pubkey) {
+        let mut account = self.svm.get_account(address).unwrap();
+        let mut token = TokenAccount::unpack(&account.data).unwrap();
+        token.state = AccountState::Frozen;
+        TokenAccount::pack(token, &mut account.data).unwrap();
+        self.svm.set_account(*address, account).unwrap();
+    }
+
     pub fn token_amount(&self, address: &Pubkey) -> u64 {
         let account = self.svm.get_account(address).unwrap();
         TokenAccount::unpack(&account.data).unwrap().amount
+    }
+
+    pub fn supply(&self) -> u64 {
+        let account = self.svm.get_account(&self.mint).unwrap();
+        Mint::unpack(&account.data).unwrap().supply
+    }
+
+    pub fn vault_amount(&self) -> u64 {
+        self.token_amount(&vault_pda())
     }
 
     pub fn epoch(&self, year: u16) -> Epoch {
@@ -199,82 +244,174 @@ impl TestEnv {
         Epoch::try_deserialize(&mut account.data.as_slice()).unwrap()
     }
 
-    pub fn balance(&self, owner: &Pubkey) -> u64 {
-        let account = self.svm.get_account(&balance_pda(owner)).unwrap();
-        Balance::try_deserialize(&mut account.data.as_slice())
-            .unwrap()
-            .amount
+    pub fn owed_to(&self, year: u16, owner: &Pubkey) -> u64 {
+        self.epoch(year)
+            .payouts
+            .iter()
+            .find(|p| p.owner == *owner)
+            .map_or(0, |p| p.amount)
     }
 
     pub fn open_epoch(&mut self, year: u16, bond: u64) -> TxResult {
-        let ix = Instruction::new_with_bytes(
-            eox_settlement_oracle::id(),
-            &eox_settlement_oracle::instruction::OpenEpoch { year, bond }.data(),
+        let instruction = ix(
+            eox_settlement_oracle::instruction::OpenEpoch { year, bond },
             eox_settlement_oracle::accounts::OpenEpoch {
                 authority: self.authority.pubkey(),
                 config: config_pda(),
                 epoch: epoch_pda(year),
                 system_program: system_program::ID,
-            }
-            .to_account_metas(None),
+            },
         );
         let authority = self.authority.insecure_clone();
-        self.send(ix, &authority)
+        self.send(instruction, &authority)
     }
 
-    pub fn propose(
-        &mut self,
-        year: u16,
-        proposer: &Keypair,
-        proposer_token: Pubkey,
-        args: ProposeArgs,
-    ) -> TxResult {
-        let ix = Instruction::new_with_bytes(
-            eox_settlement_oracle::id(),
-            &eox_settlement_oracle::instruction::Propose { args }.data(),
+    pub fn propose(&mut self, year: u16, proposer: &Party, body: ClaimBody) -> TxResult {
+        let instruction = ix(
+            eox_settlement_oracle::instruction::Propose { body },
             eox_settlement_oracle::accounts::Propose {
-                proposer: proposer.pubkey(),
+                proposer: proposer.key(),
                 config: config_pda(),
                 epoch: epoch_pda(year),
-                proposer_token,
+                proposer_token: proposer.token,
                 vault: vault_pda(),
-                balance: balance_pda(&proposer.pubkey()),
                 token_program: spl_token::ID,
-                system_program: system_program::ID,
-            }
-            .to_account_metas(None),
+            },
         );
-        self.send(ix, proposer)
+        self.send(instruction, &proposer.wallet)
     }
 
-    pub fn settle(&mut self, year: u16, proposer: &Pubkey) -> TxResult {
-        let ix = Instruction::new_with_bytes(
-            eox_settlement_oracle::id(),
-            &eox_settlement_oracle::instruction::Settle {}.data(),
-            eox_settlement_oracle::accounts::Settle {
+    pub fn dispute(&mut self, year: u16, disputer: &Party, candidate: ClaimBody) -> TxResult {
+        let instruction = ix(
+            eox_settlement_oracle::instruction::Dispute { candidate },
+            eox_settlement_oracle::accounts::DisputeClaim {
+                disputer: disputer.key(),
+                config: config_pda(),
                 epoch: epoch_pda(year),
-                proposer_balance: balance_pda(proposer),
-            }
-            .to_account_metas(None),
+                disputer_token: disputer.token,
+                vault: vault_pda(),
+                token_program: spl_token::ID,
+            },
         );
-        let cranker = self.funded_wallet();
-        self.send(ix, &cranker)
+        self.send(instruction, &disputer.wallet)
     }
 
-    pub fn withdraw(&mut self, owner: &Keypair, destination: Pubkey) -> TxResult {
-        let ix = Instruction::new_with_bytes(
-            eox_settlement_oracle::id(),
-            &eox_settlement_oracle::instruction::Withdraw {}.data(),
+    pub fn settle(&mut self, year: u16) -> TxResult {
+        let instruction = ix(
+            eox_settlement_oracle::instruction::Settle {},
+            eox_settlement_oracle::accounts::Settle { epoch: epoch_pda(year) },
+        );
+        let cranker = Keypair::new();
+        self.svm.airdrop(&cranker.pubkey(), 1_000_000_000).unwrap();
+        self.send(instruction, &cranker)
+    }
+
+    pub fn void(&mut self, year: u16) -> TxResult {
+        let instruction = ix(
+            eox_settlement_oracle::instruction::VoidEpoch {},
+            eox_settlement_oracle::accounts::VoidEpoch { epoch: epoch_pda(year) },
+        );
+        let cranker = Keypair::new();
+        self.svm.airdrop(&cranker.pubkey(), 1_000_000_000).unwrap();
+        self.send(instruction, &cranker)
+    }
+
+    pub fn resolve_as(&mut self, year: u16, arbiter: &Keypair, resolution: Resolution) -> TxResult {
+        let instruction = ix(
+            eox_settlement_oracle::instruction::ResolveArbitration { resolution },
+            eox_settlement_oracle::accounts::ResolveArbitration {
+                arbiter: arbiter.pubkey(),
+                config: config_pda(),
+                epoch: epoch_pda(year),
+            },
+        );
+        self.send(instruction, arbiter)
+    }
+
+    pub fn resolve(&mut self, year: u16, resolution: Resolution) -> TxResult {
+        let arbiter = self.arbiter.insecure_clone();
+        self.resolve_as(year, &arbiter, resolution)
+    }
+
+    pub fn withdraw(&mut self, year: u16, owner: &Keypair, destination: Pubkey) -> TxResult {
+        let instruction = ix(
+            eox_settlement_oracle::instruction::Withdraw {},
             eox_settlement_oracle::accounts::Withdraw {
                 owner: owner.pubkey(),
                 config: config_pda(),
-                balance: balance_pda(&owner.pubkey()),
+                epoch: epoch_pda(year),
                 vault: vault_pda(),
                 destination,
                 token_program: spl_token::ID,
-            }
-            .to_account_metas(None),
+            },
         );
-        self.send(ix, owner)
+        self.send(instruction, owner)
     }
+
+    pub fn burn_forfeit(&mut self, year: u16) -> TxResult {
+        let instruction = ix(
+            eox_settlement_oracle::instruction::BurnForfeit {},
+            eox_settlement_oracle::accounts::BurnForfeit {
+                config: config_pda(),
+                epoch: epoch_pda(year),
+                vault: vault_pda(),
+                bond_mint: self.mint,
+                token_program: spl_token::ID,
+            },
+        );
+        let cranker = Keypair::new();
+        self.svm.airdrop(&cranker.pubkey(), 1_000_000_000).unwrap();
+        self.send(instruction, &cranker)
+    }
+}
+
+pub struct Flow {
+    pub env: TestEnv,
+    pub p1: Party,
+    pub d1: Party,
+    pub p2: Party,
+    pub d2: Party,
+}
+
+const HOUR: i64 = 3600;
+
+pub fn open_flow() -> Flow {
+    let mut env = TestEnv::new();
+    env.open_epoch(YEAR, BOND).unwrap();
+    let p1 = Party { wallet: env.proposer.wallet.insecure_clone(), token: env.proposer.token };
+    let p2 = Party {
+        wallet: env.second_proposer.wallet.insecure_clone(),
+        token: env.second_proposer.token,
+    };
+    let d1 = env.party(START);
+    let d2 = env.party(START);
+    Flow { env, p1, d1, p2, d2 }
+}
+
+pub fn proposed_flow(first_hash: u8) -> Flow {
+    let mut f = open_flow();
+    f.env.set_time(cutoff() + HOUR);
+    f.env.propose(YEAR, &f.p1, body(first_hash)).unwrap();
+    f
+}
+
+pub fn reset_flow() -> Flow {
+    let mut f = proposed_flow(10);
+    f.env.set_time(cutoff() + 2 * HOUR);
+    f.env.dispute(YEAR, &f.d1, body(20)).unwrap();
+    f
+}
+
+pub fn reproposed_flow(second_hash: u8) -> Flow {
+    let mut f = reset_flow();
+    f.env.set_time(cutoff() + 3 * HOUR);
+    f.env.propose(YEAR, &f.p2, body(second_hash)).unwrap();
+    f
+}
+
+pub fn escalated_flow() -> Flow {
+    let mut f = reproposed_flow(10);
+    f.env.set_time(cutoff() + 4 * HOUR);
+    f.env.dispute(YEAR, &f.d2, body(30)).unwrap();
+    f
 }
