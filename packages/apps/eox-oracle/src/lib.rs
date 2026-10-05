@@ -1,5 +1,6 @@
+pub mod bots;
+pub mod chain;
 pub mod error;
-pub mod oracle;
 pub mod services;
 pub mod types;
 
