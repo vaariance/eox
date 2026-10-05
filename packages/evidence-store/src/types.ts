@@ -8,10 +8,13 @@ export interface NewObservation {
   value: Decimal | number;
   sourceId: string;
   vintage: string;
-  publishedAt: string;
+  publishedAt?: string;
   knownAt?: string;
   recipeId?: number;
   rawSha256?: string;
+  rawValue?: string;
+  coverageReported?: number;
+  coverageTotal?: number;
 }
 
 export interface Observation {
@@ -23,12 +26,33 @@ export interface Observation {
   value: Decimal;
   sourceId: string;
   vintage: string;
-  publishedAt: Date;
+  publishedAt: Date | null;
   knownAt: Date;
+  recordedAt: Date;
   recipeId: number | null;
   rawSha256: string | null;
+  rawValue: string | null;
+  coverageReported: number | null;
+  coverageTotal: number | null;
   supersedesId: string | null;
   correctionReason: string | null;
+}
+
+export interface NewSourcePayload {
+  sourceId: string;
+  requestUrl: string;
+  httpStatus: number;
+  contentType: string | null;
+  body: Uint8Array;
+}
+
+export interface SourcePayload {
+  sha256: string;
+  sourceId: string;
+  requestUrl: string;
+  httpStatus: number;
+  contentType: string | null;
+  recordedAt: Date;
 }
 
 export interface Query {
