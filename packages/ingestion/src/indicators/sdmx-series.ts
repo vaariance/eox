@@ -1,6 +1,7 @@
 import type { NewObservation } from "@eox/evidence-store";
 import { fetchOecdData, type OecdQuery } from "../sources/oecd.js";
-import { periodBounds, toStoredDecimal, type SdmxRow } from "../sources/sdmx.js";
+import type { FetchedPayload } from "../sources/payload.js";
+import { periodBounds, toStoredDecimal, type SdmxResponse, type SdmxRow } from "../sources/sdmx.js";
 
 export type OecdRoute = Omit<OecdQuery, "refAreas">;
 
@@ -10,28 +11,38 @@ export interface SnapshotTarget {
   retrievedAt: Date;
 }
 
-export function groupByRefArea(rows: readonly SdmxRow[]): Map<string, SdmxRow[]> {
-  const groups = new Map<string, SdmxRow[]>();
-  for (const row of rows) {
+export interface SdmxSeries {
+  payloadSha256: string;
+  rows: SdmxRow[];
+}
+
+export interface PreferredOecdSeries {
+  series: Map<string, SdmxSeries>;
+  payloads: FetchedPayload[];
+}
+
+export function groupByRefArea(response: SdmxResponse): Map<string, SdmxSeries> {
+  const groups = new Map<string, SdmxSeries>();
+  for (const row of response.rows) {
     if (row.OBS_VALUE === "") continue;
     const group = groups.get(row.REF_AREA);
-    if (group) group.push(row);
-    else groups.set(row.REF_AREA, [row]);
+    if (group) group.rows.push(row);
+    else groups.set(row.REF_AREA, { payloadSha256: response.payload.sha256, rows: [row] });
   }
   return groups;
 }
 
-function latestPeriodEnd(rows: readonly SdmxRow[]): string {
-  return rows.reduce((latest, row) => {
+function latestPeriodEnd(series: SdmxSeries): string {
+  return series.rows.reduce((latest, row) => {
     const { periodEnd } = periodBounds(row.TIME_PERIOD);
     return periodEnd > latest ? periodEnd : latest;
   }, "");
 }
 
-export function pickFreshestSeries(candidates: readonly SdmxRow[][]): Map<string, SdmxRow[]> {
-  const chosen = new Map<string, SdmxRow[]>();
-  for (const rows of candidates) {
-    for (const [refArea, series] of groupByRefArea(rows)) {
+export function pickFreshestSeries(candidates: readonly SdmxResponse[]): Map<string, SdmxSeries> {
+  const chosen = new Map<string, SdmxSeries>();
+  for (const response of candidates) {
+    for (const [refArea, series] of groupByRefArea(response)) {
       const current = chosen.get(refArea);
       if (!current || latestPeriodEnd(series) > latestPeriodEnd(current)) chosen.set(refArea, series);
     }
@@ -43,38 +54,42 @@ export async function fetchPreferredOecdSeries(
   primary: readonly OecdRoute[],
   fallback: readonly OecdRoute[],
   refAreas: readonly string[],
-): Promise<Map<string, SdmxRow[]>> {
-  const primaryRows: SdmxRow[][] = [];
+): Promise<PreferredOecdSeries> {
+  const primaryResponses: SdmxResponse[] = [];
   for (const route of primary) {
-    primaryRows.push(await fetchOecdData({ ...route, refAreas }));
+    primaryResponses.push(await fetchOecdData({ ...route, refAreas }));
   }
-  const chosen = pickFreshestSeries(primaryRows);
+  const series = pickFreshestSeries(primaryResponses);
 
-  const uncovered = refAreas.filter((refArea) => !chosen.has(refArea));
-  const fallbackRows: SdmxRow[][] = [];
+  const uncovered = refAreas.filter((refArea) => !series.has(refArea));
+  const fallbackResponses: SdmxResponse[] = [];
   for (const route of fallback) {
     if (uncovered.length === 0) break;
-    fallbackRows.push(await fetchOecdData({ ...route, refAreas: uncovered }));
+    fallbackResponses.push(await fetchOecdData({ ...route, refAreas: uncovered }));
   }
-  for (const [refArea, series] of pickFreshestSeries(fallbackRows)) chosen.set(refArea, series);
-  return chosen;
+  for (const [refArea, fallbackSeries] of pickFreshestSeries(fallbackResponses)) series.set(refArea, fallbackSeries);
+
+  const payloads = [...primaryResponses, ...fallbackResponses].map((response) => response.payload);
+  return { series, payloads };
 }
 
 export function snapshotObservations(
   countryIso3: string,
-  series: readonly SdmxRow[],
+  series: SdmxSeries | undefined,
   target: SnapshotTarget,
 ): NewObservation[] {
+  if (!series) return [];
   const retrievedOn = target.retrievedAt.toISOString().slice(0, 10);
-  const scaled = series.find((row) => row.UNIT_MULT !== undefined && row.UNIT_MULT !== "" && row.UNIT_MULT !== "0");
+  const scaled = series.rows.find((row) => row.UNIT_MULT !== undefined && row.UNIT_MULT !== "" && row.UNIT_MULT !== "0");
   if (scaled) throw new Error(`${target.indicatorId} ${countryIso3}: unexpected UNIT_MULT ${scaled.UNIT_MULT}`);
-  return series.map((row) => ({
+  return series.rows.map((row) => ({
     countryIso3,
     indicatorId: target.indicatorId,
     ...periodBounds(row.TIME_PERIOD),
     value: toStoredDecimal(row.OBS_VALUE),
+    rawValue: row.OBS_VALUE,
+    rawSha256: series.payloadSha256,
     sourceId: target.sourceId,
     vintage: `retrieved-${retrievedOn}`,
-    publishedAt: target.retrievedAt.toISOString(),
   }));
 }

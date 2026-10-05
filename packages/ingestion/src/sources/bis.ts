@@ -1,4 +1,4 @@
-import { fetchSdmxCsv, type SdmxRow } from "./sdmx.js";
+import { fetchSdmxCsv, type SdmxResponse } from "./sdmx.js";
 
 const BASE_URL = "https://stats.bis.org/api/v1/data";
 const DATAFLOW_PATTERN = /^WS_[A-Z0-9_]+$/;
@@ -14,8 +14,8 @@ export interface BisQuery {
   startPeriod: string;
 }
 
-export async function fetchBisData(query: BisQuery): Promise<SdmxRow[]> {
-  if (query.refAreas.length === 0) return [];
+export async function fetchBisData(query: BisQuery): Promise<SdmxResponse> {
+  if (query.refAreas.length === 0) throw new Error("BIS query needs at least one reference area");
   if (!DATAFLOW_PATTERN.test(query.dataflow)) throw new Error(`invalid BIS dataflow: ${query.dataflow}`);
   for (const part of [query.keyPrefix, query.keySuffix].filter((value) => value !== undefined)) {
     if (!KEY_PART_PATTERN.test(part)) throw new Error(`invalid BIS key part: ${part}`);
@@ -29,7 +29,7 @@ export async function fetchBisData(query: BisQuery): Promise<SdmxRow[]> {
   return fetchSdmxCsv(`${BASE_URL}/${query.dataflow}/${key}?${params.toString()}`, `BIS ${query.dataflow}`);
 }
 
-export async function fetchBisPolicyRates(refAreas: readonly string[], startYear: string): Promise<SdmxRow[]> {
+export async function fetchBisPolicyRates(refAreas: readonly string[], startYear: string): Promise<SdmxResponse> {
   if (!/^\d{4}$/.test(startYear)) throw new Error(`invalid start year: ${startYear}`);
   return fetchBisData({ dataflow: "WS_CBPOL", keyPrefix: "M", refAreas, startPeriod: startYear });
 }

@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { capturePayload, payloadText, type FetchedPayload } from "./payload.js";
 
 const MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
 const QUARTER_PATTERN = /^(\d{4})-Q([1-4])$/;
@@ -10,6 +11,11 @@ const BASE_RETRY_DELAY_MS = 5_000;
 const MAX_RETRY_DELAY_MS = 120_000;
 
 export type SdmxRow = Record<string, string>;
+
+export interface SdmxResponse {
+  payload: FetchedPayload;
+  rows: SdmxRow[];
+}
 
 export interface PeriodBounds {
   periodStart: string;
@@ -86,17 +92,19 @@ async function fetchWithRetry(url: string, label: string): Promise<Response> {
   }
 }
 
-export async function fetchSdmxCsv(url: string, label: string): Promise<SdmxRow[]> {
+export async function fetchSdmxCsv(url: string, label: string): Promise<SdmxResponse> {
   const res = await fetchWithRetry(url, label);
-  if (res.status === 404) return [];
-  if (!res.ok) throw new Error(`${label} request failed: ${res.status} ${res.statusText}`);
-  const [header, ...records] = parseCsv(await res.text());
+  if (res.status !== 404 && !res.ok) throw new Error(`${label} request failed: ${res.status} ${res.statusText}`);
+  const payload = await capturePayload(url, res);
+  if (res.status === 404) return { payload, rows: [] };
+  const [header, ...records] = parseCsv(payloadText(payload));
   if (!header || !header.includes("TIME_PERIOD") || !header.includes("OBS_VALUE")) {
     throw new Error(`${label} returned an unexpected payload`);
   }
-  return records
+  const rows = records
     .filter((record) => record.length === header.length)
     .map((record) => Object.fromEntries(header.map((column, index) => [column, record[index]])));
+  return { payload, rows };
 }
 
 function lastDayOfMonth(year: number, month: number): string {

@@ -1,14 +1,16 @@
 import { pool } from "@eox/evidence-store";
 import { policyRateRefArea, toObservations } from "../indicators/policy-rate.js";
 import { PILOT_COUNTRIES } from "../pilot-countries.js";
+import { recordPayloads } from "../record-payloads.js";
 import { recordRevisions } from "../record-revisions.js";
 import { fetchBisPolicyRates } from "../sources/bis.js";
 
 const startYear = process.argv[2] ?? "2021";
 const refAreas = [...new Set(PILOT_COUNTRIES.map(policyRateRefArea))];
 
-const rows = await fetchBisPolicyRates(refAreas, startYear);
-const observations = toObservations(PILOT_COUNTRIES, rows, new Date());
+const response = await fetchBisPolicyRates(refAreas, startYear);
+const observations = toObservations(PILOT_COUNTRIES, response, new Date());
+await recordPayloads("bis", [response.payload]);
 const recorded = await recordRevisions(observations);
 
 const covered = new Set(observations.map((observation) => observation.countryIso3));

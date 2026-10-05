@@ -1,5 +1,6 @@
 import { fetchPreferredOecdSeries, snapshotObservations, type OecdRoute } from "./indicators/sdmx-series.js";
 import { PILOT_COUNTRIES } from "./pilot-countries.js";
+import { recordPayloads } from "./record-payloads.js";
 import { recordRevisions } from "./record-revisions.js";
 
 const YEAR_PATTERN = /^\d{4}$/;
@@ -15,22 +16,23 @@ export async function ingestOecdSnapshot(indicator: OecdSnapshotIndicator, start
   const iso3Codes = PILOT_COUNTRIES.map((country) => country.iso3);
   const retrievedAt = new Date();
 
-  const seriesByCountry = await fetchPreferredOecdSeries(
+  const { series: seriesByCountry, payloads } = await fetchPreferredOecdSeries(
     indicator.monthlyRoutes(startYear),
     indicator.quarterlyRoutes(startYear),
     iso3Codes,
   );
   const observations = iso3Codes.flatMap((iso3) =>
-    snapshotObservations(iso3, seriesByCountry.get(iso3) ?? [], {
+    snapshotObservations(iso3, seriesByCountry.get(iso3), {
       indicatorId: indicator.indicatorId,
       sourceId: "oecd",
       retrievedAt,
     }),
   );
+  await recordPayloads("oecd", payloads);
   const recorded = await recordRevisions(observations);
 
   const missing = iso3Codes.filter((iso3) => !seriesByCountry.has(iso3));
-  const quarterly = iso3Codes.filter((iso3) => seriesByCountry.get(iso3)?.[0]?.FREQ === "Q");
+  const quarterly = iso3Codes.filter((iso3) => seriesByCountry.get(iso3)?.rows[0]?.FREQ === "Q");
 
   console.log(
     `${indicator.indicatorId} from ${startYear}: ${seriesByCountry.size}/${iso3Codes.length} pilot countries, ` +

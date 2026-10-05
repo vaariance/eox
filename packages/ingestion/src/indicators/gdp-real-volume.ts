@@ -1,5 +1,5 @@
 import type { NewObservation } from "@eox/evidence-store";
-import { periodBounds, toStoredDecimal, type SdmxRow } from "../sources/sdmx.js";
+import { periodBounds, toStoredDecimal, type SdmxResponse, type SdmxRow } from "../sources/sdmx.js";
 
 export const GDP_REAL_VOLUME_DATAFLOW = "OECD.SDD.STES,DSD_STES_REVISIONS@DF_STES_REVISIONS,4.0";
 export const GDP_REAL_VOLUME_KEY_SUFFIX = "Q.B1GQ_Q...";
@@ -21,8 +21,8 @@ function toMillions(row: SdmxRow): string {
   return toStoredDecimal(row.OBS_VALUE, MILLIONS_EXPONENT - unitMultiplier);
 }
 
-export function toObservations(rows: readonly SdmxRow[]): NewObservation[] {
-  return rows
+export function toObservations(response: SdmxResponse): NewObservation[] {
+  return response.rows
     .filter(
       (row) =>
         row.MEASURE === "B1GQ_Q" &&
@@ -38,9 +38,10 @@ export function toObservations(rows: readonly SdmxRow[]): NewObservation[] {
         indicatorId: "gdp_real_volume",
         ...periodBounds(row.TIME_PERIOD),
         value: toMillions(row),
+        rawValue: row.OBS_VALUE,
+        rawSha256: response.payload.sha256,
         sourceId: "oecd",
         vintage: `oecd-edition-${row.EDITION}`,
-        publishedAt: editionAt,
         knownAt: editionAt,
       };
     });

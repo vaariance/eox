@@ -1,6 +1,6 @@
 import type { NewObservation } from "@eox/evidence-store";
 import type { PilotCountry } from "../pilot-countries.js";
-import type { SdmxRow } from "../sources/sdmx.js";
+import type { SdmxResponse } from "../sources/sdmx.js";
 import { groupByRefArea, snapshotObservations } from "./sdmx-series.js";
 
 const EURO_AREA_REF_AREA = "XM";
@@ -28,12 +28,12 @@ export function policyRateRefArea(country: PilotCountry): string {
 
 export function toObservations(
   countries: readonly PilotCountry[],
-  rows: readonly SdmxRow[],
+  response: SdmxResponse,
   retrievedAt: Date,
 ): NewObservation[] {
-  const seriesByRefArea = groupByRefArea(rows);
+  const seriesByRefArea = groupByRefArea(response);
   return countries.flatMap((country) => {
-    const series = seriesByRefArea.get(policyRateRefArea(country)) ?? [];
+    const series = seriesByRefArea.get(policyRateRefArea(country));
     const adoption = EURO_ADOPTION_DATES[country.iso3];
     return snapshotObservations(country.iso3, series, {
       indicatorId: "policy_rate",

@@ -1,4 +1,4 @@
-import { fetchSdmxCsv, type SdmxRow } from "./sdmx.js";
+import { fetchSdmxCsv, type SdmxResponse } from "./sdmx.js";
 
 const BASE_URL = "https://sdmx.oecd.org/public/rest/data";
 const ISO3_PATTERN = /^[A-Z]{3}$/;
@@ -11,8 +11,8 @@ export interface OecdQuery {
   startPeriod: string;
 }
 
-export async function fetchOecdData(query: OecdQuery): Promise<SdmxRow[]> {
-  if (query.refAreas.length === 0) return [];
+export async function fetchOecdData(query: OecdQuery): Promise<SdmxResponse> {
+  if (query.refAreas.length === 0) throw new Error("OECD query needs at least one reference area");
   query.refAreas.forEach((code) => {
     if (!ISO3_PATTERN.test(code)) throw new Error(`invalid ISO3 code: ${code}`);
   });
