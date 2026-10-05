@@ -1297,6 +1297,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "eox_arbiter"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "eox_settlement_oracle",
+ "litesvm",
+ "solana-account",
+ "solana-keypair",
+ "solana-message",
+ "solana-signer",
+ "solana-transaction",
+]
+
+[[package]]
 name = "eox_settlement_oracle"
 version = "0.1.0"
 dependencies = [
