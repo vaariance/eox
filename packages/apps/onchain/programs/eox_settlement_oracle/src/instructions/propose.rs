@@ -13,7 +13,7 @@ pub struct Propose<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [EPOCH_SEED, &epoch.year.to_le_bytes()], bump = epoch.bump)]
-    pub epoch: Account<'info, Epoch>,
+    pub epoch: Box<Account<'info, Epoch>>,
     #[account(mut, token::mint = config.bond_mint, token::authority = proposer)]
     pub proposer_token: Account<'info, TokenAccount>,
     #[account(mut, seeds = [VAULT_SEED], bump)]
@@ -29,6 +29,10 @@ pub fn handle_propose(ctx: Context<Propose>, body: ClaimBody) -> Result<()> {
     );
 
     let epoch = &mut ctx.accounts.epoch;
+    require!(
+        body.methodology_image_id == epoch.methodology_image_id,
+        ErrorCode::WrongMethodology
+    );
     let now = Clock::get()?.unix_timestamp;
     match epoch.status {
         EpochStatus::Requested => {

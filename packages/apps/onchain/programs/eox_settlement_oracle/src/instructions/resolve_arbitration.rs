@@ -13,7 +13,7 @@ pub struct ResolveArbitration<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = arbiter)]
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [EPOCH_SEED, &epoch.year.to_le_bytes()], bump = epoch.bump)]
-    pub epoch: Account<'info, Epoch>,
+    pub epoch: Box<Account<'info, Epoch>>,
 }
 
 pub fn handle_resolve_arbitration(

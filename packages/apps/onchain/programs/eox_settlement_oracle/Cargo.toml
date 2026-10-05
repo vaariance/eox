@@ -22,8 +22,11 @@ custom-panic = []
 [dependencies]
 anchor-lang = "1.2.0"
 anchor-spl = "1.2.0"
+solana-sha256-hasher = { version = "3.1.0", features = ["sha2"] }
 
 [dev-dependencies]
+eox-engine = { path = "../../../methodology" }
+chrono = "0.4"
 litesvm = "0.10.0"
 solana-account = "3.0.0"
 solana-message = "3.0.1"

@@ -34,4 +34,12 @@ pub enum ErrorCode {
     TooManyParties,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("The claim does not use the epoch's methodology")]
+    WrongMethodology,
+    #[msg("The candidate's evidence does not fit the grounds given for the dispute")]
+    GroundsMismatch,
+    #[msg("The disputed observation is not in the claim's evidence")]
+    ObservationNotInClaim,
+    #[msg("The proof is longer than any evidence tree allows")]
+    ProofTooLong,
 }

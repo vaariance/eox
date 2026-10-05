@@ -12,7 +12,7 @@ use {
         self,
         state::{Account as TokenAccount, AccountState, Mint},
     },
-    eox_settlement_oracle::{constants::*, error::ErrorCode, state::*},
+    eox_settlement_oracle::{constants::*, error::ErrorCode, state::*, Grounds},
     litesvm::{
         types::{FailedTransactionMetadata, TransactionMetadata},
         LiteSVM,
@@ -30,6 +30,8 @@ pub const YEAR: u16 = 2025;
 pub const BOND: u64 = 10_000_000_000;
 pub const START: u64 = 5 * BOND;
 pub const MINT_SUPPLY: u64 = 1_000_000_000_000_000;
+pub const IMAGE_ID: [u8; 32] = [2u8; 32];
+pub const MAX_TRANSACTION_BYTES: usize = 1232;
 
 pub fn cutoff() -> i64 {
     cutoff_timestamp(YEAR)
@@ -74,7 +76,7 @@ pub fn epoch_pda(year: u16) -> Pubkey {
 pub fn body(n: u8) -> ClaimBody {
     ClaimBody {
         evidence_root: [1u8; 32],
-        methodology_image_id: [2u8; 32],
+        methodology_image_id: IMAGE_ID,
         output_hash: [n; 32],
         resolution_uri_hash: [4u8; 32],
     }
@@ -254,7 +256,11 @@ impl TestEnv {
 
     pub fn open_epoch(&mut self, year: u16, bond: u64) -> TxResult {
         let instruction = ix(
-            eox_settlement_oracle::instruction::OpenEpoch { year, bond },
+            eox_settlement_oracle::instruction::OpenEpoch {
+                year,
+                bond,
+                methodology_image_id: IMAGE_ID,
+            },
             eox_settlement_oracle::accounts::OpenEpoch {
                 authority: self.authority.pubkey(),
                 config: config_pda(),
@@ -282,8 +288,18 @@ impl TestEnv {
     }
 
     pub fn dispute(&mut self, year: u16, disputer: &Party, candidate: ClaimBody) -> TxResult {
-        let instruction = ix(
-            eox_settlement_oracle::instruction::Dispute { candidate },
+        self.dispute_on(year, disputer, candidate, Grounds::Computation)
+    }
+
+    pub fn dispute_instruction(
+        &self,
+        year: u16,
+        disputer: &Party,
+        candidate: ClaimBody,
+        grounds: Grounds,
+    ) -> Instruction {
+        ix(
+            eox_settlement_oracle::instruction::Dispute { candidate, grounds },
             eox_settlement_oracle::accounts::DisputeClaim {
                 disputer: disputer.key(),
                 config: config_pda(),
@@ -292,7 +308,26 @@ impl TestEnv {
                 vault: vault_pda(),
                 token_program: spl_token::ID,
             },
+        )
+    }
+
+    pub fn transaction_bytes(&self, instruction: Instruction, signer: &Keypair) -> usize {
+        let msg = Message::new_with_blockhash(
+            &[instruction],
+            Some(&signer.pubkey()),
+            &self.svm.latest_blockhash(),
         );
+        1 + 64 + msg.serialize().len()
+    }
+
+    pub fn dispute_on(
+        &mut self,
+        year: u16,
+        disputer: &Party,
+        candidate: ClaimBody,
+        grounds: Grounds,
+    ) -> TxResult {
+        let instruction = self.dispute_instruction(year, disputer, candidate, grounds);
         self.send(instruction, &disputer.wallet)
     }
 

@@ -47,11 +47,21 @@ pub struct Proposal {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum GroundsKind {
+    WrongObservation,
+    MissingObservation,
+    Computation,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub struct Dispute {
     pub candidate: ClaimBody,
     pub disputer: Pubkey,
     pub bond: u64,
     pub disputed_at: i64,
+    pub grounds: GroundsKind,
+    pub disputed_leaf: [u8; 32],
+    pub correction: [u8; 32],
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default, InitSpace)]
@@ -66,6 +76,7 @@ pub struct Epoch {
     pub year: u16,
     pub cutoff: i64,
     pub bond: u64,
+    pub methodology_image_id: [u8; 32],
     pub status: EpochStatus,
     pub round: u8,
     pub proposals: [Option<Proposal>; 2],
@@ -79,11 +90,12 @@ pub struct Epoch {
 }
 
 impl Epoch {
-    pub fn new(year: u16, cutoff: i64, bond: u64, bump: u8) -> Self {
+    pub fn new(year: u16, cutoff: i64, bond: u64, methodology_image_id: [u8; 32], bump: u8) -> Self {
         Self {
             year,
             cutoff,
             bond,
+            methodology_image_id,
             status: EpochStatus::Requested,
             round: 0,
             proposals: [None; 2],

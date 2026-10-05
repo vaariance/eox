@@ -99,7 +99,7 @@ pub fn void(epoch: &mut Epoch) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{Dispute, Proposal};
+    use crate::state::{Dispute, GroundsKind, Proposal};
 
     const B: u64 = 1_000;
 
@@ -121,7 +121,15 @@ mod tests {
     }
 
     fn dispute(n: u8, disputer: Pubkey, bond: u64) -> Option<Dispute> {
-        Some(Dispute { candidate: body(n), disputer, bond, disputed_at: 0 })
+        Some(Dispute {
+            candidate: body(n),
+            disputer,
+            bond,
+            disputed_at: 0,
+            grounds: GroundsKind::Computation,
+            disputed_leaf: [0; 32],
+            correction: [0; 32],
+        })
     }
 
     fn deposited(epoch: &Epoch) -> u64 {
@@ -139,7 +147,7 @@ mod tests {
     }
 
     fn fresh() -> Epoch {
-        Epoch::new(2025, 0, B, 255)
+        Epoch::new(2025, 0, B, [2; 32], 255)
     }
 
     fn undisputed_first_round() -> Epoch {
@@ -244,7 +252,7 @@ mod tests {
     #[test]
     fn rounding_never_creates_or_loses_value() {
         for bond in [1u64, 9, 10, 11, 99, 1_234_567] {
-            let mut e = Epoch::new(2025, 0, bond, 255);
+            let mut e = Epoch::new(2025, 0, bond, [2; 32], 255);
             e.round = 2;
             e.proposals[0] = proposal(10, key(1), bond);
             e.disputes[0] = dispute(20, key(2), bond);

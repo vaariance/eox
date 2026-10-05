@@ -1,6 +1,7 @@
 pub mod constants;
 pub mod error;
 pub mod instructions;
+pub mod merkle;
 pub mod settlement;
 pub mod state;
 
@@ -24,16 +25,21 @@ pub mod eox_settlement_oracle {
         crate::instructions::initialize::handle_initialize(ctx, arbiter, proposers)
     }
 
-    pub fn open_epoch(ctx: Context<OpenEpoch>, year: u16, bond: u64) -> Result<()> {
-        crate::instructions::open_epoch::handle_open_epoch(ctx, year, bond)
+    pub fn open_epoch(
+        ctx: Context<OpenEpoch>,
+        year: u16,
+        bond: u64,
+        methodology_image_id: [u8; 32],
+    ) -> Result<()> {
+        crate::instructions::open_epoch::handle_open_epoch(ctx, year, bond, methodology_image_id)
     }
 
     pub fn propose(ctx: Context<Propose>, body: ClaimBody) -> Result<()> {
         crate::instructions::propose::handle_propose(ctx, body)
     }
 
-    pub fn dispute(ctx: Context<DisputeClaim>, candidate: ClaimBody) -> Result<()> {
-        crate::instructions::dispute::handle_dispute(ctx, candidate)
+    pub fn dispute(ctx: Context<DisputeClaim>, candidate: ClaimBody, grounds: Grounds) -> Result<()> {
+        crate::instructions::dispute::handle_dispute(ctx, candidate, grounds)
     }
 
     pub fn settle(ctx: Context<Settle>) -> Result<()> {

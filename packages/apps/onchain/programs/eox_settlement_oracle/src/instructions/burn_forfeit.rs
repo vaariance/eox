@@ -12,7 +12,7 @@ pub struct BurnForfeit<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [EPOCH_SEED, &epoch.year.to_le_bytes()], bump = epoch.bump)]
-    pub epoch: Account<'info, Epoch>,
+    pub epoch: Box<Account<'info, Epoch>>,
     #[account(mut, seeds = [VAULT_SEED], bump)]
     pub vault: Account<'info, TokenAccount>,
     #[account(mut, address = config.bond_mint)]

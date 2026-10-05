@@ -10,7 +10,7 @@ use crate::{
 #[derive(Accounts)]
 pub struct VoidEpoch<'info> {
     #[account(mut, seeds = [EPOCH_SEED, &epoch.year.to_le_bytes()], bump = epoch.bump)]
-    pub epoch: Account<'info, Epoch>,
+    pub epoch: Box<Account<'info, Epoch>>,
 }
 
 pub fn handle_void_epoch(ctx: Context<VoidEpoch>) -> Result<()> {
