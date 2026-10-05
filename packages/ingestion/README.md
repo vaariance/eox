@@ -105,6 +105,11 @@ pnpm --filter @eox/ingestion ingest:policy-rate 2010   # custom start year
 
 ## OECD rate limits
 
-The OECD Data API throttles per IP and answers with HTTP 429 (and sometimes 500)
-once the limit is reached; the block can last around an hour. Requests are
-retried with backoff, but avoid running the OECD ingests in tight loops.
+The OECD Data API throttles per IP and answers with HTTP 429 or drops
+connections once the limit is reached; the block can last around an hour.
+Requests are retried with backoff, but avoid running the OECD ingests in tight
+loops.
+
+The OECD server returns HTTP 500 for uncached queries sent with
+`Accept-Language: *`, which Node's `fetch` adds by default. The SDMX client
+therefore always sends `Accept-Language: en`.
