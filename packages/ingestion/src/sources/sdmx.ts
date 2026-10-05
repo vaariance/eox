@@ -1,8 +1,13 @@
+import { setTimeout as sleep } from "node:timers/promises";
+
 const MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
 const QUARTER_PATTERN = /^(\d{4})-Q([1-4])$/;
 const DECIMAL_PATTERN = /^(-?)(\d+)(?:\.(\d+))?$/;
 const STORED_SCALE = 6;
 const REQUEST_TIMEOUT_MS = 180_000;
+const MAX_ATTEMPTS = 4;
+const BASE_RETRY_DELAY_MS = 5_000;
+const MAX_RETRY_DELAY_MS = 120_000;
 
 export type SdmxRow = Record<string, string>;
 
@@ -50,11 +55,39 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
+function retryDelayMs(attempt: number, retryAfter: string | null): number {
+  const seconds = Number(retryAfter);
+  if (retryAfter !== null && Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, MAX_RETRY_DELAY_MS);
+  }
+  return Math.min(BASE_RETRY_DELAY_MS * 3 ** attempt, MAX_RETRY_DELAY_MS);
+}
+
+async function fetchWithRetry(url: string, label: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const isLastAttempt = attempt === MAX_ATTEMPTS - 1;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: { Accept: "text/csv" },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      if (isLastAttempt) throw new Error(`${label} request failed after ${MAX_ATTEMPTS} attempts`, { cause: error });
+      await sleep(retryDelayMs(attempt, null));
+      continue;
+    }
+    if ((res.status === 429 || res.status >= 500) && !isLastAttempt) {
+      await res.body?.cancel();
+      await sleep(retryDelayMs(attempt, res.headers.get("retry-after")));
+      continue;
+    }
+    return res;
+  }
+}
+
 export async function fetchSdmxCsv(url: string, label: string): Promise<SdmxRow[]> {
-  const res = await fetch(url, {
-    headers: { Accept: "text/csv" },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+  const res = await fetchWithRetry(url, label);
   if (res.status === 404) return [];
   if (!res.ok) throw new Error(`${label} request failed: ${res.status} ${res.statusText}`);
   const [header, ...records] = parseCsv(await res.text());
