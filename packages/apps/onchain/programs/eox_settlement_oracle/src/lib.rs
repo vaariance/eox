@@ -11,7 +11,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("FgEEu53fcPs7Xc1yV3BiwtKeU2eDt89yEsFY7brbLrzd");
+declare_id!("DDReyVxqqL3AtC8D6qpbnotZK1c8WBTN2nPdx1WtPHMt");
 
 #[program]
 pub mod eox_settlement_oracle {
