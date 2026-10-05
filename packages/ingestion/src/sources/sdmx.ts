@@ -68,10 +68,7 @@ async function fetchWithRetry(url: string, label: string): Promise<Response> {
     const isLastAttempt = attempt === MAX_ATTEMPTS - 1;
     let res: Response;
     try {
-      res = await fetch(url, {
-        headers: { Accept: "text/csv" },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
+      res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     } catch (error) {
       if (isLastAttempt) throw new Error(`${label} request failed after ${MAX_ATTEMPTS} attempts`, { cause: error });
       await sleep(retryDelayMs(attempt, null));
