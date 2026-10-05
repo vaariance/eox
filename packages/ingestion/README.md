@@ -18,6 +18,7 @@ in `EOX_API_Country_Bindings.csv` (local, not in this repo).
 | Indicator | Pilot coverage | Status |
 |---|---|---|
 | Container Throughput (#6) | 30/30 verified | Implemented |
+| Real Estate Valuation (#17) | 30/30 | Implemented |
 | Real GDP Vintages (#21) | 30/30 | Implemented |
 | Core CPI Inflation (#22) | 30/30 (NZL quarterly) | Implemented |
 | Unemployment Rates (#23) | 30/30 (NZL quarterly) | Implemented |
@@ -39,6 +40,19 @@ per-country daily total.
 ```bash
 pnpm --filter @eox/ingestion ingest:container-throughput          # latest available date
 pnpm --filter @eox/ingestion ingest:container-throughput 2026-09-25  # specific date
+```
+
+## Real Estate Valuation (#17)
+
+Source: BIS `WS_SPP` selected residential property prices, quarterly, real
+(CPI-deflated) index with 2010 = 100 (`VALUE=R`, `UNIT_MEASURE=628`).
+Indicator `residential_property_price_real`. This is the residential price
+component only; transaction volumes are not covered. Real values already
+correct for inflation, so do not deflate them again downstream.
+
+```bash
+pnpm --filter @eox/ingestion ingest:residential-property-price        # from 2021
+pnpm --filter @eox/ingestion ingest:residential-property-price 2010   # custom start year
 ```
 
 ## Real GDP Vintages (#21)
