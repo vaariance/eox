@@ -8,6 +8,10 @@ export {
 } from "./indicators/gdp-real-volume.js";
 export { policyRateRefArea, toObservations as toPolicyRateObservations } from "./indicators/policy-rate.js";
 export {
+  residentialPropertyPriceQuery,
+  toObservations as toResidentialPropertyPriceObservations,
+} from "./indicators/residential-property-price.js";
+export {
   fetchPreferredOecdSeries,
   groupByRefArea,
   pickFreshestSeries,
@@ -20,7 +24,8 @@ export type { OecdSnapshotIndicator } from "./ingest-oecd-snapshot.js";
 export { PILOT_COUNTRIES } from "./pilot-countries.js";
 export type { PilotCountry } from "./pilot-countries.js";
 export { recordRevisions } from "./record-revisions.js";
-export { fetchBisPolicyRates } from "./sources/bis.js";
+export { fetchBisData, fetchBisPolicyRates } from "./sources/bis.js";
+export type { BisQuery } from "./sources/bis.js";
 export { fetchOecdData } from "./sources/oecd.js";
 export type { OecdQuery } from "./sources/oecd.js";
 export { fetchLatestAvailableDate, fetchPortRecords } from "./sources/portwatch.js";
