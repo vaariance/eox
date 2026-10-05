@@ -4,7 +4,8 @@ use {
     anchor_lang::{
         prelude::{Clock, Pubkey},
         solana_program::{
-            instruction::Instruction, program_option::COption, program_pack::Pack, system_program,
+            bpf_loader_upgradeable, instruction::Instruction, program_option::COption,
+            program_pack::Pack, system_program,
         },
         AccountDeserialize, InstructionData, ToAccountMetas,
     },
@@ -73,6 +74,33 @@ pub fn epoch_pda(year: u16) -> Pubkey {
     pda(&[EPOCH_SEED, &year.to_le_bytes()])
 }
 
+pub fn program_data_pda(program: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[program.as_ref()], &bpf_loader_upgradeable::ID).0
+}
+
+/// LiteSVM deploys programs with no upgrade authority; this writes one in, the way a real
+/// `solana program deploy` would.
+pub fn set_upgrade_authority(svm: &mut LiteSVM, program: &Pubkey, authority: Option<Pubkey>) {
+    let address = program_data_pda(program);
+    let mut account = svm.get_account(&address).unwrap();
+    // bincode UpgradeableLoaderState::ProgramData: u32 tag, u64 slot, Option<Pubkey>.
+    account.data[12..45].fill(0);
+    if let Some(authority) = authority {
+        account.data[12] = 1;
+        account.data[13..45].copy_from_slice(authority.as_ref());
+    }
+    svm.set_account(address, account).unwrap();
+}
+
+pub fn assert_anchor_error(result: TxResult, code: u32) {
+    let err = result.expect_err("transaction should fail");
+    let rendered = format!("{:?}", err.err);
+    assert!(
+        rendered.contains(&format!("Custom({code})")),
+        "expected error {code}, got {rendered}"
+    );
+}
+
 pub fn body(n: u8) -> ClaimBody {
     ClaimBody {
         evidence_root: [1u8; 32],
@@ -83,13 +111,7 @@ pub fn body(n: u8) -> ClaimBody {
 }
 
 pub fn assert_error(result: TxResult, expected: ErrorCode) {
-    let code: u32 = expected.into();
-    let err = result.expect_err("transaction should fail");
-    let rendered = format!("{:?}", err.err);
-    assert!(
-        rendered.contains(&format!("Custom({code})")),
-        "expected error {code}, got {rendered}"
-    );
+    assert_anchor_error(result, expected.into());
 }
 
 fn ix<A: InstructionData, M: ToAccountMetas>(data: A, accounts: M) -> Instruction {
@@ -101,7 +123,8 @@ fn ix<A: InstructionData, M: ToAccountMetas>(data: A, accounts: M) -> Instructio
 }
 
 impl TestEnv {
-    pub fn new() -> Self {
+    /// The program deployed with the authority as its upgrade key, not yet initialized.
+    pub fn uninitialized() -> Self {
         let mut svm = LiteSVM::new();
         let bytes = include_bytes!(concat!(
             env!("CARGO_TARGET_TMPDIR"),
@@ -111,6 +134,7 @@ impl TestEnv {
 
         let authority = Keypair::new();
         let arbiter = Keypair::new();
+        set_upgrade_authority(&mut svm, &eox_settlement_oracle::id(), Some(authority.pubkey()));
         svm.airdrop(&authority.pubkey(), 10_000_000_000).unwrap();
         svm.airdrop(&arbiter.pubkey(), 10_000_000_000).unwrap();
 
@@ -147,23 +171,82 @@ impl TestEnv {
         env.proposer = env.fund(env.proposer.wallet.insecure_clone(), START);
         env.second_proposer = env.fund(env.second_proposer.wallet.insecure_clone(), START);
 
-        let initialize = ix(
+        env
+    }
+
+    /// A set-up program: the authority holds the upgrade key and has initialized it with
+    /// both proposers.
+    pub fn new() -> Self {
+        let mut env = Self::uninitialized();
+        let authority = env.authority.insecure_clone();
+        let proposers = vec![env.proposer.key(), env.second_proposer.key()];
+        env.initialize_as(&authority, proposers).unwrap();
+        env
+    }
+
+    pub fn initialize_as(&mut self, signer: &Keypair, proposers: Vec<Pubkey>) -> TxResult {
+        let program_data = program_data_pda(&eox_settlement_oracle::id());
+        self.initialize_with(signer, proposers, program_data)
+    }
+
+    pub fn initialize_with(
+        &mut self,
+        signer: &Keypair,
+        proposers: Vec<Pubkey>,
+        program_data: Pubkey,
+    ) -> TxResult {
+        let instruction = ix(
             eox_settlement_oracle::instruction::Initialize {
-                arbiter: env.arbiter.pubkey(),
-                proposers: vec![env.proposer.key(), env.second_proposer.key()],
+                arbiter: self.arbiter.pubkey(),
+                proposers,
             },
             eox_settlement_oracle::accounts::Initialize {
-                authority: env.authority.pubkey(),
+                authority: signer.pubkey(),
                 config: config_pda(),
-                bond_mint: env.mint,
+                bond_mint: self.mint,
                 vault: vault_pda(),
+                program: eox_settlement_oracle::id(),
+                program_data,
                 token_program: spl_token::ID,
                 system_program: system_program::ID,
             },
         );
-        let authority = env.authority.insecure_clone();
-        env.send(initialize, &authority).unwrap();
-        env
+        self.send(instruction, signer)
+    }
+
+    pub fn config(&self) -> Config {
+        let account = self.svm.get_account(&config_pda()).unwrap();
+        Config::try_deserialize(&mut account.data.as_slice()).unwrap()
+    }
+
+    fn manage_proposers_ix<A: InstructionData>(&self, data: A, signer: &Keypair) -> Instruction {
+        ix(
+            data,
+            eox_settlement_oracle::accounts::ManageProposers {
+                authority: signer.pubkey(),
+                config: config_pda(),
+            },
+        )
+    }
+
+    pub fn add_proposer_as(&mut self, signer: &Keypair, proposer: Pubkey) -> TxResult {
+        let instruction = self
+            .manage_proposers_ix(eox_settlement_oracle::instruction::AddProposer { proposer }, signer);
+        self.send(instruction, signer)
+    }
+
+    pub fn add_proposer(&mut self, proposer: Pubkey) -> TxResult {
+        let authority = self.authority.insecure_clone();
+        self.add_proposer_as(&authority, proposer)
+    }
+
+    pub fn remove_proposer(&mut self, proposer: Pubkey) -> TxResult {
+        let authority = self.authority.insecure_clone();
+        let instruction = self.manage_proposers_ix(
+            eox_settlement_oracle::instruction::RemoveProposer { proposer },
+            &authority,
+        );
+        self.send(instruction, &authority)
     }
 
     pub fn send(&mut self, ix: Instruction, signer: &Keypair) -> TxResult {

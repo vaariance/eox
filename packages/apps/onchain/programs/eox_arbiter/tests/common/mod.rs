@@ -4,7 +4,8 @@ use {
     anchor_lang::{
         prelude::{Clock, Pubkey},
         solana_program::{
-            instruction::Instruction, program_option::COption, program_pack::Pack, system_program,
+            bpf_loader_upgradeable, instruction::Instruction, program_option::COption,
+            program_pack::Pack, system_program,
         },
         AccountDeserialize, InstructionData, ToAccountMetas,
     },
@@ -50,6 +51,21 @@ pub fn body(n: u8) -> ClaimBody {
     }
 }
 
+pub fn program_data_pda(program: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[program.as_ref()], &bpf_loader_upgradeable::ID).0
+}
+
+/// LiteSVM deploys programs with no upgrade authority; this writes one in, the way a real
+/// `solana program deploy` would.
+fn set_upgrade_authority(svm: &mut LiteSVM, program: &Pubkey, authority: &Pubkey) {
+    let address = program_data_pda(program);
+    let mut account = svm.get_account(&address).unwrap();
+    // bincode UpgradeableLoaderState::ProgramData: u32 tag, u64 slot, Option<Pubkey>.
+    account.data[12] = 1;
+    account.data[13..45].copy_from_slice(authority.as_ref());
+    svm.set_account(address, account).unwrap();
+}
+
 pub fn assert_error(result: TxResult, expected: ErrorCode) {
     let code: u32 = expected.into();
     let err = result.expect_err("transaction should fail");
@@ -93,6 +109,8 @@ impl Party {
 
 pub struct Panel {
     pub svm: LiteSVM,
+    /// Upgrade authority of both programs.
+    pub authority: Keypair,
     pub mint: Pubkey,
     pub members: Vec<Party>,
     pub proposers: Vec<Party>,
@@ -167,7 +185,7 @@ impl Panel {
     pub fn new() -> Self {
         let mut p = Self::without_panel();
         let members: [Pubkey; PANEL_SIZE] = [p.members[0].key(), p.members[1].key(), p.members[2].key()];
-        let authority = p.party(0).wallet;
+        let authority = p.authority.insecure_clone();
         p.initialize_panel(&authority, members, MEMBER_BOND).unwrap();
         p
     }
@@ -187,6 +205,8 @@ impl Panel {
 
         let authority = Keypair::new();
         svm.airdrop(&authority.pubkey(), 10_000_000_000).unwrap();
+        set_upgrade_authority(&mut svm, &eox_settlement_oracle::id(), &authority.pubkey());
+        set_upgrade_authority(&mut svm, &eox_arbiter::id(), &authority.pubkey());
         let mint = Pubkey::new_unique();
         let mut data = vec![0u8; Mint::LEN];
         Mint {
@@ -203,7 +223,7 @@ impl Panel {
         )
         .unwrap();
 
-        let mut p = Self { svm, mint, members: vec![], proposers: vec![], disputers: vec![] };
+        let mut p = Self { svm, authority: authority.insecure_clone(), mint, members: vec![], proposers: vec![], disputers: vec![] };
         p.proposers = (0..2).map(|_| p.party(5 * BOND)).collect();
         p.disputers = (0..2).map(|_| p.party(5 * BOND)).collect();
         p.members = (0..3).map(|_| p.party(MEMBER_BOND)).collect();
@@ -219,6 +239,8 @@ impl Panel {
                 config: oracle_pda(&[CONFIG_SEED]),
                 bond_mint: mint,
                 vault: oracle_pda(&[ORACLE_VAULT_SEED]),
+                program: eox_settlement_oracle::id(),
+                program_data: program_data_pda(&eox_settlement_oracle::id()),
                 token_program: spl_token::ID,
                 system_program: system_program::ID,
             },
@@ -249,6 +271,8 @@ impl Panel {
                 arbiter_authority: arbiter_authority(),
                 bond_mint: self.mint,
                 vault: arbiter_pda(&[VAULT_SEED]),
+                program: eox_arbiter::id(),
+                program_data: program_data_pda(&eox_arbiter::id()),
                 token_program: spl_token::ID,
                 system_program: system_program::ID,
             },

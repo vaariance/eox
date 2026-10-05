@@ -133,7 +133,7 @@ fn a_case_opens_only_for_an_escalated_epoch() {
 #[test]
 fn a_panel_needs_three_distinct_members_and_a_bond() {
     let mut p = Panel::without_panel();
-    let authority = p.party(0).wallet;
+    let authority = p.authority.insecure_clone();
     let [a, b, c] = [0, 1, 2].map(|_| Keypair::new().pubkey());
 
     assert_error(
@@ -146,4 +146,20 @@ fn a_panel_needs_three_distinct_members_and_a_bond() {
     );
     assert_error(p.initialize_panel(&authority, [a, b, c], 0), ErrorCode::ZeroBond);
     p.initialize_panel(&authority, [a, b, c], MEMBER_BOND).unwrap();
+}
+
+#[test]
+fn only_the_upgrade_authority_can_seat_the_panel() {
+    let mut p = Panel::without_panel();
+    let stranger = p.party(0).wallet;
+    let members = [0, 1, 2].map(|_| Keypair::new().pubkey());
+    let [a, b, _] = members;
+
+    // Seating yourself would hand you the oracle's arbiter seat.
+    assert_error(
+        p.initialize_panel(&stranger, [stranger.pubkey(), a, b], MEMBER_BOND),
+        ErrorCode::NotUpgradeAuthority,
+    );
+    let authority = p.authority.insecure_clone();
+    p.initialize_panel(&authority, members, MEMBER_BOND).unwrap();
 }
