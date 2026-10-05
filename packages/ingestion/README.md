@@ -30,12 +30,35 @@ in `EOX_API_Country_Bindings.csv` (local, not in this repo).
 The evidence store is append-only, so every ingest compares fetched values
 against the latest stored value per country and period (`record-revisions.ts`)
 and only records new periods or changed values. Reruns are safe and cheap.
+Rows stored before payload capture existed are re-recorded once with their
+payload link; after that a rerun records nothing unless the source changed.
+
+## Evidence semantics
+
+These inputs feed the oracle's pre-commitment, so ingestion never alters or
+invents source data:
+
+- Every HTTP response is stored byte-for-byte in `source_payloads`, keyed by its
+  SHA-256 (verified by the database). Each observation's `raw_sha256` points to
+  the exact response it was parsed from.
+- `raw_value` keeps the value string exactly as the source published it. The
+  `value` column is the normalised `NUMERIC(20,6)` form (for GDP, millions).
+- `published_at` is left empty unless the source states a publication time.
+  None of the current sources do.
+- Missing source values are never replaced with zero. Container throughput
+  sums only ports that reported both import and export estimates, and records
+  `coverage_reported` / `coverage_total`; a country with no reporting ports
+  gets no observation.
+- `recorded_at` is stamped by the database on insert and cannot be supplied by
+  callers. `known_at` remains the source's own claim about when a value became
+  known (for GDP, the OECD edition month).
 
 ## Container Throughput
 
 Source: IMF PortWatch `Daily_Ports_Data` ArcGIS FeatureServer (public, no API key).
 Daily port-level container import/export tonnage estimates, aggregated to a
-per-country daily total.
+per-country daily total over ports that reported both estimates. One request
+per country, so each country total links to a single stored payload.
 
 ```bash
 pnpm --filter @eox/ingestion ingest:container-throughput          # latest available date
@@ -64,7 +87,7 @@ JPN, KOR and COL levels exceed the `NUMERIC(20,6)` column in raw units.
 
 Each archive edition becomes a vintage (`oecd-edition-YYYYMM`) with `known_at`
 set to the first day of that edition month, so `getAsOf` returns the value as
-it was published at the time. Editions are monthly archive snapshots, not exact
+OECD reported it at the time. Editions are monthly archive snapshots, not exact
 national first-release timestamps.
 
 ```bash
