@@ -8,6 +8,7 @@
     "ingest:container-throughput": "tsx src/ingest/container-throughput.ts",
     "ingest:gdp-real-volume": "tsx src/ingest/gdp-real-volume.ts",
     "ingest:core-cpi": "tsx src/ingest/core-cpi.ts",
+    "ingest:unemployment-rate": "tsx src/ingest/unemployment-rate.ts",
     "build": "tsc"
   },
   "dependencies": {
