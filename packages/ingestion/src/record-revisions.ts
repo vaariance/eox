@@ -3,6 +3,7 @@ import { getLatest, recordObservation, type NewObservation } from "@eox/evidence
 interface KnownValue {
   value: string;
   knownAt: number;
+  hasPayload: boolean;
 }
 
 function periodKey(observation: { periodStart: string; periodEnd: string }): string {
@@ -22,7 +23,11 @@ async function loadKnownValues(sample: NewObservation): Promise<Map<string, Know
   return new Map(
     latest.map((observation) => [
       periodKey(observation),
-      { value: observation.value, knownAt: new Date(observation.knownAt).getTime() },
+      {
+        value: observation.value,
+        knownAt: new Date(observation.knownAt).getTime(),
+        hasPayload: observation.rawSha256 !== null,
+      },
     ]),
   );
 }
@@ -45,9 +50,10 @@ export async function recordRevisions(observations: readonly NewObservation[]): 
       const existing = known.get(key);
       const value = String(observation.value);
       const knownAt = knownAtMillis(observation);
-      if (existing && (existing.value === value || existing.knownAt >= knownAt)) continue;
+      const unchanged = existing?.value === value && (existing.hasPayload || !observation.rawSha256);
+      if (existing && (unchanged || existing.knownAt >= knownAt)) continue;
       await recordObservation(observation);
-      known.set(key, { value, knownAt });
+      known.set(key, { value, knownAt, hasPayload: Boolean(observation.rawSha256) });
       recorded++;
     }
   }
