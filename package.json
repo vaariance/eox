@@ -11,6 +11,7 @@
     "ingest:gdp-real-volume": "pnpm --filter @eox/ingestion ingest:gdp-real-volume",
     "ingest:core-cpi": "pnpm --filter @eox/ingestion ingest:core-cpi",
     "ingest:unemployment-rate": "pnpm --filter @eox/ingestion ingest:unemployment-rate",
-    "ingest:policy-rate": "pnpm --filter @eox/ingestion ingest:policy-rate"
+    "ingest:policy-rate": "pnpm --filter @eox/ingestion ingest:policy-rate",
+    "ingest:residential-property-price": "pnpm --filter @eox/ingestion ingest:residential-property-price"
   }
 }

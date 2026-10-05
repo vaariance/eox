@@ -10,6 +10,7 @@
     "ingest:core-cpi": "tsx src/ingest/core-cpi.ts",
     "ingest:unemployment-rate": "tsx src/ingest/unemployment-rate.ts",
     "ingest:policy-rate": "tsx src/ingest/policy-rate.ts",
+    "ingest:residential-property-price": "tsx src/ingest/residential-property-price.ts",
     "build": "tsc"
   },
   "dependencies": {
