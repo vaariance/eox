@@ -1,5 +1,8 @@
 import type { NewObservation } from "@eox/evidence-store";
+import { fetchOecdData, type OecdQuery } from "../sources/oecd.js";
 import { periodBounds, toStoredDecimal, type SdmxRow } from "../sources/sdmx.js";
+
+export type OecdRoute = Omit<OecdQuery, "refAreas">;
 
 export interface SnapshotTarget {
   indicatorId: string;
@@ -33,6 +36,27 @@ export function pickFreshestSeries(candidates: readonly SdmxRow[][]): Map<string
       if (!current || latestPeriodEnd(series) > latestPeriodEnd(current)) chosen.set(refArea, series);
     }
   }
+  return chosen;
+}
+
+export async function fetchPreferredOecdSeries(
+  primary: readonly OecdRoute[],
+  fallback: readonly OecdRoute[],
+  refAreas: readonly string[],
+): Promise<Map<string, SdmxRow[]>> {
+  const primaryRows: SdmxRow[][] = [];
+  for (const route of primary) {
+    primaryRows.push(await fetchOecdData({ ...route, refAreas }));
+  }
+  const chosen = pickFreshestSeries(primaryRows);
+
+  const uncovered = refAreas.filter((refArea) => !chosen.has(refArea));
+  const fallbackRows: SdmxRow[][] = [];
+  for (const route of fallback) {
+    if (uncovered.length === 0) break;
+    fallbackRows.push(await fetchOecdData({ ...route, refAreas: uncovered }));
+  }
+  for (const [refArea, series] of pickFreshestSeries(fallbackRows)) chosen.set(refArea, series);
   return chosen;
 }
 
