@@ -6,6 +6,7 @@
   "main": "src/index.ts",
   "scripts": {
     "ingest:container-throughput": "tsx src/ingest/container-throughput.ts",
+    "ingest:gdp-real-volume": "tsx src/ingest/gdp-real-volume.ts",
     "build": "tsc"
   },
   "dependencies": {
