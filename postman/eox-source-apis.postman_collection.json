@@ -198,7 +198,7 @@
               }
             ],
             "url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_PRICES_COICOP2018@DF_PRICES_C2018_N_TXCP01_NRG,1.0/{{iso3}}.M.N.CPI.PA._TXCP01_NRG.N.GY?startPeriod={{startMonth}}&format=csvfile",
-            "description": "Used by 22 pilot countries as of 2026-09. Returns 404 NoRecordsFound for countries still on the original classification (e.g. USA)."
+            "description": "Current series for 22 pilot countries as of 2026-09. Returns 404 NoRecordsFound for countries that have not moved to COICOP 2018 (e.g. USA). The iso3 variable accepts several codes joined with '+' (e.g. AUS+BEL+CAN) to query many countries in one request."
           }
         },
         {
@@ -231,7 +231,7 @@
               }
             ],
             "url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_PRICES@DF_PRICES_N_TXCP01_NRG,1.0/{{iso3}}.M.N.CPI.PA._TXCP01_NRG.N.GY?startPeriod={{startMonth}}&format=csvfile",
-            "description": "Used by AUS, COL, DEU, GBR, ISR, KOR, USA as of 2026-09."
+            "description": "Current series for AUS, COL, DEU, GBR, ISR, KOR, USA as of 2026-09. Countries that moved to COICOP 2018 still return their older history here, so both monthly requests can succeed for one country; ingestion keeps whichever series has the most recent period."
           }
         },
         {
