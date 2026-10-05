@@ -10,6 +10,7 @@
     "ingest:container-throughput": "pnpm --filter @eox/ingestion ingest:container-throughput",
     "ingest:gdp-real-volume": "pnpm --filter @eox/ingestion ingest:gdp-real-volume",
     "ingest:core-cpi": "pnpm --filter @eox/ingestion ingest:core-cpi",
-    "ingest:unemployment-rate": "pnpm --filter @eox/ingestion ingest:unemployment-rate"
+    "ingest:unemployment-rate": "pnpm --filter @eox/ingestion ingest:unemployment-rate",
+    "ingest:policy-rate": "pnpm --filter @eox/ingestion ingest:policy-rate"
   }
 }
