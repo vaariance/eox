@@ -25,6 +25,17 @@ in `EOX_API_Country_Bindings.csv` (local, not in this repo).
 | Central Bank Policy Rates (#24) | 30/30 (euro members via ECB) | Implemented |
 | everything else | partial, paid-only, or unverified | Not implemented |
 
+## Postman collection
+
+`postman/eox-source-apis.postman_collection.json` (repo root) contains every
+source request these pipelines make, one folder per indicator, with tests.
+Import it into Postman and change the `iso3`, `iso2`, `date` and start-period
+collection variables to inspect any pilot country. To run it headless:
+
+```bash
+npx newman run postman/eox-source-apis.postman_collection.json --delay-request 2000
+```
+
 ## Revisions and reruns
 
 The evidence store is append-only, so every ingest compares fetched values
