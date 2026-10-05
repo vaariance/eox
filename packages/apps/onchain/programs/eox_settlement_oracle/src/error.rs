@@ -42,4 +42,8 @@ pub enum ErrorCode {
     ObservationNotInClaim,
     #[msg("The proof is longer than any evidence tree allows")]
     ProofTooLong,
+    #[msg("Only the program's upgrade authority can do this")]
+    NotUpgradeAuthority,
+    #[msg("That proposer is already listed")]
+    DuplicateProposer,
 }

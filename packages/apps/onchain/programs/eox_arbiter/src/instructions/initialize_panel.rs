@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-use crate::{constants::*, error::ErrorCode, state::Panel};
+use crate::{constants::*, error::ErrorCode, program::EoxArbiter, state::Panel};
 
 #[derive(Accounts)]
 pub struct InitializePanel<'info> {
@@ -28,6 +28,15 @@ pub struct InitializePanel<'info> {
         token::authority = panel
     )]
     pub vault: Account<'info, TokenAccount>,
+    /// Only whoever can upgrade this program may seat the panel, so nobody can front-run
+    /// the deploy and seat themselves.
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
+    pub program: Program<'info, EoxArbiter>,
+    #[account(
+        constraint = program_data.upgrade_authority_address == Some(authority.key())
+            @ ErrorCode::NotUpgradeAuthority
+    )]
+    pub program_data: Account<'info, ProgramData>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }

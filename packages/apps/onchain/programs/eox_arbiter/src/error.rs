@@ -18,4 +18,6 @@ pub enum ErrorCode {
     AlreadyVoted,
     #[msg("The arbiter's deadline has passed")]
     DeadlinePassed,
+    #[msg("Only the program's upgrade authority can do this")]
+    NotUpgradeAuthority,
 }

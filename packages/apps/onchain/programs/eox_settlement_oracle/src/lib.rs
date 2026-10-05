@@ -25,6 +25,14 @@ pub mod eox_settlement_oracle {
         crate::instructions::initialize::handle_initialize(ctx, arbiter, proposers)
     }
 
+    pub fn add_proposer(ctx: Context<ManageProposers>, proposer: Pubkey) -> Result<()> {
+        crate::instructions::manage_proposers::handle_add_proposer(ctx, proposer)
+    }
+
+    pub fn remove_proposer(ctx: Context<ManageProposers>, proposer: Pubkey) -> Result<()> {
+        crate::instructions::manage_proposers::handle_remove_proposer(ctx, proposer)
+    }
+
     pub fn open_epoch(
         ctx: Context<OpenEpoch>,
         year: u16,
