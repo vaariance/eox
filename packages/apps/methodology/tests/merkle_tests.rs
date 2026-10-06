@@ -13,7 +13,7 @@ fn sample_observation(country: &str, indicator: &str, value: &str) -> Observatio
         value: value.to_string(),
         source_id: "nbs-ng".to_string(),
         vintage: "first".to_string(),
-        published_at: now,
+        published_at: Some(now),
         known_at: now,
         recipe_id: Some(1),
         raw_sha256: Some("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()),
@@ -135,4 +135,75 @@ fn test_merkle_tree_proof_generation_and_verification() {
         let invalid = MerkleTree::verify_proof(&root, &fake_leaf, &proof);
         assert!(!invalid, "proof should not verify for tampered leaf");
     }
+}
+
+fn fixed_observation(published_at: Option<chrono::DateTime<Utc>>) -> Observation {
+    use chrono::TimeZone;
+    Observation {
+        country_iso3: "NGA".to_string(),
+        indicator_id: "gdp_real_growth_yoy".to_string(),
+        period_start: "2025-01-01".to_string(),
+        period_end: "2025-12-31".to_string(),
+        value: "3.2".to_string(),
+        source_id: "oecd".to_string(),
+        vintage: "first".to_string(),
+        published_at,
+        known_at: Utc.with_ymd_and_hms(2026, 7, 13, 0, 0, 0).unwrap(),
+        recipe_id: Some(1),
+        raw_sha256: Some("ab".to_string()),
+    }
+}
+
+fn expected_encoding(published: &str) -> Vec<u8> {
+    let mut buf = Vec::new();
+    for field in [
+        "EOX_OBSERVATION_V1",
+        "NGA",
+        "gdp_real_growth_yoy",
+        "2025-01-01",
+        "2025-12-31",
+        "3.2",
+        "oecd",
+        "first",
+        published,
+        "2026-07-13T00:00:00+00:00",
+        "1",
+        "ab",
+    ] {
+        buf.extend_from_slice(&(field.len() as u32).to_be_bytes());
+        buf.extend_from_slice(field.as_bytes());
+    }
+    buf
+}
+
+#[test]
+fn test_known_publish_time_encodes_as_rfc3339() {
+    use chrono::TimeZone;
+    let obs = fixed_observation(Some(Utc.with_ymd_and_hms(2026, 3, 1, 9, 30, 0).unwrap()));
+    assert_eq!(
+        canonicalize_observation(&obs).unwrap(),
+        expected_encoding("2026-03-01T09:30:00+00:00")
+    );
+}
+
+#[test]
+fn test_unknown_publish_time_encodes_as_an_empty_field() {
+    use chrono::TimeZone;
+    let unknown = fixed_observation(None);
+    assert_eq!(canonicalize_observation(&unknown).unwrap(), expected_encoding(""));
+
+    let known = fixed_observation(Some(Utc.with_ymd_and_hms(2026, 3, 1, 9, 30, 0).unwrap()));
+    assert_ne!(hash_observation(&unknown).unwrap(), hash_observation(&known).unwrap());
+}
+
+#[test]
+fn test_publish_time_may_be_null_or_absent_in_snapshot_json() {
+    let mut value = serde_json::to_value(fixed_observation(None)).unwrap();
+    assert_eq!(value["published_at"], serde_json::Value::Null);
+    let parsed: Observation = serde_json::from_value(value.clone()).unwrap();
+    assert_eq!(parsed.published_at, None);
+
+    value.as_object_mut().unwrap().remove("published_at");
+    let parsed: Observation = serde_json::from_value(value).unwrap();
+    assert_eq!(parsed.published_at, None);
 }

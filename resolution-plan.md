@@ -87,9 +87,11 @@ hand for now.
    `gdp_real_growth_yoy`, `cpi_headline_yoy`, `unemployment_rate` and
    `fiscal_deficit_gdp`. Until a version matches, real data can't be scored. Mocked data
    in the v0.1 shape works.
-2. **The observation shape is behind the evidence store.** On `main`, the store adds
-   `raw_value`, `recorded_at` and coverage fields. The engine's `Observation`, and so its
-   canonical leaf encoding, doesn't have them.
+2. **The observation shape is partly behind the evidence store.** `published_at` is now
+   optional end to end (exporter → JSON `null` → engine `None` → empty leaf field), so
+   observations without a publish time can be scored. Known publish times encode exactly as
+   before, so no existing root changed. `raw_value`, `recorded_at` and coverage are still
+   not in the canonical leaf.
 3. **There's no cross-machine reproducibility check.** Tests prove determinism inside one
    run, but nothing pins a known root and hash for a fixed snapshot.
 

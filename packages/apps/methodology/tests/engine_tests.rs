@@ -22,7 +22,7 @@ fn sample_obs(country: &str, indicator: &str, val: &str) -> Observation {
         value: val.to_string(),
         source_id: "official".to_string(),
         vintage: "first".to_string(),
-        published_at: now,
+        published_at: Some(now),
         known_at: now,
         recipe_id: Some(1),
         raw_sha256: Some("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()),
@@ -169,6 +169,15 @@ fn test_indicator_polarity() {
 #[test]
 fn test_all_countries_scored_when_each_reports_the_minimum() {
     let bundle = evaluate(full_set()).unwrap();
+    assert!(bundle.excluded_countries.is_empty());
+    assert_eq!(bundle.country_scores.len(), 5);
+}
+
+#[test]
+fn test_observations_without_a_publish_time_are_scored() {
+    let mut obs = full_set();
+    obs.iter_mut().for_each(|o| o.published_at = None);
+    let bundle = evaluate(obs).unwrap();
     assert!(bundle.excluded_countries.is_empty());
     assert_eq!(bundle.country_scores.len(), 5);
 }

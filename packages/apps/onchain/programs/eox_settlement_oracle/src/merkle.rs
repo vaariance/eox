@@ -49,7 +49,7 @@ mod tests {
             value: value.to_string(),
             source_id: "official".to_string(),
             vintage: "first".to_string(),
-            published_at: recorded,
+            published_at: Some(recorded),
             known_at: recorded,
             recipe_id: None,
             raw_sha256: Some("ab".repeat(32)),

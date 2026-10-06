@@ -10,7 +10,8 @@ pub struct Observation {
     pub value: String,
     pub source_id: String,
     pub vintage: String,
-    pub published_at: DateTime<Utc>,
+    /// When the source says it published the value. `None` when the source does not say.
+    pub published_at: Option<DateTime<Utc>>,
     pub known_at: DateTime<Utc>,
     pub recipe_id: Option<i32>,
     pub raw_sha256: Option<String>,
