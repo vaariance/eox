@@ -1,6 +1,0 @@
-[workspace]
-members = [
-    "packages/apps/methodology",
-]
-exclude = ["packages/optimistic-oracle"]
-resolver = "2"
