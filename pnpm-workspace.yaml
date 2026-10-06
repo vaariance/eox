@@ -1,5 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "packages/optimistic-oracle/sdk"
 allowBuilds:
   esbuild: true
