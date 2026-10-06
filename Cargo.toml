@@ -1,7 +1,5 @@
 [workspace]
 members = [
     "packages/apps/methodology",
-    "packages/apps/eox-oracle",
 ]
-exclude = ["packages/apps/onchain"]
 resolver = "2"
