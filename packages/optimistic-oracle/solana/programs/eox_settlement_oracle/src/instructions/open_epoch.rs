@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{constants::*, error::ErrorCode, state::{Config, Epoch}};
+use crate::{constants::*, state::{Config, Epoch}};
 
 #[derive(Accounts)]
 #[instruction(year: u16)]
@@ -20,20 +20,9 @@ pub struct OpenEpoch<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_open_epoch(
-    ctx: Context<OpenEpoch>,
-    year: u16,
-    bond: u64,
-    methodology_image_id: [u8; 32],
-) -> Result<()> {
-    require!(bond > 0, ErrorCode::ZeroBond);
-
-    **ctx.accounts.epoch = Epoch::new(
-        year,
-        cutoff_timestamp(year),
-        bond,
-        methodology_image_id,
-        ctx.bumps.epoch,
-    );
+/// Opens `year`, pinning the methodology its result must use. Open the matching epoch on the
+/// EVM adapter with the same image ID.
+pub fn handle_open_epoch(ctx: Context<OpenEpoch>, year: u16, methodology_image_id: [u8; 32]) -> Result<()> {
+    **ctx.accounts.epoch = Epoch::new(year, cutoff_timestamp(year), methodology_image_id, ctx.bumps.epoch);
     Ok(())
 }

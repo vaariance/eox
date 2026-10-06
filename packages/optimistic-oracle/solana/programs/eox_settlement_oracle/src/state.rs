@@ -1,35 +1,28 @@
 use anchor_lang::prelude::*;
 
-use crate::constants::{MAX_PARTIES, MAX_PROPOSERS};
-
 #[account]
 #[derive(InitSpace)]
 pub struct Config {
     pub authority: Pubkey,
-    pub bond_mint: Pubkey,
-    pub arbiter: Pubkey,
-    #[max_len(MAX_PROPOSERS)]
-    pub proposers: Vec<Pubkey>,
+    /// The Wormhole core bridge program. Verified VAAs are accounts it owns.
+    pub wormhole_program: Pubkey,
+    /// Wormhole chain ID of the chain the EVM adapter lives on (Base is 30).
+    pub emitter_chain: u16,
+    /// The EVM adapter's address, left-padded to 32 bytes, as Wormhole names emitters.
+    pub emitter_address: [u8; 32],
     pub bump: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub enum EpochStatus {
-    Requested,
-    Proposed,
-    Reset,
-    Escalated,
+    /// Waiting for a result.
+    Open,
     Settled,
+    /// No result arrived by the deadline.
     Voided,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-pub enum Resolution {
-    ProposalWins,
-    DisputerWins,
-    Void,
-}
-
+/// The hashes a result commits to. Matches `Claim` in the EVM adapter.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub struct ClaimBody {
     pub evidence_root: [u8; 32],
@@ -38,78 +31,32 @@ pub struct ClaimBody {
     pub resolution_uri_hash: [u8; 32],
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-pub struct Proposal {
-    pub body: ClaimBody,
-    pub proposer: Pubkey,
-    pub bond: u64,
-    pub proposed_at: i64,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-pub enum GroundsKind {
-    WrongObservation,
-    MissingObservation,
-    Computation,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-pub struct Dispute {
-    pub candidate: ClaimBody,
-    pub disputer: Pubkey,
-    pub bond: u64,
-    pub disputed_at: i64,
-    pub grounds: GroundsKind,
-    pub disputed_leaf: [u8; 32],
-    pub correction: [u8; 32],
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default, InitSpace)]
-pub struct Payout {
-    pub owner: Pubkey,
-    pub amount: u64,
-}
-
 #[account]
 #[derive(InitSpace)]
 pub struct Epoch {
     pub year: u16,
     pub cutoff: i64,
-    pub bond: u64,
     pub methodology_image_id: [u8; 32],
     pub status: EpochStatus,
-    pub round: u8,
-    pub proposals: [Option<Proposal>; 2],
-    pub disputes: [Option<Dispute>; 2],
-    pub reset_at: i64,
-    pub escalated_at: i64,
     pub result: Option<ClaimBody>,
-    pub payouts: [Payout; MAX_PARTIES],
-    pub burn_owed: u64,
+    /// The UMA assertion that settled the epoch.
+    pub assertion_id: [u8; 32],
+    /// Sequence of the Wormhole message the result arrived in.
+    pub wormhole_sequence: u64,
     pub bump: u8,
 }
 
 impl Epoch {
-    pub fn new(year: u16, cutoff: i64, bond: u64, methodology_image_id: [u8; 32], bump: u8) -> Self {
+    pub fn new(year: u16, cutoff: i64, methodology_image_id: [u8; 32], bump: u8) -> Self {
         Self {
             year,
             cutoff,
-            bond,
             methodology_image_id,
-            status: EpochStatus::Requested,
-            round: 0,
-            proposals: [None; 2],
-            disputes: [None; 2],
-            reset_at: 0,
-            escalated_at: 0,
+            status: EpochStatus::Open,
             result: None,
-            payouts: [Payout::default(); MAX_PARTIES],
-            burn_owed: 0,
+            assertion_id: [0; 32],
+            wormhole_sequence: 0,
             bump,
         }
-    }
-
-    pub fn is_resolved(&self) -> bool {
-        matches!(self.status, EpochStatus::Settled | EpochStatus::Voided)
     }
 }

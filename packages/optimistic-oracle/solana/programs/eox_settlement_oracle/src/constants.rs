@@ -4,20 +4,14 @@ use anchor_lang::prelude::*;
 pub const CONFIG_SEED: &[u8] = b"config";
 
 #[constant]
-pub const VAULT_SEED: &[u8] = b"vault";
-
-#[constant]
 pub const EPOCH_SEED: &[u8] = b"epoch";
 
-pub const MAX_PROPOSERS: usize = 8;
-pub const MAX_PARTIES: usize = 4;
-
-const HOUR: i64 = 3600;
 const SECONDS_PER_DAY: i64 = 86_400;
 
-pub const PROPOSAL_WINDOW: i64 = 48 * HOUR;
-pub const CHALLENGE_WINDOW: i64 = 72 * HOUR;
-pub const ARBITER_WINDOW: i64 = 14 * SECONDS_PER_DAY;
+/// How long after the cutoff a relayed result is accepted. The EVM adapter stops taking
+/// assertions 21 days after the cutoff; with UMA's 72-hour liveness, a dispute and the vote,
+/// the last possible result lands well inside this. After it, anyone may void the epoch.
+pub const RESULT_DEADLINE: i64 = 35 * SECONDS_PER_DAY;
 
 /// An epoch is a calendar year; its evidence cutoff is 31 July of the following year, 00:00 UTC.
 pub fn cutoff_timestamp(epoch_year: u16) -> i64 {
@@ -42,14 +36,16 @@ mod tests {
 
     #[test]
     fn cutoff_is_31_july_of_the_following_year() {
+        // Same values the EVM adapter's tests pin.
         assert_eq!(cutoff_timestamp(2025), 1_785_456_000);
         assert_eq!(cutoff_timestamp(1969), 18_230_400);
         assert_eq!(cutoff_timestamp(2027) - cutoff_timestamp(2026), 366 * SECONDS_PER_DAY);
     }
 
     #[test]
-    fn the_longest_path_resolves_within_the_30_day_backstop() {
-        let longest = 2 * PROPOSAL_WINDOW + 2 * CHALLENGE_WINDOW + ARBITER_WINDOW;
-        assert!(longest <= 30 * SECONDS_PER_DAY);
+    fn the_last_possible_uma_result_lands_before_the_deadline() {
+        // Assertion window, liveness, then a dispute: UMA's vote takes roughly 2-4 days.
+        let latest = 21 * SECONDS_PER_DAY + 3 * SECONDS_PER_DAY + 7 * SECONDS_PER_DAY;
+        assert!(latest < RESULT_DEADLINE);
     }
 }
