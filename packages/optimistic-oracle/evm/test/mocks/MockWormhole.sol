@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {IWormhole} from "../../src/interfaces/IWormhole.sol";
 
-/// Records what would be published to the guardians.
 contract MockWormhole is IWormhole {
     struct Published {
         address emitter;

@@ -72,8 +72,6 @@ contract EoxAssertionAdapterTest is Test {
         oracle.resolve(id, true);
     }
 
-    // ------------------------------------------------------------------ cutoff
-
     function test_cutoff_matches_the_solana_program() public view {
         assertEq(adapter.cutoffTimestamp(2025), CUTOFF_2025);
         assertEq(adapter.cutoffTimestamp(1969), 18_230_400);
@@ -86,8 +84,6 @@ contract EoxAssertionAdapterTest is Test {
         assertTrue(gap == 365 days || gap == 366 days);
         assertEq(adapter.cutoffTimestamp(year) % 1 days, 0);
     }
-
-    // ------------------------------------------------------------------ opening
 
     function test_only_the_owner_opens_an_epoch() public {
         vm.prank(stranger);
@@ -107,8 +103,6 @@ contract EoxAssertionAdapterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(EoxAssertionAdapter.BondBelowMinimum.selector, MIN_BOND - 1, MIN_BOND));
         adapter.openEpoch(YEAR, IMAGE_ID, MIN_BOND - 1);
     }
-
-    // ------------------------------------------------------------------ asserting
 
     function test_an_assertion_goes_to_uma_with_the_bond_and_settings() public {
         openEpoch();
@@ -212,8 +206,6 @@ contract EoxAssertionAdapterTest is Test {
         adapter.assertResult(YEAR, claim(), URI);
     }
 
-    // ------------------------------------------------------------------ resolution
-
     function test_a_true_assertion_settles_the_epoch() public {
         bytes32 id = settled();
         EoxAssertionAdapter.Epoch memory epoch = adapter.epochs(YEAR);
@@ -263,8 +255,6 @@ contract EoxAssertionAdapterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(EoxAssertionAdapter.UnknownAssertion.selector, bogus));
         adapter.assertionResolvedCallback(bogus, true);
     }
-
-    // ------------------------------------------------------------------ publishing
 
     function test_the_payload_layout_is_what_the_solana_program_reads() public {
         bytes32 id = settled();

@@ -5,7 +5,6 @@ export const ASSERTION_WINDOW_SECONDS = 21 * 86_400;
 /** Seconds after the cutoff the Solana program accepts a result. Matches `RESULT_DEADLINE`. */
 export const RESULT_DEADLINE_SECONDS = 35 * 86_400;
 
-/** Wormhole chain IDs used by EOX. */
 export const WORMHOLE_CHAIN = {
   solana: 1,
   base: 30,

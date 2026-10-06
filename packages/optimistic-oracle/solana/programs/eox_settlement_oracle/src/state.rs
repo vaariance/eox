@@ -15,10 +15,8 @@ pub struct Config {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub enum EpochStatus {
-    /// Waiting for a result.
     Open,
     Settled,
-    /// No result arrived by the deadline.
     Voided,
 }
 

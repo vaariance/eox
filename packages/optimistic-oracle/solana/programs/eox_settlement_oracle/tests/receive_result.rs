@@ -119,6 +119,5 @@ fn the_epoch_must_be_the_one_named() {
     let mut env = TestEnv::new();
     env.set_time(cutoff() + 4 * DAY);
     let vaa = env.post_result(1, &unhex(GOLDEN_PAYLOAD));
-    // No epoch account for 2030.
     assert_anchor_error(env.receive(2030, vaa), AnchorError::AccountNotInitialized.into());
 }

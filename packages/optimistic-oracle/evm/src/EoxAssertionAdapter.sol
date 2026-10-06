@@ -10,11 +10,10 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IOptimisticOracleV3, IOptimisticOracleV3CallbackRecipient} from "./interfaces/IOptimisticOracleV3.sol";
 import {IWormhole} from "./interfaces/IWormhole.sol";
 
-/// @title EoxAssertionAdapter
 /// @notice Settles each yearly EOX epoch through UMA's Optimistic Oracle V3 and publishes the
 /// result over Wormhole for the EOX Solana program.
 ///
-/// After an epoch's evidence cutoff, anyone may assert its result: the hashes the EOX engine
+/// After an epoch's evidence cutoff, anyone may assert its result: the hashes the methodology
 /// produces from the official snapshot. The assertion goes to UMA with a bond. If nobody
 /// disputes it within the liveness period, or UMA's vote upholds it, it becomes the epoch's
 /// result. A false assertion clears the way for a new one until the assertion window closes.
@@ -103,8 +102,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         identifier = oracle_.defaultIdentifier();
     }
 
-    // ------------------------------------------------------------------ epochs
-
     /// Opens `year` for assertions, pinning the methodology the result must be computed with.
     function openEpoch(uint16 year, bytes32 methodologyImageId, uint256 bond) external onlyOwner {
         Epoch storage epoch = _epochs[year];
@@ -171,8 +168,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         emit ResultPublished(year, sequence);
     }
 
-    // ------------------------------------------------------------------ oracle callbacks
-
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external onlyOracle {
         Assertion storage assertion = _assertions[assertionId];
         uint16 year = assertion.year;
@@ -195,8 +190,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         if (_epochs[year].activeAssertion != assertionId) revert UnknownAssertion(assertionId);
         emit AssertionDisputed(year, assertionId);
     }
-
-    // ------------------------------------------------------------------ views
 
     function epochs(uint16 year) external view returns (Epoch memory) {
         return _epochs[year];
@@ -222,7 +215,7 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
     }
 
     /// The text UMA voters see if an assertion is disputed. It states exactly what makes the
-    /// assertion true, so a voter can check it by re-running the engine.
+    /// assertion true, so a voter can check it by re-running the methodology.
     function claimText(uint16 year, Claim calldata claim, string calldata resolutionUri)
         public
         pure
@@ -249,7 +242,7 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
     }
 
     /// 31 July of the year after `year`, 00:00 UTC. Matches `cutoff_timestamp` in the Solana
-    /// program and the engine's evidence cutoff.
+    /// program.
     function cutoffTimestamp(uint16 year) public pure returns (uint256) {
         // Days since 1970-01-01 for (year + 1)-07-31, Howard Hinnant's days_from_civil. July is
         // after February, so the year needs no adjustment.

@@ -22,7 +22,6 @@ pub type TxResult = Result<TransactionMetadata, Box<FailedTransactionMetadata>>;
 
 pub const YEAR: u16 = 2025;
 pub const IMAGE_ID: [u8; 32] = word(0x2222);
-/// Wormhole chain ID for Base.
 pub const BASE_CHAIN: u16 = 30;
 pub const DAY: i64 = 86_400;
 
@@ -206,7 +205,6 @@ impl TestEnv {
         self.open_epoch_as(&authority, year, image_id)
     }
 
-    /// Writes a posted VAA account owned by `owner` and returns its address.
     pub fn post(&mut self, owner: Pubkey, data: Vec<u8>) -> Pubkey {
         let address = Pubkey::new_unique();
         let account = Account { lamports: 1_000_000_000, data, owner, executable: false, rent_epoch: 0 };

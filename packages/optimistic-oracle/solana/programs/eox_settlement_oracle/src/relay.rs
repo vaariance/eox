@@ -16,7 +16,6 @@ pub const PAYLOAD_MAGIC: &[u8; 4] = b"EOXR";
 pub const PAYLOAD_VERSION: u8 = 1;
 pub const PAYLOAD_LEN: usize = 4 + 1 + 2 + 32 * 5;
 
-/// The parts of a posted VAA the program uses.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PostedVaa<'a> {
     pub sequence: u64,

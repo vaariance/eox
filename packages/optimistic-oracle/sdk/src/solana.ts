@@ -12,7 +12,6 @@ import { type Address as EvmAddress, type Hex, bytesToHex, hexToBytes, isAddress
 
 import type { Claim } from "./payload.js";
 
-/** The deployed `eox_settlement_oracle` program. */
 export const PROGRAM_ID = address("DDReyVxqqL3AtC8D6qpbnotZK1c8WBTN2nPdx1WtPHMt");
 
 const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
@@ -191,7 +190,6 @@ function expectDiscriminator(r: Reader, name: string) {
 
 const STATUSES: EpochStatus[] = ["open", "settled", "voided"];
 
-/** Decodes an `Epoch` account's data. */
 export function decodeEpoch(accountData: Uint8Array): SolanaEpoch {
   const r = new Reader(accountData);
   expectDiscriminator(r, "Epoch");
@@ -206,7 +204,6 @@ export function decodeEpoch(accountData: Uint8Array): SolanaEpoch {
   return { year, cutoff, methodologyImageId, status, result, assertionId: r.hex32(), wormholeSequence: r.u64(), bump: r.u8() };
 }
 
-/** Decodes the `Config` account's data. */
 export function decodeConfig(accountData: Uint8Array): SolanaConfig {
   const r = new Reader(accountData);
   expectDiscriminator(r, "Config");
