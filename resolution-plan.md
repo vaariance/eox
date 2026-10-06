@@ -61,12 +61,12 @@ we didn't use UMA.
 | Engine `eox-engine` | `packages/apps/methodology` | `feat/resolution-oracle` | ✅ v0.1: fixed-point math, normalization, weights, WORLD-ex-self benchmark, min 3 indicators per country, cutoff and epoch-year checks, Merkle tree, canonical encoding, output hash. 33 tests pass |
 | Settlement program | `packages/apps/onchain/programs/eox_settlement_oracle` | `feat/resolution-oracle` | ✅ Initialize (upgrade authority only), proposer list, open epoch, propose, dispute (incl. on-chain Merkle check), settle, escalate, void, withdraw, burn. 63 LiteSVM tests |
 | Arbiter program | `packages/apps/onchain/programs/eox_arbiter` | `feat/resolution-oracle` | ✅ 3 bonded members, open case, vote, CPI into `resolve_arbitration` on a 2-of-3 majority. 15 LiteSVM tests |
-| Oracle bots `eox-oracle` | `packages/apps/eox-oracle` | `feat/resolution-oracle` | 🟡 `propose`, `watch`, `crank` and `run-engine` CLI written against `Chain` (RPC + LiteSVM trait). Only `cross_check` has tests (3). The refactor in `d470928` deleted the old crank, watchtower and state-machine tests without replacing them |
+| Oracle bots `eox-oracle` | `packages/apps/eox-oracle` | `feat/resolution-oracle` | 🟡 `propose`, `watch`, `crank` and `run-engine` CLI written against the `Chain` trait. 22 bot tests run on mocked data (`fixtures/mock-snapshot-2025.json`) and an in-memory `MockChain` (`tests/bot_tests.rs`). Not yet run against the real programs in LiteSVM |
 | zk proof of engine | — | — | ⬜ Not started. `methodology_image_id` is pinned per epoch, ready for it |
 | Publishing (resolution URI) | — | — | ⬜ Not started. Bots take a `--resolution_uri`, but nothing uploads the snapshot and bundle |
 | Market / API / web | `apps/` | — | ⬜ Later |
 
-Verified on 2026-10-06: `cargo test -p eox-engine -p eox-oracle` passes 36 tests. The
+Verified on 2026-10-06: `cargo test -p eox-engine -p eox-oracle` passes 58 tests. The
 on-chain tests need Anchor 1.2 and `anchor build --arch v0`, and were not re-run here.
 
 ## 3. Known gaps and risks
@@ -89,9 +89,10 @@ on-chain tests need Anchor 1.2 and `anchor build --arch v0`, and were not re-run
    the DB and can't be faked. `known_at` is the source's own claim. The exporter and engine
    currently filter on `known_at`. Pick one, because it decides what an honest watcher can
    reproduce.
-4. **The bots have no tests.** Propose, watch and crank mirror the program's deadline
-   checks by hand (`accepting_proposals`, `due`). If those copies drift from the program,
-   bots will send transactions that fail, or miss deadlines.
+4. **The bots are only tested against a mock chain.** Propose, watch and crank mirror the
+   program's deadline checks by hand (`accepting_proposals`, `due`). The mock tests pin
+   those copies to the documented windows, but only a LiteSVM run against the compiled
+   programs proves they match what the program actually accepts.
 5. **The resolution URI is a hash with nothing behind it.** Watchers need the proposer's
    published snapshot to name a `WrongObservation`. Without it, `watch` can only return
    `CannotVerify`, and a person has to step in.
@@ -111,12 +112,14 @@ on-chain tests need Anchor 1.2 and `anchor build --arch v0`, and were not re-run
 4. Add an end-to-end test: seed the evidence store, export as of the cutoff, run the
    engine, check that the root and hash are stable across runs.
 
-### Phase B: harden the bots
-5. Add LiteSVM tests for `propose`, `watch` and `crank` using the `Chain` trait. Cover the
-   happy path, a wrong observation, a missing observation, a computation dispute, each
-   deadline edge, and round 2 at 2× bond.
-6. Add a test that checks the bots' deadline mirrors (`accepting_proposals`, `due`)
-   against the program's real accept/reject result at each boundary second.
+### Phase B: harden the bots (runs on mocked data, doesn't wait on Phase A)
+5. ✅ Mock-chain tests for `propose`, `watch` and `crank` on the mocked snapshot: happy
+   path, wrong, extra and missing observations (the Merkle proof is checked with the
+   program's own `is_member`), computation disputes, unverifiable claims, and every
+   deadline edge.
+6. Add a `LiteSvmChain` (the `Chain` trait over LiteSVM) and run the same scenarios against
+   the compiled programs, including round 2 at 2× bond and the deadline boundary seconds.
+   Needs `anchor build --arch v0`, so run it where the Solana toolchain is installed.
 7. Add a long-running mode or cron wrapper, so watch and crank don't depend on someone
    running the CLI.
 
@@ -162,6 +165,9 @@ pnpm --filter @eox/ingestion ingest:container-throughput
 
 # engine + bots (feat/resolution-oracle)
 cargo test -p eox-engine -p eox-oracle
+# dry run the engine on mocked data
+cargo run -p eox-oracle -- run-engine -s packages/apps/eox-oracle/fixtures/mock-snapshot-2025.json \
+  -e epoch_2025 -m 0202020202020202020202020202020202020202020202020202020202020202
 cargo run -p eox-oracle -- run-engine -s snapshot.json -e epoch_2025 -m <64-hex image id>
 
 # programs
