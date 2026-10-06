@@ -1,35 +1,75 @@
-import { getLatest, recordObservation, type NewObservation } from "@eox/evidence-store";
+import { getVersions, recordObservation, type NewObservation, type Observation } from "@eox/evidence-store";
 
-interface KnownValue {
-  value: string;
+interface StoredVersion {
   knownAt: number;
+  value: string;
   hasPayload: boolean;
+  coverageReported: number | null;
+  coverageTotal: number | null;
 }
 
 function periodKey(observation: { periodStart: string; periodEnd: string }): string {
   return `${observation.periodStart}/${observation.periodEnd}`;
 }
 
-function knownAtMillis(observation: NewObservation): number {
-  return observation.knownAt ? Date.parse(observation.knownAt) : Number.MAX_SAFE_INTEGER;
+function toStoredVersion(observation: Observation): StoredVersion {
+  return {
+    knownAt: new Date(observation.knownAt).getTime(),
+    value: observation.value,
+    hasPayload: observation.rawSha256 !== null,
+    coverageReported: observation.coverageReported,
+    coverageTotal: observation.coverageTotal,
+  };
 }
 
-async function loadKnownValues(sample: NewObservation): Promise<Map<string, KnownValue>> {
-  const latest = await getLatest({
+function toIncomingVersion(observation: NewObservation, knownAt: number): StoredVersion {
+  return {
+    knownAt,
+    value: String(observation.value),
+    hasPayload: Boolean(observation.rawSha256),
+    coverageReported: observation.coverageReported ?? null,
+    coverageTotal: observation.coverageTotal ?? null,
+  };
+}
+
+function carriesSameEvidence(stored: StoredVersion, incoming: StoredVersion, vintaged: boolean): boolean {
+  return (
+    stored.value === incoming.value &&
+    stored.coverageReported === incoming.coverageReported &&
+    stored.coverageTotal === incoming.coverageTotal &&
+    (vintaged || stored.hasPayload || !incoming.hasPayload)
+  );
+}
+
+function insertSorted(versions: StoredVersion[], version: StoredVersion): void {
+  const index = versions.findIndex((existing) => existing.knownAt > version.knownAt);
+  if (index === -1) versions.push(version);
+  else versions.splice(index, 0, version);
+}
+
+async function loadVersions(sample: NewObservation): Promise<Map<string, StoredVersion[]>> {
+  const stored = await getVersions({
     countryIso3: sample.countryIso3,
     indicatorId: sample.indicatorId,
     sourceId: sample.sourceId,
   });
-  return new Map(
-    latest.map((observation) => [
-      periodKey(observation),
-      {
-        value: observation.value,
-        knownAt: new Date(observation.knownAt).getTime(),
-        hasPayload: observation.rawSha256 !== null,
-      },
-    ]),
-  );
+  const byPeriod = new Map<string, StoredVersion[]>();
+  for (const observation of stored) {
+    const key = periodKey(observation);
+    const versions = byPeriod.get(key);
+    if (versions) versions.push(toStoredVersion(observation));
+    else byPeriod.set(key, [toStoredVersion(observation)]);
+  }
+  for (const versions of byPeriod.values()) versions.sort((a, b) => a.knownAt - b.knownAt);
+  return byPeriod;
+}
+
+function isRedundant(versions: readonly StoredVersion[], incoming: StoredVersion, vintaged: boolean): boolean {
+  if (vintaged && versions.some((version) => version.knownAt === incoming.knownAt)) return true;
+  const predecessor = vintaged
+    ? versions.filter((version) => version.knownAt < incoming.knownAt).at(-1)
+    : versions.at(-1);
+  return predecessor !== undefined && carriesSameEvidence(predecessor, incoming, vintaged);
 }
 
 export async function recordRevisions(observations: readonly NewObservation[]): Promise<number> {
@@ -43,17 +83,19 @@ export async function recordRevisions(observations: readonly NewObservation[]): 
 
   let recorded = 0;
   for (const group of groups.values()) {
-    const known = await loadKnownValues(group[0]);
-    const ordered = [...group].sort((a, b) => knownAtMillis(a) - knownAtMillis(b));
+    const byPeriod = await loadVersions(group[0]);
+    const ordered = [...group].sort(
+      (a, b) => (a.knownAt ? Date.parse(a.knownAt) : Infinity) - (b.knownAt ? Date.parse(b.knownAt) : Infinity) || 0,
+    );
     for (const observation of ordered) {
       const key = periodKey(observation);
-      const existing = known.get(key);
-      const value = String(observation.value);
-      const knownAt = knownAtMillis(observation);
-      const unchanged = existing?.value === value && (existing.hasPayload || !observation.rawSha256);
-      if (existing && (unchanged || existing.knownAt >= knownAt)) continue;
-      await recordObservation(observation);
-      known.set(key, { value, knownAt, hasPayload: Boolean(observation.rawSha256) });
+      const versions = byPeriod.get(key) ?? [];
+      const vintaged = observation.knownAt !== undefined;
+      const incoming = toIncomingVersion(observation, vintaged ? Date.parse(observation.knownAt as string) : Date.now());
+      if (isRedundant(versions, incoming, vintaged)) continue;
+      const stored = await recordObservation(observation);
+      insertSorted(versions, toStoredVersion(stored));
+      byPeriod.set(key, versions);
       recorded++;
     }
   }

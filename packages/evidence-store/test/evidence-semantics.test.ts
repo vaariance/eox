@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { pool, recordObservation, recordSourcePayload } from "../src/index.js";
+import { getVersions, pool, recordObservation, recordSourcePayload } from "../src/index.js";
 
 afterAll(async () => {
   await pool.end();
@@ -55,6 +55,15 @@ describe("evidence fields", () => {
     ).rejects.toThrow(/observations_coverage_check/);
   });
 
+  it("rejects a coverage pair with only one count", async () => {
+    await expect(
+      recordObservation({ ...base, periodStart: "2025-09-01", periodEnd: "2025-09-30", coverageTotal: 10 }),
+    ).rejects.toThrow(/observations_coverage_check/);
+    await expect(
+      recordObservation({ ...base, periodStart: "2025-10-01", periodEnd: "2025-10-31", coverageReported: 4 }),
+    ).rejects.toThrow(/observations_coverage_check/);
+  });
+
   it("rejects a raw hash that does not reference a stored payload", async () => {
     await expect(
       recordObservation({ ...base, periodStart: "2025-07-01", periodEnd: "2025-07-31", rawSha256: "f".repeat(64) }),
@@ -90,6 +99,41 @@ describe("source payloads", () => {
     expect(second.requestUrl).toBe(first.requestUrl);
   });
 
+  it("returns the stored record when a concurrent run commits the same payload first", async () => {
+    const racing = new TextEncoder().encode(`race-${Date.now()}-${Math.random()}`);
+    const expected = createHash("sha256").update(racing).digest("hex");
+    const competitor = await pool.connect();
+    try {
+      await competitor.query("BEGIN");
+      await competitor.query(
+        `INSERT INTO source_payloads (sha256, source_id, request_url, http_status, body)
+         VALUES ($1, 'oecd', 'https://example.test/race/first', 200, $2)`,
+        [expected, Buffer.from(racing)],
+      );
+      const pending = recordSourcePayload({
+        sourceId: "oecd",
+        requestUrl: "https://example.test/race/second",
+        httpStatus: 200,
+        contentType: "text/plain",
+        body: racing,
+      });
+      for (;;) {
+        const { rows } = await pool.query(
+          `SELECT count(*)::int AS waiting FROM pg_stat_activity
+            WHERE wait_event_type = 'Lock' AND query LIKE '%INSERT INTO source_payloads%' AND pid <> pg_backend_pid()`,
+        );
+        if (rows[0].waiting > 0) break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      await competitor.query("COMMIT");
+      const result = await pending;
+      expect(result?.sha256).toBe(expected);
+      expect(result.requestUrl).toBe("https://example.test/race/first");
+    } finally {
+      competitor.release();
+    }
+  });
+
   it("rejects a hash that does not match the body", async () => {
     await expect(
       pool.query(
@@ -104,5 +148,25 @@ describe("source payloads", () => {
     await expect(pool.query("UPDATE source_payloads SET request_url = 'x' WHERE sha256 = $1", [sha256])).rejects.toThrow(/append-only/);
     await expect(pool.query("DELETE FROM source_payloads WHERE sha256 = $1", [sha256])).rejects.toThrow(/append-only/);
     await expect(pool.query("TRUNCATE source_payloads CASCADE")).rejects.toThrow(/append-only/);
+  });
+});
+
+describe("getVersions", () => {
+  it("returns every version for every period, ordered by period then known_at", async () => {
+    const q = { countryIso3: "CAN", indicatorId: "policy_rate", sourceId: "bis" };
+    const versions = [
+      { periodStart: "2025-02-01", periodEnd: "2025-02-28", value: "2.75", knownAt: "2025-03-01T00:00:00Z" },
+      { periodStart: "2025-01-01", periodEnd: "2025-01-31", value: "3.00", knownAt: "2025-02-15T00:00:00Z" },
+      { periodStart: "2025-01-01", periodEnd: "2025-01-31", value: "3.25", knownAt: "2025-02-01T00:00:00Z" },
+    ];
+    for (const version of versions) {
+      await recordObservation({ ...q, ...version, vintage: "versions-test" });
+    }
+    const stored = await getVersions(q);
+    expect(stored.map((row) => `${row.periodStart} ${row.value}`)).toEqual([
+      "2025-01-01 3.250000",
+      "2025-01-01 3.000000",
+      "2025-02-01 2.750000",
+    ]);
   });
 });

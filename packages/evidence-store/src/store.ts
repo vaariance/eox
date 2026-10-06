@@ -47,24 +47,24 @@ async function insert(
   return rows[0];
 }
 
+const PAYLOAD_COLUMNS = `
+  sha256, source_id AS "sourceId", request_url AS "requestUrl", http_status AS "httpStatus",
+  content_type AS "contentType", recorded_at AS "recordedAt"`;
+
 export async function recordSourcePayload(p: NewSourcePayload): Promise<SourcePayload> {
   const body = Buffer.from(p.body);
   const sha256 = createHash("sha256").update(body).digest("hex");
-  const { rows } = await pool.query(
-    `WITH inserted AS (
-       INSERT INTO source_payloads (sha256, source_id, request_url, http_status, content_type, body)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (sha256) DO NOTHING
-       RETURNING sha256, source_id, request_url, http_status, content_type, recorded_at
-     )
-     SELECT sha256, source_id AS "sourceId", request_url AS "requestUrl", http_status AS "httpStatus",
-            content_type AS "contentType", recorded_at AS "recordedAt" FROM inserted
-     UNION ALL
-     SELECT sha256, source_id, request_url, http_status, content_type, recorded_at
-       FROM source_payloads WHERE sha256 = $1 AND NOT EXISTS (SELECT 1 FROM inserted)`,
+  const inserted = await pool.query(
+    `INSERT INTO source_payloads (sha256, source_id, request_url, http_status, content_type, body)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (sha256) DO NOTHING
+     RETURNING ${PAYLOAD_COLUMNS}`,
     [sha256, p.sourceId, p.requestUrl, p.httpStatus, p.contentType, body],
   );
-  return rows[0];
+  if (inserted.rows[0]) return inserted.rows[0];
+  const existing = await pool.query(`SELECT ${PAYLOAD_COLUMNS} FROM source_payloads WHERE sha256 = $1`, [sha256]);
+  if (!existing.rows[0]) throw new Error(`source payload ${sha256} was neither inserted nor found`);
+  return existing.rows[0];
 }
 
 export async function getAsOf(q: Query, asOf: Date | string): Promise<Observation[]> {
@@ -94,6 +94,18 @@ export async function getHistory(q: Query, periodStart: string): Promise<Observa
         AND period_start = $4
       ORDER BY known_at, observations.id`,
     [q.countryIso3, q.indicatorId, q.sourceId ?? null, periodStart],
+  );
+  return rows;
+}
+
+export async function getVersions(q: Query): Promise<Observation[]> {
+  const { rows } = await pool.query(
+    `SELECT ${COLUMNS}
+       FROM observations
+      WHERE country_iso3 = $1 AND indicator_id = $2
+        AND ($3::text IS NULL OR source_id = $3)
+      ORDER BY period_start, period_end, known_at, observations.id`,
+    [q.countryIso3, q.indicatorId, q.sourceId ?? null],
   );
   return rows;
 }

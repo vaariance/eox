@@ -11,14 +11,18 @@
     "ingest:unemployment-rate": "tsx src/ingest/unemployment-rate.ts",
     "ingest:policy-rate": "tsx src/ingest/policy-rate.ts",
     "ingest:residential-property-price": "tsx src/ingest/residential-property-price.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "test": "vitest run"
   },
   "dependencies": {
     "@eox/evidence-store": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "pg": "^8.12.0",
     "tsx": "^4.16.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
   }
 }
