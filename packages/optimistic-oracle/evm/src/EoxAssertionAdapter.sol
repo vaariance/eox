@@ -90,7 +90,7 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
     error ResolutionUriMismatch();
 
     modifier onlyOracle() {
-        if (msg.sender != address(oracle)) revert NotOracle();
+        _onlyOracle();
         _;
     }
 
@@ -260,6 +260,10 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         uint256 dayOfYear = 152;
         uint256 dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear;
         return (era * 146_097 + dayOfEra - 719_468) * SECONDS_PER_DAY;
+    }
+
+    function _onlyOracle() private view {
+        if (msg.sender != address(oracle)) revert NotOracle();
     }
 
     function _hex(bytes32 value) private pure returns (string memory) {

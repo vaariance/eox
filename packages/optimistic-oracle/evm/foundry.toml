@@ -12,5 +12,10 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
 
+[lint]
+# Public immutables are part of the ABI (oracle(), wormhole(), bondCurrency(), identifier())
+# that the SDK calls; renaming them to SCREAMING_SNAKE_CASE would rename those getters.
+exclude_lints = ["screaming-snake-case-immutable"]
+
 [fmt]
 line_length = 100

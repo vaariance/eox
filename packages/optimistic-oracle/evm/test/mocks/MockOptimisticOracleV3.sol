@@ -46,9 +46,17 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
         require(bond >= minimumBond, "bond below minimum");
         currency.safeTransferFrom(msg.sender, address(this), bond);
         assertionId = keccak256(abi.encode(++_nonce, claim));
-        assertions[assertionId] = Recorded(
-            claim, asserter, callbackRecipient, escalationManager, liveness, currency, bond, identifier, domainId
-        );
+        assertions[assertionId] = Recorded({
+            claim: claim,
+            asserter: asserter,
+            callbackRecipient: callbackRecipient,
+            escalationManager: escalationManager,
+            liveness: liveness,
+            currency: currency,
+            bond: bond,
+            identifier: identifier,
+            domainId: domainId
+        });
     }
 
     function defaultIdentifier() external pure returns (bytes32) {

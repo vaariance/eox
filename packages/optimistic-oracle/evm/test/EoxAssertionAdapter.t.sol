@@ -275,7 +275,7 @@ contract EoxAssertionAdapterTest is Test {
         assertEq(
             payload,
             bytes.concat(
-                bytes4("EOXR"),
+                adapter.PAYLOAD_MAGIC(),
                 bytes1(0x01),
                 bytes2(uint16(2025)),
                 c.evidenceRoot,

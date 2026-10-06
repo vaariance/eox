@@ -26,7 +26,15 @@ contract MockWormhole is IWormhole {
         returns (uint64 sequence)
     {
         require(msg.value == fee, "wrong fee");
-        published.push(Published(msg.sender, nonce, payload, consistencyLevel, msg.value));
+        published.push(
+            Published({
+                emitter: msg.sender,
+                nonce: nonce,
+                payload: payload,
+                consistencyLevel: consistencyLevel,
+                fee: msg.value
+            })
+        );
         return uint64(published.length - 1);
     }
 
