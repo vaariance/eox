@@ -98,3 +98,14 @@ export async function getHistory(q: Query, periodStart: string): Promise<Observa
   return rows;
 }
 
+export async function getVersions(q: Query): Promise<Observation[]> {
+  const { rows } = await pool.query(
+    `SELECT ${COLUMNS}
+       FROM observations
+      WHERE country_iso3 = $1 AND indicator_id = $2
+        AND ($3::text IS NULL OR source_id = $3)
+      ORDER BY period_start, period_end, known_at, observations.id`,
+    [q.countryIso3, q.indicatorId, q.sourceId ?? null],
+  );
+  return rows;
+}
