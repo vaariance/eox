@@ -2,4 +2,5 @@
 members = [
     "packages/apps/methodology",
 ]
+exclude = ["packages/apps/onchain"]
 resolver = "2"

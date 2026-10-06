@@ -1,13 +1,18 @@
 # EOX Resolution Plan
 
-Scope: the **deterministic engine** (`eox-engine`, `packages/apps/methodology`). Given a
-snapshot of evidence, it always produces the same scores, the same evidence root and the
-same output hash, so anyone can re-run it and check a result.
+Scope: a deterministic oracle with two parts.
+
+- **The engine** (`eox-engine`, `packages/apps/methodology`). Given a snapshot of evidence,
+  it always produces the same scores, evidence root and output hash, so anyone can re-run
+  it and check a result.
+- **The settlement program** (`eox_settlement_oracle`, `packages/apps/onchain`). It
+  commits the engine's hashes on-chain, lets anyone challenge them with a bond, and
+  records the final result.
 
 > Rebuilt on 2026-10-06. The original plan lived in the gitignored `docs/` folder and was
-> lost. On 2026-10-06 the scope was narrowed to the engine only. The settlement program,
-> arbiter panel, oracle bots and their tests were removed from `feat/resolution-oracle`
-> (they remain in git history before the removal commit).
+> lost. On 2026-10-06 the scope was narrowed to the engine and the settlement program. The
+> arbiter panel program and the oracle bots were removed, and remain in git history at
+> `b6f85a6`.
 
 ## 1. What the engine does
 
@@ -40,6 +45,25 @@ Public API: `evaluate_methodology`, `hash_output_bundle`, `canonicalize_output_b
 `build_snapshot`, `get_methodology_config`, `merkle::{compute_evidence_root,
 hash_observation, canonicalize_observation, MerkleTree}`, `Wad`.
 
+## 1b. How a year settles on-chain
+
+1. Epoch `Y`'s evidence cutoff is 31 July `Y+1`. An approved proposer posts the claim
+   (evidence root, methodology image ID, output hash, resolution URI hash) with a bond
+   within 48 h.
+2. Anyone may challenge within 72 h with the same bond and stated grounds.
+   `WrongObservation` is checked on-chain with a Merkle proof.
+3. With no challenge, `settle` commits the claim as `epoch.result`.
+4. A first challenge resets the epoch. A new claim at 2× the bond has 48 h.
+5. A second challenge escalates it. The arbiter key from `initialize` has 14 days to call
+   `resolve_arbitration`. The panel program is removed, so that key is a plain signer
+   for now.
+6. Any missed deadline voids the epoch and refunds every bond. The winner gets their bond
+   back plus 90% of the loser's, and 10% is burned. Each party `withdraw`s their own.
+
+Nothing calls the program on its own. Proposals, challenges and the `settle`, `void` and
+`burn` calls have to be sent by someone. That was the removed bots' job, so it's done by
+hand for now.
+
 ## 2. Status
 
 | Item | Status |
@@ -50,6 +74,8 @@ hash_observation, canonicalize_observation, MerkleTree}`, `Wad`.
 | Tests | ✅ 33 pass (`cargo test -p eox-engine`): 27 engine, 6 Merkle |
 | CLI to run the engine on a snapshot file | ⬜ Removed with `eox-oracle`. The engine is a library only |
 | Methodology matching the ingested data | ⬜ See gap 1 |
+| Settlement program | ✅ Restored. 13 unit tests pass natively. 63 LiteSVM tests need `anchor build --arch v0` (not run here) |
+| Arbiter for escalated disputes | ⬜ Panel program removed. Pick a signer: multisig, or restore the panel |
 
 ## 3. Known gaps
 
@@ -95,6 +121,7 @@ hash_observation, canonicalize_observation, MerkleTree}`, `Wad`.
 
 ```bash
 cargo test -p eox-engine
+cd packages/apps/onchain && anchor build --arch v0 && cargo test
 ```
 
 Keep this file up to date as steps land and decisions are made.
