@@ -6,7 +6,7 @@
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @eox/evidence-store migrate",
     "demo": "pnpm --filter @eox/evidence-store demo",
-    "test": "pnpm --filter @eox/evidence-store test",
+    "test": "pnpm -r test",
     "ingest:container-throughput": "pnpm --filter @eox/ingestion ingest:container-throughput",
     "ingest:gdp-real-volume": "pnpm --filter @eox/ingestion ingest:gdp-real-volume",
     "ingest:core-cpi": "pnpm --filter @eox/ingestion ingest:core-cpi",
