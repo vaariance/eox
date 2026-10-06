@@ -1,13 +1,15 @@
+import { createHash } from "node:crypto";
 import { pool } from "./db.js";
-import type { NewObservation, Observation, Query } from "./types.js";
+import type { NewObservation, NewSourcePayload, Observation, Query, SourcePayload } from "./types.js";
 
 const COLUMNS = `
   id::text, country_iso3 AS "countryIso3", indicator_id AS "indicatorId",
   to_char(period_start, 'YYYY-MM-DD') AS "periodStart",
   to_char(period_end,   'YYYY-MM-DD') AS "periodEnd",
   value::text AS value, source_id AS "sourceId", vintage,
-  published_at AS "publishedAt", known_at AS "knownAt",
-  recipe_id AS "recipeId", raw_sha256 AS "rawSha256",
+  published_at AS "publishedAt", known_at AS "knownAt", recorded_at AS "recordedAt",
+  recipe_id AS "recipeId", raw_sha256 AS "rawSha256", raw_value AS "rawValue",
+  coverage_reported AS "coverageReported", coverage_total AS "coverageTotal",
   supersedes_id::text AS "supersedesId", correction_reason AS "correctionReason"`;
 
 export async function recordObservation(o: NewObservation): Promise<Observation> {
@@ -31,15 +33,36 @@ async function insert(
   const { rows } = await pool.query(
     `INSERT INTO observations
        (country_iso3, indicator_id, period_start, period_end, value, source_id,
-        vintage, published_at, known_at, recipe_id, raw_sha256,
-        supersedes_id, correction_reason)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, COALESCE($9::timestamptz, now()), $10,$11,$12,$13)
+        vintage, published_at, known_at, recipe_id, raw_sha256, raw_value,
+        coverage_reported, coverage_total, supersedes_id, correction_reason)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, COALESCE($9::timestamptz, now()), $10,$11,$12,$13,$14,$15,$16)
      RETURNING ${COLUMNS}`,
     [
       o.countryIso3, o.indicatorId, o.periodStart, o.periodEnd, String(o.value),
-      o.sourceId, o.vintage, o.publishedAt, o.knownAt ?? null,
-      o.recipeId ?? null, o.rawSha256 ?? null, supersedesId, reason,
+      o.sourceId, o.vintage, o.publishedAt ?? null, o.knownAt ?? null,
+      o.recipeId ?? null, o.rawSha256 ?? null, o.rawValue ?? null,
+      o.coverageReported ?? null, o.coverageTotal ?? null, supersedesId, reason,
     ],
+  );
+  return rows[0];
+}
+
+export async function recordSourcePayload(p: NewSourcePayload): Promise<SourcePayload> {
+  const body = Buffer.from(p.body);
+  const sha256 = createHash("sha256").update(body).digest("hex");
+  const { rows } = await pool.query(
+    `WITH inserted AS (
+       INSERT INTO source_payloads (sha256, source_id, request_url, http_status, content_type, body)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (sha256) DO NOTHING
+       RETURNING sha256, source_id, request_url, http_status, content_type, recorded_at
+     )
+     SELECT sha256, source_id AS "sourceId", request_url AS "requestUrl", http_status AS "httpStatus",
+            content_type AS "contentType", recorded_at AS "recordedAt" FROM inserted
+     UNION ALL
+     SELECT sha256, source_id, request_url, http_status, content_type, recorded_at
+       FROM source_payloads WHERE sha256 = $1 AND NOT EXISTS (SELECT 1 FROM inserted)`,
+    [sha256, p.sourceId, p.requestUrl, p.httpStatus, p.contentType, body],
   );
   return rows[0];
 }

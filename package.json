@@ -6,6 +6,12 @@
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @eox/evidence-store migrate",
     "demo": "pnpm --filter @eox/evidence-store demo",
-    "test": "pnpm --filter @eox/evidence-store test"
+    "test": "pnpm --filter @eox/evidence-store test",
+    "ingest:container-throughput": "pnpm --filter @eox/ingestion ingest:container-throughput",
+    "ingest:gdp-real-volume": "pnpm --filter @eox/ingestion ingest:gdp-real-volume",
+    "ingest:core-cpi": "pnpm --filter @eox/ingestion ingest:core-cpi",
+    "ingest:unemployment-rate": "pnpm --filter @eox/ingestion ingest:unemployment-rate",
+    "ingest:policy-rate": "pnpm --filter @eox/ingestion ingest:policy-rate",
+    "ingest:residential-property-price": "pnpm --filter @eox/ingestion ingest:residential-property-price"
   }
 }

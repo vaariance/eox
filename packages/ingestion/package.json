@@ -1,0 +1,24 @@
+{
+  "name": "@eox/ingestion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "ingest:container-throughput": "tsx src/ingest/container-throughput.ts",
+    "ingest:gdp-real-volume": "tsx src/ingest/gdp-real-volume.ts",
+    "ingest:core-cpi": "tsx src/ingest/core-cpi.ts",
+    "ingest:unemployment-rate": "tsx src/ingest/unemployment-rate.ts",
+    "ingest:policy-rate": "tsx src/ingest/policy-rate.ts",
+    "ingest:residential-property-price": "tsx src/ingest/residential-property-price.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@eox/evidence-store": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
