@@ -17,12 +17,8 @@ function row(overrides: Partial<Observation>): Observation {
     vintage: "first",
     publishedAt: new Date("2025-04-10T00:00:00Z"),
     knownAt: new Date("2025-04-11T00:00:00Z"),
-    recordedAt: new Date("2025-04-11T00:00:05Z"),
     recipeId: 1,
     rawSha256: "ab".repeat(32),
-    rawValue: "24.5",
-    coverageReported: null,
-    coverageTotal: null,
     supersedesId: null,
     correctionReason: null,
     ...overrides,
@@ -70,15 +66,6 @@ describe("exportSnapshot", () => {
       const snapshot = await exportSnapshot(fetcher, { asOf, ...period, officialSources });
       expect(snapshot.observations).toEqual([]);
     }
-  });
-
-  it("exports a missing publication time as null", async () => {
-    const fetchAsOf = fetcherOver([row({ publishedAt: null })]);
-
-    const snapshot = await exportSnapshot(fetchAsOf, { asOf, ...period, officialSources });
-
-    expect(snapshot.observations[0].published_at).toBeNull();
-    expect(snapshot.observations[0].known_at).toBe("2025-04-11T00:00:00.000Z");
   });
 
   it("orders observations by country and indicator", async () => {

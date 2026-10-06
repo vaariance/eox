@@ -19,10 +19,7 @@ pub fn canonicalize_observation(o: &Observation) -> Result<Vec<u8>, EngineError>
     encode_field(&mut buf, o.value.as_bytes());
     encode_field(&mut buf, o.source_id.as_bytes());
     encode_field(&mut buf, o.vintage.as_bytes());
-    // Fields are length-prefixed, so an unknown publish time is an empty field and cannot
-    // collide with a real one. Known times encode exactly as before.
-    let published_str = o.published_at.map(|t| t.to_rfc3339()).unwrap_or_default();
-    encode_field(&mut buf, published_str.as_bytes());
+    encode_field(&mut buf, o.published_at.to_rfc3339().as_bytes());
     encode_field(&mut buf, o.known_at.to_rfc3339().as_bytes());
     let recipe_str = o.recipe_id.map(|r| r.to_string()).unwrap_or_default();
     encode_field(&mut buf, recipe_str.as_bytes());

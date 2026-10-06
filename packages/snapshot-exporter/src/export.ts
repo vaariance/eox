@@ -19,8 +19,7 @@ export interface SnapshotObservation {
   value: string;
   source_id: string;
   vintage: string;
-  /** `null` when the source does not state a publication time. */
-  published_at: string | null;
+  published_at: string;
   known_at: string;
   recipe_id: number | null;
   raw_sha256: string | null;
@@ -74,7 +73,7 @@ function toSnapshotObservation(row: Observation): SnapshotObservation {
     value: row.value,
     source_id: row.sourceId,
     vintage: row.vintage,
-    published_at: row.publishedAt?.toISOString() ?? null,
+    published_at: row.publishedAt.toISOString(),
     known_at: row.knownAt.toISOString(),
     recipe_id: row.recipeId,
     raw_sha256: row.rawSha256,

@@ -37,7 +37,7 @@ fn observation(country: &str, indicator: &str, value: &str) -> Observation {
         value: value.to_string(),
         source_id: "official".to_string(),
         vintage: "first".to_string(),
-        published_at: Some(recorded),
+        published_at: recorded,
         known_at: recorded,
         recipe_id: Some(1),
         raw_sha256: Some("ab".repeat(32)),
