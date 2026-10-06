@@ -10,7 +10,7 @@ const golden = {
     outputHash: word("3333"),
     resolutionUriHash: resolutionUriHash(GOLDEN_URI),
   },
-  assertionId: word("c9271b1b31a6831df4c5ff4eb51e6c4b96f63fd72cd50c99f166288821c77b18"),
+  assertionId: word("b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"),
 };
 
 describe("result payload", () => {

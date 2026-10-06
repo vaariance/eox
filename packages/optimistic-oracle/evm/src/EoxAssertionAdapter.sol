@@ -240,7 +240,7 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
             bytes(_hex(claim.outputHash)),
             ". Snapshot and output bundle: ",
             bytes(resolutionUri),
-            ". This assertion is true if and only if the evidence root is the eox-engine Merkle root of the official observations for ",
+            ". This assertion is true if and only if the evidence root is the Merkle root, as the methodology with that image ID defines it, of the official observations for ",
             bytes(y),
             " known at the evidence cutoff (31 July ",
             bytes(Strings.toString(uint256(year) + 1)),

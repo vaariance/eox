@@ -6,7 +6,6 @@ Monorepo for EOX. pnpm workspaces, three packages under `packages/`, apps under 
 |---|---|---|
 | `packages/ingestion` | Peter | Fetch data from sources |
 | `packages/evidence-store` | Joel | Store facts forever, append-only |
-| `packages/apps/methodology` | Godwin | Turn facts into scores (Rust crate `eox-engine`) |
 | `packages/optimistic-oracle` | Godwin | Optimistic oracle that makes each year's result final: EVM adapter for UMA (`evm/`) and the Solana settlement program (`solana/`) |
 | `apps/` | later | API, web app |
 | `docs/` | everyone | Guides |

@@ -45,7 +45,8 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
     ) external returns (bytes32 assertionId) {
         require(bond >= minimumBond, "bond below minimum");
         currency.safeTransferFrom(msg.sender, address(this), bond);
-        assertionId = keccak256(abi.encode(++_nonce, claim));
+        // Depends only on a counter, so the claim text can change without moving golden test values.
+        assertionId = keccak256(abi.encode(++_nonce));
         assertions[assertionId] = Recorded({
             claim: claim,
             asserter: asserter,

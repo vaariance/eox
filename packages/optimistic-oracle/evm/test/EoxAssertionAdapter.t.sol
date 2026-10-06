@@ -153,7 +153,7 @@ contract EoxAssertionAdapterTest is Test {
                 ". Output hash: ",
                 "0x0000000000000000000000000000000000000000000000000000000000003333",
                 ". Snapshot and output bundle: ipfs://eox-2025-snapshot",
-                ". This assertion is true if and only if the evidence root is the eox-engine Merkle root",
+                ". This assertion is true if and only if the evidence root is the Merkle root, as the methodology with that image ID defines it,",
                 " of the official observations for 2025 known at the evidence cutoff (31 July 2026, 00:00 UTC),",
                 " and running the methodology with that image ID over that snapshot produces exactly that output hash."
             )
@@ -300,7 +300,7 @@ contract EoxAssertionAdapterTest is Test {
             hex"0000000000000000000000000000000000000000000000000000000000002222"
             hex"0000000000000000000000000000000000000000000000000000000000003333"
             hex"3bd078a333c9589d2d52ae40c744d98d26f14af482521bab3fff59c26fa8d4ad"
-            hex"c9271b1b31a6831df4c5ff4eb51e6c4b96f63fd72cd50c99f166288821c77b18"
+            hex"b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
         );
     }
 

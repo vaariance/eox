@@ -221,7 +221,7 @@ describe.skipIf(!existsSync(PROGRAM_SO))("against the compiled program (LiteSVM)
     const epoch = await readEpoch();
     expect(epoch.status).toBe("settled");
     expect(epoch.result?.outputHash).toBe(word("3333"));
-    expect(epoch.assertionId).toBe(word("c9271b1b31a6831df4c5ff4eb51e6c4b96f63fd72cd50c99f166288821c77b18"));
+    expect(epoch.assertionId).toBe(word("b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"));
     expect(epoch.wormholeSequence).toBe(9n);
   });
 

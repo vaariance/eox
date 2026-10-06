@@ -103,7 +103,7 @@ pub(crate) mod tests {
         "0000000000000000000000000000000000000000000000000000000000002222",
         "0000000000000000000000000000000000000000000000000000000000003333",
         "3bd078a333c9589d2d52ae40c744d98d26f14af482521bab3fff59c26fa8d4ad",
-        "c9271b1b31a6831df4c5ff4eb51e6c4b96f63fd72cd50c99f166288821c77b18",
+        "b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6",
     );
 
     fn unhex(s: &str) -> Vec<u8> {
@@ -146,7 +146,7 @@ pub(crate) mod tests {
         );
         assert_eq!(
             result.assertion_id,
-            unhex("c9271b1b31a6831df4c5ff4eb51e6c4b96f63fd72cd50c99f166288821c77b18")[..]
+            unhex("b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6")[..]
         );
     }
 
