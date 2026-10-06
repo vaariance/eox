@@ -25,7 +25,7 @@ anchor-spl = "1.2.0"
 solana-sha256-hasher = { version = "3.1.0", features = ["sha2"] }
 
 [dev-dependencies]
-eox-engine = { path = "../../../methodology" }
+eox-engine = { path = "../../../../apps/methodology" }
 chrono = "0.4"
 litesvm = "0.10.0"
 solana-account = "3.0.0"

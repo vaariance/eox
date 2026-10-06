@@ -2,5 +2,5 @@
 members = [
     "packages/apps/methodology",
 ]
-exclude = ["packages/apps/onchain"]
+exclude = ["packages/optimistic-oracle"]
 resolver = "2"
