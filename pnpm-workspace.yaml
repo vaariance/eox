@@ -3,4 +3,6 @@ packages:
   - "packages/*"
   - "packages/optimistic-oracle/sdk"
 allowBuilds:
+  bufferutil: false
   esbuild: true
+  utf-8-validate: false

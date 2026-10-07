@@ -1,0 +1,12 @@
+[package]
+name = "eox-oracle-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "eox-oracle"
+path = "src/main.rs"
+
+[dependencies]
+eox-oracle-math = { path = "../math" }
+serde_json = "1"

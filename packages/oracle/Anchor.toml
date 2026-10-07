@@ -1,0 +1,12 @@
+[toolchain]
+anchor_version = "0.31.1"
+[features]
+resolution = true
+skip-lint = false
+[programs.localnet]
+eox_oracle = "D1HhP4kVA73bj6c4MfX5yzMZDvQRx5DTRP3xpC2YCe85"
+[programs.devnet]
+eox_oracle = "D1HhP4kVA73bj6c4MfX5yzMZDvQRx5DTRP3xpC2YCe85"
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"

@@ -1,0 +1,1950 @@
+{
+  "address": "D1HhP4kVA73bj6c4MfX5yzMZDvQRx5DTRP3xpC2YCe85",
+  "metadata": {
+    "name": "eox_oracle",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "append_rule",
+      "discriminator": [
+        52,
+        26,
+        13,
+        232,
+        24,
+        71,
+        70,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch"
+          ]
+        },
+        {
+          "name": "epoch",
+          "writable": true
+        },
+        {
+          "name": "rules",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "country",
+          "type": "u8"
+        },
+        {
+          "name": "page",
+          "type": "u8"
+        },
+        {
+          "name": "rule",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "calculate_page",
+      "discriminator": [
+        183,
+        230,
+        80,
+        223,
+        158,
+        98,
+        147,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot",
+            "rules"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true,
+          "relations": [
+            "page_account"
+          ]
+        },
+        {
+          "name": "rules"
+        },
+        {
+          "name": "page_account",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "country",
+          "type": "u8"
+        },
+        {
+          "name": "page",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "cancel",
+      "discriminator": [
+        232,
+        219,
+        223,
+        41,
+        219,
+        236,
+        220,
+        190
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_window",
+      "discriminator": [
+        254,
+        46,
+        169,
+        88,
+        40,
+        214,
+        216,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true
+        },
+        {
+          "name": "adapter",
+          "signer": true,
+          "relations": [
+            "snapshot"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "count",
+          "type": "u64"
+        },
+        {
+          "name": "digest",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_epoch",
+      "discriminator": [
+        115,
+        111,
+        36,
+        230,
+        59,
+        145,
+        168,
+        27
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "countries",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          }
+        },
+        {
+          "name": "indicator_counts",
+          "type": "bytes"
+        },
+        {
+          "name": "multiplier",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "create_snapshot",
+      "discriminator": [
+        63,
+        212,
+        3,
+        100,
+        190,
+        182,
+        203,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch"
+          ]
+        },
+        {
+          "name": "epoch"
+        },
+        {
+          "name": "snapshot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  110,
+                  97,
+                  112,
+                  115,
+                  104,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "arg",
+                "path": "sequence"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "sequence",
+          "type": "u64"
+        },
+        {
+          "name": "cutoff",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "expire",
+      "discriminator": [
+        243,
+        83,
+        205,
+        58,
+        57,
+        201,
+        247,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "freeze_page",
+      "discriminator": [
+        20,
+        169,
+        91,
+        167,
+        194,
+        220,
+        87,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot",
+            "rules"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true,
+          "relations": [
+            "page_account"
+          ]
+        },
+        {
+          "name": "rules"
+        },
+        {
+          "name": "page_account",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "country",
+          "type": "u8"
+        },
+        {
+          "name": "page",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "adapter",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "initialize_history",
+      "discriminator": [
+        16,
+        143,
+        228,
+        87,
+        255,
+        10,
+        177,
+        154
+      ],
+      "accounts": [
+        {
+          "name": "history",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "evidence",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "postcommit",
+      "discriminator": [
+        46,
+        227,
+        10,
+        169,
+        93,
+        108,
+        223,
+        153
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "precommit",
+      "discriminator": [
+        73,
+        192,
+        246,
+        130,
+        224,
+        170,
+        210,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "publish",
+      "discriminator": [
+        129,
+        177,
+        182,
+        160,
+        184,
+        224,
+        219,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "read_pair",
+      "discriminator": [
+        242,
+        245,
+        162,
+        96,
+        71,
+        98,
+        247,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot"
+        }
+      ],
+      "args": [
+        {
+          "name": "base",
+          "type": "u8"
+        },
+        {
+          "name": "quote",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "register_challenge",
+      "discriminator": [
+        122,
+        247,
+        8,
+        150,
+        192,
+        112,
+        238,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true,
+          "relations": [
+            "page_account"
+          ]
+        },
+        {
+          "name": "page_account"
+        },
+        {
+          "name": "history",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "evidence"
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  108,
+                  108,
+                  101,
+                  110,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "adapter",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "evidence",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "slot_index",
+          "type": "u8"
+        },
+        {
+          "name": "comparison",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "resolve_challenge",
+      "discriminator": [
+        81,
+        191,
+        124,
+        119,
+        131,
+        248,
+        157,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "snapshot"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "writable": true,
+          "relations": [
+            "challenge"
+          ]
+        },
+        {
+          "name": "challenge",
+          "writable": true
+        },
+        {
+          "name": "history",
+          "writable": true
+        },
+        {
+          "name": "adapter",
+          "signer": true,
+          "relations": [
+            "snapshot"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "invalid",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "seal_epoch",
+      "discriminator": [
+        219,
+        248,
+        213,
+        249,
+        166,
+        198,
+        244,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch"
+          ]
+        },
+        {
+          "name": "epoch",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_pause",
+      "discriminator": [
+        63,
+        32,
+        154,
+        2,
+        56,
+        103,
+        79,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "upload_slot",
+      "discriminator": [
+        124,
+        235,
+        210,
+        188,
+        206,
+        211,
+        169,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "epoch",
+            "snapshot"
+          ]
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "snapshot",
+            "rules"
+          ]
+        },
+        {
+          "name": "snapshot"
+        },
+        {
+          "name": "rules"
+        },
+        {
+          "name": "page_account",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "registry"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "country",
+          "type": "u8"
+        },
+        {
+          "name": "page",
+          "type": "u8"
+        },
+        {
+          "name": "index",
+          "type": "u8"
+        },
+        {
+          "name": "slot",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Challenge",
+      "discriminator": [
+        119,
+        250,
+        161,
+        121,
+        119,
+        81,
+        22,
+        208
+      ]
+    },
+    {
+      "name": "Epoch",
+      "discriminator": [
+        93,
+        83,
+        120,
+        89,
+        151,
+        138,
+        152,
+        108
+      ]
+    },
+    {
+      "name": "EvidenceHistory",
+      "discriminator": [
+        145,
+        253,
+        241,
+        69,
+        162,
+        240,
+        192,
+        156
+      ]
+    },
+    {
+      "name": "EvidencePage",
+      "discriminator": [
+        66,
+        141,
+        231,
+        66,
+        215,
+        250,
+        112,
+        171
+      ]
+    },
+    {
+      "name": "Registry",
+      "discriminator": [
+        47,
+        174,
+        110,
+        246,
+        184,
+        182,
+        252,
+        218
+      ]
+    },
+    {
+      "name": "RulePage",
+      "discriminator": [
+        152,
+        149,
+        52,
+        194,
+        70,
+        128,
+        140,
+        170
+      ]
+    },
+    {
+      "name": "Snapshot",
+      "discriminator": [
+        137,
+        213,
+        28,
+        133,
+        224,
+        161,
+        48,
+        108
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AdapterInconsistency",
+      "discriminator": [
+        167,
+        70,
+        171,
+        69,
+        244,
+        85,
+        137,
+        94
+      ]
+    },
+    {
+      "name": "ReferencePublished",
+      "discriminator": [
+        25,
+        80,
+        218,
+        248,
+        195,
+        13,
+        201,
+        194
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "State",
+      "msg": "Invalid lifecycle state"
+    },
+    {
+      "code": 6001,
+      "name": "Paused",
+      "msg": "Oracle paused"
+    },
+    {
+      "code": 6002,
+      "name": "Authority",
+      "msg": "Invalid authority"
+    },
+    {
+      "code": 6003,
+      "name": "Bounds",
+      "msg": "Invalid bounds"
+    },
+    {
+      "code": 6004,
+      "name": "Order",
+      "msg": "Invalid operation order"
+    },
+    {
+      "code": 6005,
+      "name": "Incomplete",
+      "msg": "Incomplete evidence or closure"
+    },
+    {
+      "code": 6006,
+      "name": "Time",
+      "msg": "Invalid timestamp or deadline"
+    },
+    {
+      "code": 6007,
+      "name": "Encoding",
+      "msg": "Canonical encoding invalid"
+    },
+    {
+      "code": 6008,
+      "name": "Identity",
+      "msg": "Identity mismatch"
+    },
+    {
+      "code": 6009,
+      "name": "Conflict",
+      "msg": "Conflicting retry"
+    },
+    {
+      "code": 6010,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6011,
+      "name": "Math",
+      "msg": "Mathematical input invalid"
+    },
+    {
+      "code": 6012,
+      "name": "Disputed",
+      "msg": "Evidence disputed or invalid"
+    },
+    {
+      "code": 6013,
+      "name": "Predecessor",
+      "msg": "Stale predecessor"
+    }
+  ],
+  "types": [
+    {
+      "name": "AdapterInconsistency",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "snapshot",
+            "type": "pubkey"
+          },
+          {
+            "name": "challenge",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Challenge",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "snapshot",
+            "type": "pubkey"
+          },
+          {
+            "name": "evidence",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "outcome",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CountryOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "normalized_sum",
+            "type": "i128"
+          },
+          {
+            "name": "confidence_sum",
+            "type": "i128"
+          },
+          {
+            "name": "weight_sum",
+            "type": "u64"
+          },
+          {
+            "name": "complete",
+            "type": "bool"
+          },
+          {
+            "name": "state",
+            "type": "i64"
+          },
+          {
+            "name": "confidence",
+            "type": "i64"
+          },
+          {
+            "name": "saturated",
+            "type": "bool"
+          },
+          {
+            "name": "stale",
+            "type": "bool"
+          },
+          {
+            "name": "ratio",
+            "type": "i64"
+          },
+          {
+            "name": "change",
+            "type": "i64"
+          },
+          {
+            "name": "expressed",
+            "type": "i64"
+          },
+          {
+            "name": "reference_confidence",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Epoch",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "countries",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  2
+                ]
+              }
+            }
+          },
+          {
+            "name": "indicator_counts",
+            "type": "bytes"
+          },
+          {
+            "name": "multiplier",
+            "type": "u16"
+          },
+          {
+            "name": "configuration_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "rule_pages",
+            "type": "u16"
+          },
+          {
+            "name": "sealed",
+            "type": "bool"
+          },
+          {
+            "name": "baseline",
+            "type": {
+              "vec": "i64"
+            }
+          },
+          {
+            "name": "baseline_world",
+            "type": "i64"
+          },
+          {
+            "name": "baseline_snapshot",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EvidenceHistory",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pending",
+            "type": "u32"
+          },
+          {
+            "name": "rejected",
+            "type": "u32"
+          },
+          {
+            "name": "invalid",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EvidencePage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "snapshot",
+            "type": "pubkey"
+          },
+          {
+            "name": "country",
+            "type": "u8"
+          },
+          {
+            "name": "page",
+            "type": "u8"
+          },
+          {
+            "name": "frozen",
+            "type": "bool"
+          },
+          {
+            "name": "calculated",
+            "type": "bool"
+          },
+          {
+            "name": "slots",
+            "type": {
+              "vec": "bytes"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferencePublished",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "snapshot",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch",
+            "type": "pubkey"
+          },
+          {
+            "name": "sequence",
+            "type": "u64"
+          },
+          {
+            "name": "evidence_cutoff",
+            "type": "i64"
+          },
+          {
+            "name": "evaluation_time",
+            "type": "i64"
+          },
+          {
+            "name": "postcommitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Registry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "adapter",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "active",
+            "type": "pubkey"
+          },
+          {
+            "name": "latest",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_sequence",
+            "type": "u64"
+          },
+          {
+            "name": "history_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RulePage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "pubkey"
+          },
+          {
+            "name": "country",
+            "type": "u8"
+          },
+          {
+            "name": "page",
+            "type": "u8"
+          },
+          {
+            "name": "rules",
+            "type": {
+              "vec": "bytes"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Snapshot",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch",
+            "type": "pubkey"
+          },
+          {
+            "name": "sequence",
+            "type": "u64"
+          },
+          {
+            "name": "cutoff",
+            "type": "i64"
+          },
+          {
+            "name": "predecessor",
+            "type": "pubkey"
+          },
+          {
+            "name": "adapter",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "frozen_pages",
+            "type": "u16"
+          },
+          {
+            "name": "calculated_pages",
+            "type": "u16"
+          },
+          {
+            "name": "evidence_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "precommitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "postcommitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "evaluation_time",
+            "type": "i64"
+          },
+          {
+            "name": "published_at",
+            "type": "i64"
+          },
+          {
+            "name": "event_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "event_count",
+            "type": "u64"
+          },
+          {
+            "name": "pending",
+            "type": "u32"
+          },
+          {
+            "name": "closed",
+            "type": "bool"
+          },
+          {
+            "name": "countries",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "CountryOutput"
+                }
+              }
+            }
+          },
+          {
+            "name": "world",
+            "type": "i64"
+          },
+          {
+            "name": "world_confidence",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

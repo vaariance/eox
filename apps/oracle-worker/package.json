@@ -1,0 +1,21 @@
+{
+  "name": "@eox/oracle-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "test:cross-language": "EOX_RUST_CLI=../../packages/oracle/target/debug/eox-oracle tsx --test test/cross-language.test.ts",
+    "build": "tsc --noEmit",
+    "oracle": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.31.1",
+    "@solana/web3.js": "^1.98.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

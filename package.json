@@ -2,6 +2,10 @@
   "name": "eox",
   "private": true,
   "scripts": {
+    "oracle:check": "pnpm --filter @eox/oracle-worker build",
+    "oracle:test": "pnpm --filter @eox/oracle-worker test",
+    "oracle:verify-math": "pnpm --filter @eox/oracle-worker test:cross-language",
+    "oracle": "pnpm --filter @eox/oracle-worker oracle",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @eox/evidence-store migrate",
