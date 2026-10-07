@@ -1,0 +1,337 @@
+{
+  "version": "synthetic-six-v1",
+  "epochId": "synthetic-six-v1",
+  "multiplier": 20,
+  "countries": [
+    {
+      "country": "USA",
+      "indicators": [
+        {
+          "indicator": "container_throughput",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "residential_property_price_real",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "gdp_real_volume",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "cpi_core_yoy",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "unemployment_rate",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "policy_rate",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        }
+      ]
+    },
+    {
+      "country": "JPN",
+      "indicators": [
+        {
+          "indicator": "container_throughput",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "residential_property_price_real",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "gdp_real_volume",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "cpi_core_yoy",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "unemployment_rate",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "policy_rate",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        }
+      ]
+    },
+    {
+      "country": "NZL",
+      "indicators": [
+        {
+          "indicator": "container_throughput",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "residential_property_price_real",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "gdp_real_volume",
+          "transform": "FractionalChange",
+          "comparisonPeriodDelta": 1,
+          "normalization": {
+            "kind": "directional",
+            "lower": "-0.1",
+            "upper": "0.1",
+            "direction": 1
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "cpi_core_yoy",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "unemployment_rate",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        },
+        {
+          "indicator": "policy_rate",
+          "transform": "Identity",
+          "comparisonPeriodDelta": 0,
+          "normalization": {
+            "kind": "target",
+            "target": "2",
+            "distance": "10"
+          },
+          "weight": 1,
+          "sourceAuthority": 10000,
+          "freshness": {
+            "graceSeconds": 2592000,
+            "zeroSeconds": 7776000
+          },
+          "rationale": "SYNTHETIC integration fixture only. Anchors, equal weights, authority and freshness are uncalibrated; not economic recommendations."
+        }
+      ]
+    }
+  ]
+}

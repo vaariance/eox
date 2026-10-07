@@ -2,6 +2,9 @@
   "name": "eox",
   "private": true,
   "scripts": {
+    "methodology": "pnpm --filter @eox/methodology methodology",
+    "methodology:check": "pnpm --filter @eox/methodology build",
+    "methodology:test": "pnpm --filter @eox/methodology test",
     "oracle:check": "pnpm --filter @eox/oracle-worker build",
     "oracle:test": "pnpm --filter @eox/oracle-worker test",
     "oracle:verify-math": "pnpm --filter @eox/oracle-worker test:cross-language",

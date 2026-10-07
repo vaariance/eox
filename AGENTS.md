@@ -67,3 +67,19 @@ another agent needs to know.
   Godwin (2026-10-06); data-layer work does not depend on the answer yet.
 - **Refs:** `packages/ingestion/README.md`, `deploy/dev/README.md`,
   `postman/eox-source-apis.postman_collection.json`
+
+### 2026-10-07 · Peter (Codex) · Upstream integration readiness review
+
+- **Area:** Oracle, ingestion, evidence and deployment integration boundaries.
+- **What:** Reviewed checkout `2b2bc66` after Peter resolved the dependency conflict. The annual optimistic settlement flow and continuous evidence oracle are separate implementations with different event and commitment contracts. The worker still uses fixture evidence.
+- **Rules for agents:** Do not treat the annual final-result relay as a per-record challenge adapter. Preserve the publication-time readiness rule until a versioned replacement policy is agreed. Do not equate stored rounded values with exact raw source strings.
+- **Open:** Shared methodology output contract, live evidence provider, publication-time policy, dispute event integration and operated worker/relay services.
+- **Refs:** `docs/oracle/upstream-readiness.md`, `docs/oracle/results/README.md`.
+
+### 2026-10-07 · Peter (Codex) · Explicit methodology policy compiler
+
+- **Area:** `packages/methodology`, oracle-worker integration tests, `docs/oracle`.
+- **What:** Added an explicit six-indicator policy compiler, 30-country catalogue, ISO mappings, native calendar ordinals, exact GDP scaling, portable manifest and synthetic example. Ten package tests and 28 worker tests pass, including Rust preview integration.
+- **Rules for agents:** Synthetic anchors are not calibrated economic claims. Preserve stable source series identities across policy versions. The portable manifest digest is not a Solana deployment commitment or executable image ID. Do not invent publication times or silently round source values.
+- **Open:** Live calibration, GDP edition selection, reproducible port aggregation and the live evidence/dispute adapters. No methodology deployment in this step.
+- **Refs:** `packages/methodology/README.md`, `docs/oracle/methodology-integration.md`.
