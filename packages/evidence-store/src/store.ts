@@ -1,6 +1,15 @@
 import { createHash } from "node:crypto";
 import { pool } from "./db.js";
-import type { NewObservation, NewSourcePayload, Observation, Query, SourcePayload } from "./types.js";
+import type {
+  ChangeCursor,
+  ChangePage,
+  NewObservation,
+  NewSourcePayload,
+  Observation,
+  Query,
+  SourcePayload,
+  StoredPayload,
+} from "./types.js";
 
 const COLUMNS = `
   id::text, country_iso3 AS "countryIso3", indicator_id AS "indicatorId",
@@ -109,3 +118,33 @@ export async function getVersions(q: Query): Promise<Observation[]> {
   );
   return rows;
 }
+
+export async function readChanges(after: ChangeCursor | null, limit: number): Promise<ChangePage> {
+  if (!Number.isInteger(limit) || limit < 1) throw new Error(`invalid change page limit: ${limit}`);
+  const { rows } = await pool.query(
+    `SELECT ${COLUMNS}, inserted_xid::text AS "insertedXid"
+       FROM observations
+      WHERE inserted_xid < pg_snapshot_xmin(pg_current_snapshot())
+        AND ($1::xid8 IS NULL OR (inserted_xid, id) > ($1::xid8, $2::bigint))
+      ORDER BY inserted_xid, id
+      LIMIT $3`,
+    [after?.xid ?? null, after?.id ?? null, limit],
+  );
+  const last = rows.at(-1);
+  const observations = rows.map(({ insertedXid: _insertedXid, ...observation }) => observation as Observation);
+  return { observations, cursor: last ? { xid: last.insertedXid, id: last.id } : after };
+}
+
+export async function getObservation(id: string): Promise<Observation | null> {
+  const { rows } = await pool.query(`SELECT ${COLUMNS} FROM observations WHERE id = $1`, [id]);
+  return rows[0] ?? null;
+}
+
+export async function getSourcePayload(sha256: string): Promise<StoredPayload | null> {
+  const { rows } = await pool.query(
+    `SELECT sha256, content_type AS "contentType", body FROM source_payloads WHERE sha256 = $1`,
+    [sha256],
+  );
+  return rows[0] ?? null;
+}
+

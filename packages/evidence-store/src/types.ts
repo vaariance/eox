@@ -60,3 +60,19 @@ export interface Query {
   indicatorId: string;
   sourceId?: string;
 }
+
+export interface ChangeCursor {
+  xid: string;
+  id: string;
+}
+
+export interface ChangePage {
+  observations: Observation[];
+  cursor: ChangeCursor | null;
+}
+
+export interface StoredPayload {
+  sha256: string;
+  contentType: string | null;
+  body: Buffer;
+}
