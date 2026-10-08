@@ -126,7 +126,7 @@ export async function readChanges(after: ChangeCursor | null, limit: number): Pr
        FROM observations
       WHERE inserted_xid < pg_snapshot_xmin(pg_current_snapshot())
         AND ($1::xid8 IS NULL OR (inserted_xid, id) > ($1::xid8, $2::bigint))
-      ORDER BY inserted_xid, id
+      ORDER BY inserted_xid, observations.id
       LIMIT $3`,
     [after?.xid ?? null, after?.id ?? null, limit],
   );
