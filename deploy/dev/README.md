@@ -10,6 +10,8 @@ compose) and the six ingestion pipelines on a daily cron.
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
 | Ingests | daily 06:00 UTC as system user `eox`, log in `/opt/eox/logs/ingest.log` |
 | Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
+| Backups | daily 05:30 UTC to `gs://colosseum-eox-db-backups`, kept 30 days, log in `/opt/eox/logs/backup.log` |
+| Service account | `eox-dev-vm`, which can only create objects in the backup bucket |
 
 ## Layout on the VM
 
@@ -44,13 +46,44 @@ gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone
 gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=us-central1-a --command "sudo cat /opt/eox/.env"
 ```
 
+## Backups and restore
+
+`backup-db.sh` runs `pg_dump --format=custom`, checks the archive with
+`pg_restore --list`, and uploads it as `eox-<UTC timestamp>.dump` through the
+Storage JSON API with `ifGenerationMatch=0`, so an existing backup is never
+overwritten. It verifies the uploaded MD5 against the local file. The last
+three days of dumps also stay in `/opt/eox/backups` on the VM.
+
+The VM's service account can create backups but cannot read, overwrite or
+delete them; the bucket deletes objects after 30 days. Restore with an account
+that can read the bucket:
+
+```bash
+gcloud storage ls gs://colosseum-eox-db-backups/ --account=$GCP_ACCOUNT --project=colosseum-eox
+gcloud storage cp gs://colosseum-eox-db-backups/eox-<stamp>.dump . --account=$GCP_ACCOUNT --project=colosseum-eox
+createdb -h localhost -p 5433 -U eox eox_restore
+pg_restore -h localhost -p 5433 -U eox -d eox_restore --no-owner eox-<stamp>.dump
+```
+
+Restoring into a fresh database also restores the append-only triggers. Never
+restore over the live `eox` database; point `DATABASE_URL` at the restored one.
+
 ## Recreate the VM
 
 ```bash
-gcloud services enable compute.googleapis.com --account=$GCP_ACCOUNT --project=colosseum-eox
+gcloud services enable compute.googleapis.com storage.googleapis.com iam.googleapis.com --account=$GCP_ACCOUNT --project=colosseum-eox
+gcloud storage buckets create gs://colosseum-eox-db-backups --location=us-central1 \
+  --uniform-bucket-level-access --public-access-prevention --account=$GCP_ACCOUNT --project=colosseum-eox
+gcloud storage buckets update gs://colosseum-eox-db-backups --lifecycle-file=deploy/dev/backup-lifecycle.json \
+  --account=$GCP_ACCOUNT --project=colosseum-eox
+gcloud iam service-accounts create eox-dev-vm --account=$GCP_ACCOUNT --project=colosseum-eox
+gcloud storage buckets add-iam-policy-binding gs://colosseum-eox-db-backups \
+  --member=serviceAccount:eox-dev-vm@colosseum-eox.iam.gserviceaccount.com \
+  --role=roles/storage.objectCreator --account=$GCP_ACCOUNT --project=colosseum-eox
 gcloud compute instances create eox-dev --zone=us-central1-a --machine-type=e2-small \
   --image-family=debian-12 --image-project=debian-cloud --boot-disk-size=20GB \
   --boot-disk-type=pd-balanced --labels=env=dev,app=eox \
+  --service-account=eox-dev-vm@colosseum-eox.iam.gserviceaccount.com --scopes=cloud-platform \
   --account=$GCP_ACCOUNT --project=colosseum-eox
 GCP_ACCOUNT=$GCP_ACCOUNT deploy/dev/deploy.sh
 ```
