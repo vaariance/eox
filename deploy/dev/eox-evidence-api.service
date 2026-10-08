@@ -1,0 +1,24 @@
+[Unit]
+Description=EOX evidence API (read-only)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=eox
+Group=eox
+WorkingDirectory=/opt/eox/app/apps/evidence-api
+EnvironmentFile=/opt/eox/.env
+Environment=EVIDENCE_API_HOST=127.0.0.1
+Environment=EVIDENCE_API_PORT=8787
+ExecStart=/opt/eox/app/apps/evidence-api/node_modules/.bin/tsx src/main.ts
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/eox
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

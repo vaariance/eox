@@ -54,8 +54,21 @@ sudo -u eox -H PNPM_VERSION="$pnpm_version" bash -c '
 '
 
 echo "0 6 * * * /opt/eox/run-ingests.sh >> /opt/eox/logs/ingest.log 2>&1" | crontab -u eox -
+install -m 0644 /opt/eox/app/deploy/dev/eox-evidence-api.service /etc/systemd/system/eox-evidence-api.service
+systemctl daemon-reload
+systemctl enable eox-evidence-api >/dev/null
+systemctl restart eox-evidence-api
+for attempt in $(seq 1 30); do
+  curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1 && break
+  if [ "$attempt" -eq 30 ]; then
+    journalctl -u eox-evidence-api -n 40 --no-pager >&2
+    exit 1
+  fi
+  sleep 1
+done
+
 echo "$commit" > /opt/eox/DEPLOYED_COMMIT
 chown eox:eox /opt/eox/DEPLOYED_COMMIT
 
 echo "deployed $commit"
-ss -ltn | grep ':5433 '
+ss -ltn | grep -E ':(5433|8787) '
