@@ -123,3 +123,11 @@ another agent needs to know.
 - **Rules for agents:** The worker must read evidence through this API, never the database. Record IDs are `eox:observation:<id>`, change IDs `eox:change:<id>`; cursors are opaque. Facts omit `confidenceBps`, `manifest` and `comparisonRecordId` (methodology side) and carry `publishedAt: null` until the §5.4 policy exists, so the worker's readiness check rejects them by design. When selecting text-cast columns in SQL, always qualify `ORDER BY observations.id`: an unqualified `id` sorts the text alias and silently skips rows.
 - **Open:** Peter: an HTTP `EvidenceProvider` in the worker pointed at this API, plus the §5.3 precision and §5.4 publication-time decisions. The worker's journal tests fail on Windows (`EPERM` on directory fsync) but pass on Linux (23 pass, 6 skipped).
 - **Refs:** `apps/evidence-api/README.md`, `SYSTEM.md` §5, commits `d8c99d7`..`afd7c58`.
+
+### 2026-10-08 · Joel (Claude Code) · Dev database backups
+
+- **Area:** `deploy/dev`, GCP project `colosseum-eox`.
+- **What:** Closes the backup gap in `SYSTEM.md` §5.7. The dev VM dumps Postgres daily at 05:30 UTC (`pg_dump --format=custom`, validated with `pg_restore --list`) to `gs://colosseum-eox-db-backups`, which blocks public access and deletes objects after 30 days. The VM now runs as service account `eox-dev-vm`, which can only create objects in that bucket, so it cannot read, overwrite or delete backups. A restore of the first backup was verified: 15,291 observations, 38 payloads with valid hashes, 7 migrations and working append-only triggers.
+- **Rules for agents:** Never restore over the live `eox` database; restore into a new database and point `DATABASE_URL` at it. Do not widen the VM service account's bucket role. The VM's external IP changed to `35.193.103.79`; address the VM by instance name, not IP.
+- **Open:** Backups cover the dev database only; testnet and production need their own policy.
+- **Refs:** `deploy/dev/README.md` (Backups and restore), commits `44a0d9c`, `a9908d3`.
