@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { COUNTRIES, INDICATORS, seriesDescriptor, type Country, type Indicator } from "./catalogue.js";
 export * from "./catalogue.js";
 export * from "./period.js";
+export * from "./research.js";
+export * from "./confidence.js";
 
 export type Transform = "Identity" | "Difference" | "FractionalChange";
 export type Normalization = { kind: "directional"; lower: string; upper: string; direction: 1 | -1 } | { kind: "target"; target: string; distance: string };

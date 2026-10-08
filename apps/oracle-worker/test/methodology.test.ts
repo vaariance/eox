@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { compileMethodology, COUNTRIES, periodOrdinal, seriesDescriptor, seriesIdentity, type MethodologyPolicy } from "../../../packages/methodology/src/index.js";
-import { buildSlots, encodeRule, type Configuration } from "../src/codec.js";
+import { compileMethodology, compileConfidence, CONFIDENCE_FACTORS, COUNTRIES, periodOrdinal, seriesDescriptor, seriesIdentity, type ConfidenceAssessment, type MethodologyPolicy } from "../../../packages/methodology/src/index.js";
+import { adaptEvidence, buildSlots, encodeRule, type Configuration } from "../src/codec.js";
 import { assertReady, sha256 } from "../src/provider.js";
 import { rustPreview } from "../src/preview.js";
 import type { EvidenceRecord } from "../src/types.js";
@@ -77,4 +77,35 @@ test("compiled six-indicator policy executes in Rust with stable confidence-only
   assert.ok(aged.references.every(reference => reference.expressed === 100_000_000));
   input.countries[0]!.slots[0]!.current.period = "0";
   await assert.rejects(rustPreview(process.env.EOX_RUST_CLI!, input), /InvalidPeriod/);
+});
+
+test("provenance-bound confidence assertions fit worker evidence and Rust confidence math", { skip: !process.env.EOX_RUST_CLI }, async () => {
+  const input = await scenario();
+  const original = await rustPreview(process.env.EOX_RUST_CLI!, input);
+  const country = input.countries.find(country => country.id === "US")!;
+  const slot = country.slots[0]!;
+  const assessment: ConfidenceAssessment = {
+    recordId: "synthetic-confidence-record", artifactDigest: sha256("synthetic-payload"), sourceId: "imf-portwatch", assessorId: "fixture-assessor", rubricDigest: sha256("synthetic-rubric"),
+    factors: Object.fromEntries(CONFIDENCE_FACTORS.map(factor => [factor, {
+      basisPoints: factor === "sourceAuthority" ? 10000 : 9000,
+      rationale: "Synthetic rating only", supportingDigests: [sha256(`synthetic-proof:${factor}`)],
+    }])) as ConfidenceAssessment["factors"],
+  };
+  const compiled = compileConfidence(assessment, { sourceId: assessment.sourceId, authorityBasisPoints: country.rules[0]!.source_authority, policyDigest: sha256("synthetic-source-policy") });
+  const record: EvidenceRecord = {
+    recordId: assessment.recordId, artifactDigest: assessment.artifactDigest,
+    source: assessment.sourceId, seriesId: seriesIdentity("USA", "container_throughput"),
+    country: "US", indicator: "container_throughput", unit: "metric_tonnes", revisionId: "synthetic-edition-1",
+    period: String(slot.current.period), value: "100", publishedAt: published, knownAt: null, recordedAt: published,
+    manifest: compiled.canonicalManifest, confidenceBps: compiled.confidenceBps,
+  };
+  assertReady(record, published);
+  const encoded = adaptEvidence(record);
+  assert.notDeepEqual(encoded.metadata_digest, adaptEvidence({ ...record, manifest: "different-provenance" }).metadata_digest);
+  slot.current = encoded;
+  const output = await rustPreview(process.env.EOX_RUST_CLI!, input);
+  assert.deepEqual(output.countries.map(c => c.state), original.countries.map(c => c.state));
+  assert.equal(output.world.state, original.world.state);
+  const index = input.countries.findIndex(country => country.id === "US");
+  assert.ok(output.countries[index]!.confidence < original.countries[index]!.confidence);
 });

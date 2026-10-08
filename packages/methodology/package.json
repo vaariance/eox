@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
-  "scripts": { "build": "tsc --noEmit", "test": "tsx --test test/*.test.ts", "methodology": "tsx src/cli.ts" },
+  "scripts": { "build": "tsc --noEmit", "test": "tsx --test test/*.test.ts", "methodology": "tsx src/cli.ts", "sensitivity": "tsx research/sensitivity.ts" },
   "devDependencies": { "@types/node": "^22.0.0", "tsx": "^4.16.0", "typescript": "^5.5.0" }
 }

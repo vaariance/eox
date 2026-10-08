@@ -38,3 +38,45 @@ The manifest digest is SHA-256 of the UTF-8 canonical manifest string, without a
 Countries sort by ASCII ISO3. Indicators follow the exported `INDICATORS` order. A directional normalization is `["directional", scaledLower, scaledUpper, direction]`; target normalization is `["target", scaledTarget, scaledDistance]`. All scaled values, period deltas and seconds are canonical integer strings. Input property ordering, country/indicator permutations and equivalent decimal spellings cannot change the result. Rationale is preserved byte-for-byte. Version-1 binds the existing oracle confidence combination and dispute rules through its versioned domain; future rule changes require a new schema/arithmetic version.
 
 The manifest digest is a **portable policy commitment**, distinct from the program's deployment-bound configuration hash, epoch address and executable image hash. It must not be substituted for any of those identities. The compiler emits no on-chain approval and does not mutate the epoch baseline. Any changed policy requires a newly configured epoch rather than changing rules beneath published snapshots.
+
+## Calibration research
+
+`research/sensitivity.ts` runs hypothetical six-indicator scenarios through the
+existing Rust preview executable. Set `EOX_RUST_CLI` to that executable and run
+`pnpm --filter @eox/methodology sensitivity OUTPUT_DIRECTORY` with the output
+directory relative to this package, or absolute. There is no calculator fallback.
+The script records exact input hashes and outputs, and asserts economic and
+confidence behavior. It is research tooling with a workspace-relative dependency
+on the worker preview adapter; the compiler itself remains independent.
+
+See `docs/oracle/calibration-proposal.md` for the proposed interpretation, test
+results, historical-comparison freshness issue, and remaining calibration work.
+None of the research parameters constitute an approved live policy.
+
+## Research and confidence assertions
+
+Previous audit identified the reviewed document and the hash of its Markdown export.
+`PILOT_AUDIT_BINDINGS` preserves original audit item numbers, six infrastructure
+ratings, reported totals and selected-source qualifications for the pilot feeds.
+These objects never enter economic weighting or confidence arithmetic.
+
+`compileConfidence(assessment, sourcePolicy)` checks eight named assertions and
+emits the worker-compatible `confidenceBps` tuple in the fixed oracle order.
+Every factor requires a rating, rationale and supporting artifact digests. The
+assessment binds record ID, raw artifact digest, source, assessor identity, rating
+rubric digest and source-policy digest. Missing factors fail; a zero rating is
+valid and is not interpreted as missing. Source authority must equal the supplied
+policy's pinned rating. Supporting digest sets are sorted and deduplicated; the
+canonical assertion manifest is domain-separated and SHA-256 hashed.
+
+The live adapter must use the source policy corresponding to its compiled rule,
+verify the record and payload binding, retrieve and check referenced artifacts,
+and commit the assessment manifest in `EvidenceRecord.manifest` alongside other
+provenance. This helper validates structure and consistency. It does not verify
+artifact bytes, authenticate the assessor, approve a rating rubric, or prove that
+an assertion is true. It does not replace freshness, dispute history or the
+existing Rust confidence calculation. The manifest hash is not an on-chain
+methodology identity. No live provider is wired in by this helper.
+
+See `docs/oracle/geffy-methodology-contract.md` for the evidence requirements behind
+each factor and the remaining economic calibration decisions.
