@@ -23,8 +23,8 @@ const base = {
 let monthCounter = 0;
 function nextPeriod() {
   monthCounter += 1;
-  const month = String(monthCounter).padStart(2, "0");
-  return { periodStart: `2020-${month}-01`, periodEnd: `2020-${month}-28` };
+  const year = 1900 + monthCounter;
+  return { periodStart: `${year}-01-01`, periodEnd: `${year}-01-31` };
 }
 
 async function drain(after: ChangeCursor | null): Promise<{ ids: string[]; cursor: ChangeCursor | null }> {
@@ -48,6 +48,21 @@ describe("readChanges", () => {
     const next = await drain(start.cursor);
     expect(next.ids).toEqual(inserted);
     expect((await drain(next.cursor)).ids).toEqual([]);
+  });
+
+  it("returns every row exactly once in numeric id order when one transaction spans digit lengths", async () => {
+    const { rows: maxRows } = await pool.query("SELECT coalesce(max(id), 0)::int AS max FROM observations");
+    const nextPowerOfTen = 10 ** String(maxRows[0].max + 1).length;
+    const count = nextPowerOfTen - maxRows[0].max + 5;
+    await pool.query(
+      `INSERT INTO observations (country_iso3, indicator_id, period_start, period_end, value, source_id, vintage)
+       SELECT 'NOR', 'policy_rate', d, d, 1, 'bis', 'change-feed-bulk'
+         FROM generate_series(date '1800-01-01', date '1800-01-01' + ($1::int - 1), interval '1 day') AS d`,
+      [count],
+    );
+    const { ids } = await drain(null);
+    const { rows } = await pool.query("SELECT id::text AS id FROM observations ORDER BY inserted_xid, observations.id");
+    expect(ids).toEqual(rows.map((row: { id: string }) => row.id));
   });
 
   it("does not skip a row whose transaction commits after a later one", async () => {
