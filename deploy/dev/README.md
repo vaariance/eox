@@ -9,6 +9,7 @@ compose) and the six ingestion pipelines on a daily cron.
 | Instance | `eox-dev`, `us-central1-a`, e2-small, Debian 12 |
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
 | Ingests | daily 06:00 UTC as system user `eox`, log in `/opt/eox/logs/ingest.log` |
+| Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
 
 ## Layout on the VM
 
@@ -35,7 +36,8 @@ project.
 
 ## Connect
 
-Open a tunnel, then use `localhost:5434` with the password from the VM:
+Open a tunnel, then use `localhost:5434` with the password from the VM (add
+`-L 8787:localhost:8787` to reach the evidence API as well):
 
 ```bash
 gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=us-central1-a -- -L 5434:localhost:5433 -N
