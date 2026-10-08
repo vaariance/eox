@@ -5,6 +5,7 @@ account="${GCP_ACCOUNT:?set GCP_ACCOUNT to the gcloud account with access to the
 project="${GCP_PROJECT:-colosseum-eox}"
 zone="${GCP_ZONE:-us-central1-a}"
 instance="${GCP_INSTANCE:-eox-dev}"
+backup_bucket="${GCP_BACKUP_BUCKET:-colosseum-eox-db-backups}"
 
 repo_root="$(git rev-parse --show-toplevel)"
 commit="$(git -C "$repo_root" rev-parse --short HEAD)"
@@ -22,6 +23,6 @@ gcloud compute ssh "$instance" "${gcloud_args[@]}" --command "
   set -e
   rm -rf /tmp/eox-deploy && mkdir -p /tmp/eox-deploy
   tar xzf /tmp/eox.tar.gz -C /tmp/eox-deploy deploy/dev/setup.sh
-  sudo bash /tmp/eox-deploy/deploy/dev/setup.sh /tmp/eox.tar.gz $commit
+  sudo bash /tmp/eox-deploy/deploy/dev/setup.sh /tmp/eox.tar.gz $commit $backup_bucket
   rm -rf /tmp/eox-deploy /tmp/eox.tar.gz
 "

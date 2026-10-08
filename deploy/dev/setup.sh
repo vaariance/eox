@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-archive="${1:?usage: setup.sh <archive.tar.gz> <commit>}"
-commit="${2:?usage: setup.sh <archive.tar.gz> <commit>}"
+archive="${1:?usage: setup.sh <archive.tar.gz> <commit> <backup-bucket>}"
+commit="${2:?usage: setup.sh <archive.tar.gz> <commit> <backup-bucket>}"
+backup_bucket="${3:?usage: setup.sh <archive.tar.gz> <commit> <backup-bucket>}"
 pnpm_version="11.18.0"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -36,6 +37,7 @@ fi
 
 install -m 0644 /opt/eox/app/deploy/dev/docker-compose.override.yml /opt/eox/app/docker-compose.override.yml
 install -m 0755 /opt/eox/app/deploy/dev/run-ingests.sh /opt/eox/run-ingests.sh
+install -m 0755 /opt/eox/app/deploy/dev/backup-db.sh /opt/eox/backup-db.sh
 chown -R eox:eox /opt/eox
 chmod 600 /opt/eox/.env
 
@@ -53,7 +55,9 @@ sudo -u eox -H PNPM_VERSION="$pnpm_version" bash -c '
   pnpm db:migrate
 '
 
-echo "0 6 * * * /opt/eox/run-ingests.sh >> /opt/eox/logs/ingest.log 2>&1" | crontab -u eox -
+printf '%s\n' \
+  "30 5 * * * /opt/eox/backup-db.sh ${backup_bucket} >> /opt/eox/logs/backup.log 2>&1" \
+  "0 6 * * * /opt/eox/run-ingests.sh >> /opt/eox/logs/ingest.log 2>&1" | crontab -u eox -
 install -m 0644 /opt/eox/app/deploy/dev/eox-evidence-api.service /etc/systemd/system/eox-evidence-api.service
 systemctl daemon-reload
 systemctl enable eox-evidence-api >/dev/null
