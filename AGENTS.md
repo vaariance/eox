@@ -115,3 +115,11 @@ another agent needs to know.
 - **Rules for agents:** Read `SYSTEM.md` before working. Its PROPOSED and OPEN items are not decisions until the sign-off table in §9 is filled in. `SYSTEM.md` is versioned, not append-only: change it only with a version bump, the named owners' sign-off and a new entry here.
 - **Open:** All §9 sign-offs, especially continuous challenge authentication (§6.3) and the mapping from continuous references to the annual claim (§6.4), both for Peter and Godwin.
 - **Refs:** `SYSTEM.md`; earlier entry 2026-10-07 · Peter (Codex) · Upstream integration readiness review. The `docs/oracle/...` files cited in earlier entries are gitignored and exist only locally.
+
+### 2026-10-08 · Joel (Claude Code) · Live evidence API deployed
+
+- **Area:** `packages/evidence-store`, new `apps/evidence-api`, `deploy/dev`.
+- **What:** Implemented `SYSTEM.md` §5.5–5.6. Migration `007` stamps each observation with its inserting transaction ID; `readChanges` only returns rows older than every running transaction, so a late commit is never skipped. `apps/evidence-api` serves `GET /v1/changes`, `/v1/records/:recordId` and `/v1/artifacts/:sha256`, read-only, on `127.0.0.1:8787` of the dev VM (systemd `eox-evidence-api`). Verified on the VM at `afd7c58`: 15,291 of 15,291 observations served once each, all six indicators for all 30 countries, 38 of 38 artifacts hash-verified.
+- **Rules for agents:** The worker must read evidence through this API, never the database. Record IDs are `eox:observation:<id>`, change IDs `eox:change:<id>`; cursors are opaque. Facts omit `confidenceBps`, `manifest` and `comparisonRecordId` (methodology side) and carry `publishedAt: null` until the §5.4 policy exists, so the worker's readiness check rejects them by design. When selecting text-cast columns in SQL, always qualify `ORDER BY observations.id`: an unqualified `id` sorts the text alias and silently skips rows.
+- **Open:** Peter: an HTTP `EvidenceProvider` in the worker pointed at this API, plus the §5.3 precision and §5.4 publication-time decisions. The worker's journal tests fail on Windows (`EPERM` on directory fsync) but pass on Linux (23 pass, 6 skipped).
+- **Refs:** `apps/evidence-api/README.md`, `SYSTEM.md` §5, commits `d8c99d7`..`afd7c58`.
