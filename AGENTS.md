@@ -107,3 +107,11 @@ another agent needs to know.
 - **Rules for agents:** The compiler checks structure, not assertion truth or assessor authentication. Live adapters must verify referenced artifacts and use the source authority pinned by the configured rule. Audit ratings never become economic weights or confidence by automatic scaling. All six indicators remain under review; no roster or arithmetic changed.
 - **Open:** Historical calibration data, numerical rating rubrics, economic parameters and live provider integration. Do not claim the helper is already wired to live evidence.
 - **Refs:** `packages/methodology/README.md`, `docs/oracle/geffy-methodology-contract.md`.
+
+### 2026-10-08 · Joel (Claude Code) · System contract v1 proposed
+
+- **Area:** every package; new root file `SYSTEM.md`.
+- **What:** Consolidated the time frames, data types, storage, commitment identities and the meaning of pre-commitment, challenge and post-commitment into `SYSTEM.md`, at Peter's request. It separates the three clocks that were being mixed: the data clock (native source periods, polled daily), the reference clock (continuous proposals; 60 s devnet challenge window) and the settlement clock (annual epoch, cutoff 31 July of the following year, 72 h UMA liveness). It proposes the six indicators as the v1 live set, the evidence adapter mapping, a commit-safe change cursor, a precision rule and a publication-time policy.
+- **Rules for agents:** Read `SYSTEM.md` before working. Its PROPOSED and OPEN items are not decisions until the sign-off table in §9 is filled in. `SYSTEM.md` is versioned, not append-only: change it only with a version bump, the named owners' sign-off and a new entry here.
+- **Open:** All §9 sign-offs, especially continuous challenge authentication (§6.3) and the mapping from continuous references to the annual claim (§6.4), both for Peter and Godwin.
+- **Refs:** `SYSTEM.md`; earlier entry 2026-10-07 · Peter (Codex) · Upstream integration readiness review. The `docs/oracle/...` files cited in earlier entries are gitignored and exist only locally.
