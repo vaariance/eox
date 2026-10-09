@@ -38,6 +38,20 @@ export interface EvidenceFact {
     sourceEdition: string | null;
   };
   supersedes: string | null;
+  publication: PublicationEvidence | null;
+}
+
+export interface ReleaseEvidence {
+  releasedAtMs: number;
+  latestPeriod: string;
+  metadataDigest: string;
+  periodsDigest: string;
+}
+
+export interface PublicationEvidence {
+  basis: "source-data-edit";
+  release: ReleaseEvidence;
+  previousRelease: ReleaseEvidence;
 }
 
 const EDITION_VINTAGE = /^oecd-edition-([0-9]{6})$/;
@@ -52,6 +66,11 @@ export function parseRecordId(recordId: string): string | null {
 
 function unixSeconds(value: Date): number {
   return Math.floor(value.getTime() / 1000);
+}
+
+function exactSeconds(value: Date): number | null {
+  const millis = value.getTime();
+  return millis % 1000 === 0 ? millis / 1000 : null;
 }
 
 function lastDayOfMonth(year: number, month: number): number {
@@ -98,7 +117,7 @@ export function toEvidenceFact(observation: Observation): EvidenceFact | null {
     periodOrdinal: periodOrdinal(descriptor.frequency, period),
     value: observation.value,
     rawValue: observation.rawValue,
-    publishedAt: observation.publishedAt === null ? null : unixSeconds(new Date(observation.publishedAt)),
+    publishedAt: observation.publishedAt === null ? null : exactSeconds(new Date(observation.publishedAt)),
     knownAt: unixSeconds(new Date(observation.knownAt)),
     recordedAt: unixSeconds(new Date(observation.recordedAt)),
     artifactDigest: observation.rawSha256,
@@ -112,5 +131,6 @@ export function toEvidenceFact(observation: Observation): EvidenceFact | null {
       sourceEdition: EDITION_VINTAGE.exec(observation.vintage)?.[1] ?? null,
     },
     supersedes: observation.supersedesId === null ? null : toRecordId(observation.supersedesId),
+    publication: null,
   };
 }

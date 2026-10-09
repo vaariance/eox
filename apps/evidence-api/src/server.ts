@@ -1,8 +1,16 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { getObservation, getSourcePayload, readChanges, type ChangeCursor } from "@eox/evidence-store";
+import {
+  getObservation,
+  getReleaseBefore,
+  getSourcePayload,
+  getSourceRelease,
+  readChanges,
+  type ChangeCursor,
+  type SourceRelease,
+} from "@eox/evidence-store";
 import { parsePortRecords } from "@eox/ingestion";
-import { parseRecordId, toEvidenceFact, toRecordId } from "./facts.js";
+import { parseRecordId, toEvidenceFact, toRecordId, type ReleaseEvidence } from "./facts.js";
 
 const DEFAULT_PAGE_SIZE = 128;
 const MAX_PAGE_SIZE = 500;
@@ -63,7 +71,22 @@ async function evidenceFact(recordId: string) {
   const observation = await getObservation(observationId);
   const fact = observation ? toEvidenceFact(observation) : null;
   if (!fact || fact.recordId !== toRecordId(observationId)) throw new HttpError(404, "record not found");
+  if (observation!.releaseId !== null) {
+    const release = await getSourceRelease(observation!.releaseId);
+    const previous = release ? await getReleaseBefore(release.sourceId, release.dataset, release.releasedAt) : null;
+    if (!release || !previous) throw new HttpError(500, "publication evidence is incomplete");
+    fact.publication = { basis: "source-data-edit", release: releaseEvidence(release), previousRelease: releaseEvidence(previous) };
+  }
   return fact;
+}
+
+function releaseEvidence(release: SourceRelease): ReleaseEvidence {
+  return {
+    releasedAtMs: release.releasedAt.getTime(),
+    latestPeriod: release.latestPeriod,
+    metadataDigest: release.metadataSha256,
+    periodsDigest: release.periodsSha256,
+  };
 }
 
 async function constituents(recordId: string, res: ServerResponse): Promise<void> {
