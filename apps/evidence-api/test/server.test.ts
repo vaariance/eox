@@ -12,6 +12,11 @@ let baseUrl = "";
 let payloadSha = "";
 const payloadBody = new TextEncoder().encode("REF_AREA,TIME_PERIOD,OBS_VALUE\nUSA,2026-08,2.456557\n");
 const ids: Record<string, string> = {};
+let portPayloadSha = "";
+const portBody =
+  '{"features":[' +
+  '{"attributes":{"date":"2026-09-25","ISO3":"USA","portid":"port1","portcalls_container":4,"import_container":1000.10,"export_container":44.5}},' +
+  '{"attributes":{"date":"2026-09-25","ISO3":"USA","portid":"port2","portcalls_container":1,"import_container":null,"export_container":3}}]}';
 
 async function get(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${baseUrl}${path}`, init);
@@ -68,13 +73,22 @@ beforeAll(async () => {
     sourceId: "oecd",
     vintage: "retrieved-2026-10-08",
   });
+  portPayloadSha = (
+    await recordSourcePayload({
+      sourceId: "imf-portwatch",
+      requestUrl: "https://example.test/ports",
+      httpStatus: 200,
+      contentType: "application/json",
+      body: new TextEncoder().encode(portBody),
+    })
+  ).sha256;
   await record("container", {
     countryIso3: "USA",
     indicatorId: "container_throughput",
     periodStart: "2026-09-25",
     periodEnd: "2026-09-25",
     value: "1044413.000000",
-    rawSha256: payloadSha,
+    rawSha256: portPayloadSha,
     sourceId: "imf-portwatch",
     vintage: "daily_estimate",
     coverageReported: 118,
@@ -165,6 +179,23 @@ describe("GET /v1/records/:recordId", () => {
     for (const recordId of ["42", "eox:observation:0", "eox:observation:1;drop", "eox:observation:%E0%A4%A"]) {
       expect((await get(`/v1/records/${recordId}`)).status).toBe(400);
     }
+  });
+});
+
+describe("GET /v1/records/:recordId/constituents", () => {
+  it("returns each port's exact source values from the stored artifact", async () => {
+    const res = await get(`/v1/records/eox:observation:${ids.container}/constituents`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ country: "US", period: "2026-09-25", artifactDigest: portPayloadSha, coverage: { reported: 118, total: 118 } });
+    expect(body.ports).toEqual([
+      { portId: "port1", date: "2026-09-25", importContainer: "1000.10", exportContainer: "44.5", portCalls: "4", reported: true },
+      { portId: "port2", date: "2026-09-25", importContainer: null, exportContainer: "3", portCalls: "1", reported: false },
+    ]);
+  });
+
+  it("returns 404 for indicators without constituents", async () => {
+    expect((await get(`/v1/records/eox:observation:${ids.cpi}/constituents`)).status).toBe(404);
   });
 });
 
