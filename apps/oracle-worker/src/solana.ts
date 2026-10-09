@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { buildSlots, encodeEvidence, encodeRule, encodeSlot, evidenceDigest, evidenceDigestFromBytes, encodedEvidenceLength, type Configuration } from "./codec.js";
 import type { EvidenceRecord, IndexReference, OracleTransport, ProposalProgress, ProposalStatus, SnapshotInput } from "./types.js";
 
+import { ReferenceReader } from "./references.js";
+
 const { AnchorProvider, BN, Wallet } = anchor;
 const EMPTY = PublicKey.default;
 interface Registry { nextSequence: anchor.BN; active: PublicKey; latest: PublicKey; paused: boolean; adapter: PublicKey; authority: PublicKey }
@@ -222,28 +224,10 @@ export class SolanaTransport implements OracleTransport {
     return { evaluation_time: snapshot.evaluationTime.toNumber(), multiplier: this.config.multiplier, countries, baseline: epoch.baseline.length ? epoch.baseline.map(x => x.toString()) : null };
   }
   async readCountry(country: number, snapshot?: string): Promise<IndexReference> {
-    const registry = await this.account<Registry>("registry", this.registry, "finalized");
-    const address = snapshot ? new PublicKey(snapshot) : registry?.latest;
-    if (!address || address.equals(EMPTY)) throw new Error("NoPublishedReference");
-    const state = await this.account<Snapshot & { epoch: PublicKey; countries: { ratio: anchor.BN; change: anchor.BN; expressed: anchor.BN; referenceConfidence: anchor.BN }[] }>("snapshot", address, "finalized");
-    if (!state || state.status !== 4 || !state.epoch.equals(this.epoch)) throw new Error("UnpublishedOrWrongEpoch");
-    const value = state.countries[country];
-    const identity = this.config.countries[country];
-    if (!value || !identity) throw new Error("UnknownCountry");
-    return { snapshot: address.toBase58(), epoch: this.epoch.toBase58(), base: identity.id, quote: "WORLD",
-      ratio: value.ratio.toString(), change: value.change.toString(), expressed: value.expressed.toString(), confidence: value.referenceConfidence.toString() };
+    return new ReferenceReader(this.program).readCountry(country, snapshot);
   }
   async readPair(snapshot: string, base: number, quote: number): Promise<IndexReference> {
-    const method = this.program.methods.readPair;
-    if (!method) throw new Error("IDLMethodMissing:readPair");
-    const tx = await method(base, quote).accountsPartial({ epoch: this.epoch, snapshot: new PublicKey(snapshot) }).transaction();
-    const simulation = await this.program.provider.simulate!(tx, [], "finalized");
-    const returned = simulation.returnData;
-    if (!returned || returned.programId !== this.program.programId.toBase58() || returned.data[1] !== "base64") throw new Error("MissingPairReturnData");
-    const bytes = Buffer.from(returned.data[0], "base64");
-    if (bytes.length !== 32) throw new Error("InvalidPairReturnData");
-    return { snapshot, epoch: this.epoch.toBase58(), base: this.config.countries[base]!.id, quote: this.config.countries[quote]!.id,
-      ratio: bytes.readBigInt64LE(0).toString(), change: bytes.readBigInt64LE(8).toString(), expressed: bytes.readBigInt64LE(16).toString(), confidence: bytes.readBigInt64LE(24).toString() };
+    return new ReferenceReader(this.program).readPair(snapshot, base, quote);
   }
   async simulateChallenge(adapterWallet: string, snapshot: string, action: "register" | "upheld" | "invalid" | "close", challengeId: string, country = 0, page = 0, index = 0, comparison = false): Promise<string> {
     const keypair = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(await readFile(adapterWallet, "utf8")) as number[]));

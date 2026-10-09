@@ -4,6 +4,7 @@ dist
 .env
 .claude
 docs/
+/packages/methodology/research/
 .anchor/
 .oracle/
 test-ledger/

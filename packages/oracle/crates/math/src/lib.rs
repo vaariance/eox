@@ -1,5 +1,6 @@
 //! EOX v0.1 deterministic, experimental index mathematics. All monetary-looking
 //! outputs are index values, never collateral entitlements or USDC prices.
+pub mod protocol;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 #[cfg(not(target_os = "solana"))]
