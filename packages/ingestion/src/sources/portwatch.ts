@@ -98,7 +98,20 @@ export function parsePortRecords(text: string): PortRecord[] {
   }));
 }
 
-export async function fetchLatestAvailableDate(): Promise<string> {
+export const PORTWATCH_DATASET = "Daily_Ports_Data";
+const LAYER_URL = BASE_URL.slice(0, -"/query".length);
+
+export interface LatestAvailableDate {
+  payload: FetchedPayload;
+  date: string;
+}
+
+export interface LayerMetadata {
+  payload: FetchedPayload;
+  dataLastEditDate: string;
+}
+
+export async function fetchLatestAvailableDate(): Promise<LatestAvailableDate> {
   const params = new URLSearchParams({
     where: "import_container IS NOT NULL",
     outFields: "date",
@@ -107,11 +120,31 @@ export async function fetchLatestAvailableDate(): Promise<string> {
     orderByFields: "date DESC",
     returnGeometry: "false",
   });
-  const res = await fetch(`${BASE_URL}?${params.toString()}`);
+  const url = `${BASE_URL}?${params.toString()}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`PortWatch request failed: ${res.status} ${res.statusText}`);
-  const body = (await res.json()) as ArcGISDateQueryResponse;
+  const payload = await capturePayload(url, res);
+  const body = JSON.parse(payloadText(payload)) as ArcGISDateQueryResponse;
   if (body.error) throw new Error(`PortWatch error: ${body.error.message ?? JSON.stringify(body.error)}`);
   const date = body.features?.[0]?.attributes.date;
-  if (!date) throw new Error("PortWatch returned no available date");
-  return date;
+  if (!date || !DATE_PATTERN.test(date)) throw new Error("PortWatch returned no available date");
+  return { payload, date };
+}
+
+export function parseLayerMetadata(text: string): string {
+  const body = JSON.parse(text) as { editingInfo?: { dataLastEditDate?: unknown }; error?: { message?: string } };
+  if (body.error) throw new Error(`PortWatch error: ${body.error.message ?? JSON.stringify(body.error)}`);
+  const millis = body.editingInfo?.dataLastEditDate;
+  if (typeof millis !== "number" || !Number.isSafeInteger(millis) || millis <= 0) {
+    throw new Error("PortWatch layer metadata has no data edit time");
+  }
+  return new Date(millis).toISOString();
+}
+
+export async function fetchLayerMetadata(): Promise<LayerMetadata> {
+  const url = `${LAYER_URL}?f=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`PortWatch request failed: ${res.status} ${res.statusText}`);
+  const payload = await capturePayload(url, res);
+  return { payload, dataLastEditDate: parseLayerMetadata(payloadText(payload)) };
 }
