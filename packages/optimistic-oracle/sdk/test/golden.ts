@@ -1,6 +1,5 @@
 import type { Hex } from "viem";
 
-/** `resultPayload(2025)` from the adapter's `test_golden_payload`, also parsed by the program's tests. */
 export const GOLDEN_PAYLOAD: Hex =
   "0x454f58520107e9" +
   "0000000000000000000000000000000000000000000000000000000000001111" +

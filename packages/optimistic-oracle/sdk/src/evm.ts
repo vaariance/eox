@@ -35,7 +35,6 @@ export async function readEvmEpoch(client: PublicClient, adapter: Address, year:
   return client.readContract({ address: adapter, abi: adapterAbi, functionName: "epochs", args: [year] });
 }
 
-/** Opens `year` on the adapter. Only the adapter's owner can. */
 export async function openEvmEpoch(
   wallet: Wallet,
   client: PublicClient,
@@ -52,10 +51,6 @@ export async function openEvmEpoch(
   return wallet.writeContract(request);
 }
 
-/**
- * Asserts `claim` as `year`'s result. Approves the epoch's bond first if the adapter's
- * allowance is short. Returns the assertion ID and the assertion transaction.
- */
 export async function assertResult(
   wallet: Wallet,
   client: PublicClient,
@@ -97,10 +92,6 @@ export async function assertResult(
   return { assertionId: result, hash };
 }
 
-/**
- * Publishes a settled epoch's result to Wormhole, paying the current message fee. The VAA
- * the guardians sign can then be posted to Solana and passed to `receiveResultInstruction`.
- */
 export async function publishResult(wallet: Wallet, client: PublicClient, adapter: Address, year: number): Promise<Hash> {
   const wormhole = await client.readContract({ address: adapter, abi: adapterAbi, functionName: "wormhole" });
   const fee = await client.readContract({ address: wormhole, abi: wormholeFeeAbi, functionName: "messageFee" });

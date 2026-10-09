@@ -1,4 +1,3 @@
-// Regenerates src/adapter-abi.ts from the Foundry build. Run `forge build` in ../evm first.
 import { readFileSync, writeFileSync } from "node:fs";
 
 const artifact = new URL("../../evm/out/EoxAssertionAdapter.sol/EoxAssertionAdapter.json", import.meta.url);

@@ -25,7 +25,6 @@ export interface SolanaEpoch {
   methodologyImageId: Hex;
   status: EpochStatus;
   result: Claim | null;
-  /** The UMA assertion that settled the epoch, zero until then. */
   assertionId: Hex;
   wormholeSequence: bigint;
   bump: number;
@@ -39,12 +38,10 @@ export interface SolanaConfig {
   bump: number;
 }
 
-/** Anchor's 8-byte discriminator: the start of sha256("<namespace>:<name>"). */
 export function discriminator(namespace: "global" | "account", name: string): Uint8Array {
   return hexToBytes(sha256(stringToBytes(`${namespace}:${name}`))).subarray(0, 8);
 }
 
-/** An EVM address as Wormhole names emitters: left-padded to 32 bytes. */
 export function evmEmitterAddress(evmAddress: EvmAddress): Hex {
   if (!isAddress(evmAddress)) throw new Error(`not an EVM address: ${evmAddress}`);
   return pad(evmAddress.toLowerCase() as Hex, { size: 32 });
@@ -86,7 +83,6 @@ function data(name: string, ...args: Uint8Array[]): Uint8Array {
   return out;
 }
 
-/** One-time setup. `authority` must hold the program's upgrade authority. */
 export async function initializeInstruction(args: {
   authority: TransactionSigner;
   wormholeProgram: Address;
@@ -113,7 +109,6 @@ export async function initializeInstruction(args: {
   } as Instruction;
 }
 
-/** Opens `year` with its methodology. Open the same epoch on the adapter. */
 export async function openEpochInstruction(args: {
   authority: TransactionSigner;
   year: number;
@@ -133,10 +128,6 @@ export async function openEpochInstruction(args: {
   } as Instruction;
 }
 
-/**
- * Records `year`'s result from a VAA already posted to the Wormhole core bridge (post it with
- * Wormhole's SDK first). Anyone may send it; the transaction's fee payer signs.
- */
 export async function receiveResultInstruction(args: {
   year: number;
   postedVaa: Address;
@@ -154,7 +145,6 @@ export async function receiveResultInstruction(args: {
   } as Instruction;
 }
 
-/** Voids `year` if it has no result by the deadline. Anyone may send it. */
 export async function voidEpochInstruction(args: { year: number; programId?: Address }): Promise<Instruction> {
   const programId = args.programId ?? PROGRAM_ID;
   return {

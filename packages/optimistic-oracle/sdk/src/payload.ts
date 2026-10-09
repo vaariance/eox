@@ -1,6 +1,5 @@
 import { type Hex, bytesToHex, concat, hexToBytes, isHex, sha256, size, stringToBytes, toHex } from "viem";
 
-/** The hashes a result commits to. `Claim` in the adapter, `ClaimBody` in the program. */
 export interface Claim {
   evidenceRoot: Hex;
   methodologyImageId: Hex;
@@ -8,7 +7,6 @@ export interface Claim {
   resolutionUriHash: Hex;
 }
 
-/** A settled epoch's result, as the adapter publishes it over Wormhole. */
 export interface RelayedResult {
   year: number;
   claim: Claim;
@@ -24,16 +22,10 @@ function word(name: string, value: Hex): Hex {
   return value;
 }
 
-/** The SHA-256 of a resolution URI, as the adapter checks and the claim records it. */
 export function resolutionUriHash(uri: string): Hex {
   return sha256(stringToBytes(uri));
 }
 
-/**
- * Encodes a result exactly as the adapter's `resultPayload`:
- * "EOXR" | version | year (big-endian u16) | evidence root | methodology image ID |
- * output hash | resolution URI hash | assertion ID.
- */
 export function encodeResultPayload({ year, claim, assertionId }: RelayedResult): Hex {
   if (!Number.isInteger(year) || year < 0 || year > 0xffff) throw new Error("year must fit in a u16");
   return concat([
@@ -48,7 +40,6 @@ export function encodeResultPayload({ year, claim, assertionId }: RelayedResult)
   ]);
 }
 
-/** Decodes a result payload, rejecting anything that is not exactly one. */
 export function decodeResultPayload(payload: Hex | Uint8Array): RelayedResult {
   const bytes = typeof payload === "string" ? hexToBytes(payload) : payload;
   if (bytes.length !== PAYLOAD_LENGTH) throw new Error(`payload must be ${PAYLOAD_LENGTH} bytes, got ${bytes.length}`);

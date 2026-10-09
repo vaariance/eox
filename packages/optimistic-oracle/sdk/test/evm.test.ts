@@ -28,8 +28,6 @@ import {
 } from "../src/index.js";
 import { word } from "./golden.js";
 
-// Runs the SDK against the adapter's real bytecode on Anvil, with the Foundry test mocks for
-// UMA, Wormhole and the bond token. Build the contracts first: `forge build` in ../evm.
 const OUT = fileURLToPath(new URL("../../evm/out", import.meta.url));
 const hasAnvil = spawnSync("anvil", ["--version"]).status === 0;
 
@@ -38,11 +36,9 @@ function artifact(file: string, name: string): { abi: Abi; bytecode: Hex } {
   return { abi: json.abi, bytecode: json.bytecode.object };
 }
 
-// Anvil's first two default accounts.
 const owner = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
 const asserter = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
 
-// Anvil starts at the real current time and cannot go back, so use an epoch still ahead.
 const YEAR = 2030;
 const URI = "ipfs://eox-2030-snapshot";
 const BOND = parseUnits("1000", 6);
@@ -109,12 +105,10 @@ describe.skipIf(!hasAnvil || !existsSync(`${OUT}/EoxAssertionAdapter.sol`))("aga
     expect(await readEvmEpoch(client, at.adapter, YEAR)).toMatchObject({ opened: true, settled: false, bond: BOND });
 
     await test.setNextBlockTimestamp({ timestamp: BigInt(cutoffTimestamp(YEAR) + 3600) });
-    // The SDK approves the bond itself: the asserter has never approved the adapter.
     const { assertionId, hash } = await assertResult(asserterWallet, client, at.adapter, { year: YEAR, claim, resolutionUri: URI });
     await client.waitForTransactionReceipt({ hash });
     expect((await readEvmEpoch(client, at.adapter, YEAR)).activeAssertion).toBe(assertionId);
 
-    // UMA's liveness passes with no dispute.
     await send(at.oracle, abis.oracle, "resolve", [assertionId, true]);
     const epoch = await readEvmEpoch(client, at.adapter, YEAR);
     expect(epoch.settled).toBe(true);

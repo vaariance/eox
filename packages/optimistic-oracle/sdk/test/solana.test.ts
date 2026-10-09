@@ -41,7 +41,6 @@ import { GOLDEN_PAYLOAD, word } from "./golden.js";
 
 const hex = (b: Uint8Array) => bytesToHex(b).slice(2);
 
-// The same values the program's `sdk_vectors` tests pin.
 describe("program interface", () => {
   it("uses the program's instruction and account discriminators", () => {
     expect(hex(discriminator("global", "initialize"))).toBe("afaf6d1f0d989bed");
@@ -88,8 +87,6 @@ describe("program interface", () => {
   });
 });
 
-// Runs the SDK's instructions against the compiled program. Build it first:
-//   cargo build-sbf --arch v0 --manifest-path programs/eox_settlement_oracle/Cargo.toml
 const PROGRAM_SO = fileURLToPath(
   new URL("../../solana/target/deploy/eox_settlement_oracle.so", import.meta.url),
 );
@@ -134,7 +131,6 @@ describe.skipIf(!existsSync(PROGRAM_SO))("against the compiled program (LiteSVM)
     svm.setClock(clock);
   }
 
-  /** LiteSVM deploys without an upgrade authority; write one in as a real deploy would. */
   async function setUpgradeAuthority(key: Address) {
     const [programData] = await getProgramDerivedAddress({
       programAddress: address("BPFLoaderUpgradeab1e11111111111111111111111"),
@@ -149,15 +145,14 @@ describe.skipIf(!existsSync(PROGRAM_SO))("against the compiled program (LiteSVM)
   }
 
   function postVaa(magic: string, chain: number, emitter: string, payload: Uint8Array, owner = wormhole): Address {
-    // The core bridge's layout: magic, then Borsh MessageData with little-endian integers.
     const data = new Uint8Array(95 + payload.length);
     const view = new DataView(data.buffer);
     let at = 0;
     const put = (bytes: Uint8Array) => (data.set(bytes, at), (at += bytes.length));
     put(new TextEncoder().encode(magic));
-    put(new Uint8Array([1, 1])); // vaa_version, consistency_level
-    put(new Uint8Array(4 + 32 + 4 + 4)); // vaa_time, vaa_signature_account, submission_time, nonce
-    view.setBigUint64(at, 9n, true), (at += 8); // sequence
+    put(new Uint8Array([1, 1]));
+    put(new Uint8Array(4 + 32 + 4 + 4));
+    view.setBigUint64(at, 9n, true), (at += 8);
     view.setUint16(at, chain, true), (at += 2);
     put(hexToBytes(emitter as `0x${string}`));
     view.setUint32(at, payload.length, true), (at += 4);
@@ -169,7 +164,6 @@ describe.skipIf(!existsSync(PROGRAM_SO))("against the compiled program (LiteSVM)
 
   let counter = 0;
   function randomAddress(): string {
-    // Any 32 bytes are a valid account address; base58 of a counter-based key is enough here.
     const bytes = new Uint8Array(32);
     bytes[0] = 7;
     new DataView(bytes.buffer).setUint32(28, ++counter);
@@ -228,13 +222,13 @@ describe.skipIf(!existsSync(PROGRAM_SO))("against the compiled program (LiteSVM)
   it("refuses a VAA from another emitter", async () => {
     setTime(cutoffTimestamp(YEAR) + 4 * 86_400);
     const vaa = postVaa("vaa", WORMHOLE_CHAIN.base, word("beef"), hexToBytes(GOLDEN_PAYLOAD));
-    await fails(authority, await receiveResultInstruction({ year: YEAR, postedVaa: vaa }), 6007); // UnknownEmitter
+    await fails(authority, await receiveResultInstruction({ year: YEAR, postedVaa: vaa }), 6007);
     expect((await readEpoch()).status).toBe("open");
   });
 
   it("voids an epoch with no result after the deadline", async () => {
     setTime(cutoffTimestamp(YEAR) + RESULT_DEADLINE_SECONDS);
-    await fails(authority, await voidEpochInstruction({ year: YEAR }), 6005); // DeadlineNotReached
+    await fails(authority, await voidEpochInstruction({ year: YEAR }), 6005);
     setTime(cutoffTimestamp(YEAR) + RESULT_DEADLINE_SECONDS + 1);
     await ok(authority, await voidEpochInstruction({ year: YEAR }));
     expect((await readEpoch()).status).toBe("voided");
