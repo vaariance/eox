@@ -16,6 +16,7 @@ export interface NewObservation {
   coverageReported?: number;
   coverageTotal?: number;
   revisesId?: string;
+  releaseId?: string;
 }
 
 export interface Observation {
@@ -36,6 +37,7 @@ export interface Observation {
   coverageReported: number | null;
   coverageTotal: number | null;
   revisesId: string | null;
+  releaseId: string | null;
   supersedesId: string | null;
   correctionReason: string | null;
 }
@@ -78,3 +80,19 @@ export interface StoredPayload {
   contentType: string | null;
   body: Buffer;
 }
+
+export interface NewSourceRelease {
+  sourceId: string;
+  dataset: string;
+  releasedAt: string;
+  latestPeriod: string;
+  metadataSha256: string;
+  periodsSha256: string;
+}
+
+export interface SourceRelease extends Omit<NewSourceRelease, "releasedAt"> {
+  id: string;
+  releasedAt: Date;
+  recordedAt: Date;
+}
+
