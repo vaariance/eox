@@ -15,6 +15,7 @@ export interface NewObservation {
   rawValue?: string;
   coverageReported?: number;
   coverageTotal?: number;
+  revisesId?: string;
 }
 
 export interface Observation {
@@ -34,6 +35,7 @@ export interface Observation {
   rawValue: string | null;
   coverageReported: number | null;
   coverageTotal: number | null;
+  revisesId: string | null;
   supersedesId: string | null;
   correctionReason: string | null;
 }

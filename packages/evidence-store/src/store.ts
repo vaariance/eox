@@ -19,6 +19,7 @@ const COLUMNS = `
   published_at AS "publishedAt", known_at AS "knownAt", recorded_at AS "recordedAt",
   recipe_id AS "recipeId", raw_sha256 AS "rawSha256", raw_value AS "rawValue",
   coverage_reported AS "coverageReported", coverage_total AS "coverageTotal",
+  revises_id::text AS "revisesId",
   supersedes_id::text AS "supersedesId", correction_reason AS "correctionReason"`;
 
 export async function recordObservation(o: NewObservation): Promise<Observation> {
@@ -43,14 +44,14 @@ async function insert(
     `INSERT INTO observations
        (country_iso3, indicator_id, period_start, period_end, value, source_id,
         vintage, published_at, known_at, recipe_id, raw_sha256, raw_value,
-        coverage_reported, coverage_total, supersedes_id, correction_reason)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, COALESCE($9::timestamptz, now()), $10,$11,$12,$13,$14,$15,$16)
+        coverage_reported, coverage_total, revises_id, supersedes_id, correction_reason)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, COALESCE($9::timestamptz, now()), $10,$11,$12,$13,$14,$15,$16,$17)
      RETURNING ${COLUMNS}`,
     [
       o.countryIso3, o.indicatorId, o.periodStart, o.periodEnd, String(o.value),
       o.sourceId, o.vintage, o.publishedAt ?? null, o.knownAt ?? null,
       o.recipeId ?? null, o.rawSha256 ?? null, o.rawValue ?? null,
-      o.coverageReported ?? null, o.coverageTotal ?? null, supersedesId, reason,
+      o.coverageReported ?? null, o.coverageTotal ?? null, o.revisesId ?? null, supersedesId, reason,
     ],
   );
   return rows[0];
