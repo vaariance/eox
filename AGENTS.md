@@ -201,3 +201,11 @@ another agent needs to know.
 - **Rules for agents:** UI work (Godwin, step 3) uses `createAppApiClient` against `pnpm --filter @eox/app-api-server start`. Never compute references in the API or UI; values come from the oracle. Fixed-point values are integer strings at scale 1,000,000; parse with `BigInt`. Regenerate `fixtures/oracle-preview.json` whenever `packages/oracle/fixtures` changes; a test enforces this.
 - **Open:** Snapshot identity fields are provisional until Peter publishes step 1 (claim/relay schemas, account layouts, readers). Trading endpoints wait for Peter's step 8 equations and instruction definitions. The signing service itself is step 4.
 - **Refs:** `apps/app-api/README.md`, `packages/signing/README.md`, commits `b74af20`..`5e73253`.
+
+### 2026-10-09 · Joel (Claude Code) · Dev signing key identities published
+
+- **Area:** GCP `colosseum-eox` Cloud KMS, `apps/signer`, `deploy/signing/dev-keys.json`.
+- **What:** First part of `product.md` step 4. Key ring `eox-signing-dev` (us-central1) holds one non-exportable key per role: `oracle-operator` and `solana-relayer` are Ed25519 (software protection; Cloud KMS does not offer Ed25519 at HSM level), `uma-asserter`, `uma-challenger`, `oracle-checker` and `evm-relayer` are secp256k1 (HSM). Only service account `eox-signer` may sign with them. Public keys and addresses are in `deploy/signing/dev-keys.json` (Solana devnet and Sepolia), generated from KMS by `apps/signer/scripts/key-directory.ts`.
+- **Rules for agents:** Deploy dev contracts with the authorities in `deploy/signing/dev-keys.json` and pin those addresses on chain. Never create or use another copy of these roles' private keys. Admin and upgrade authorities are not in this directory and must stay outside the signing service. Signing stays disabled for every target until its deployed address is bound in `apps/signer/config/dev.json`; send Joel the deployed program IDs, contract addresses and permitted instructions/selectors.
+- **Open:** The signing service itself (KMS adapters, policy, idempotency, Cloud Run deployment) is still in progress. The operational accounts are unfunded.
+- **Refs:** `deploy/signing/dev-keys.json`, `apps/signer/config/dev.json`, commits `21ba045`..`376731d`.
