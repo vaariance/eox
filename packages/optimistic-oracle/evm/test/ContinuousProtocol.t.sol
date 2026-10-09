@@ -55,6 +55,15 @@ contract ProtocolHarness {
         return P.encodeClosed(h, e);
     }
 
+    function bindingIdentity(
+        string memory recordId,
+        bytes32 evidenceDigest,
+        bytes32 assessmentDigest,
+        bytes32 assertionId
+    ) external pure returns (bytes32) {
+        return P.bindingIdentity(recordId, evidenceDigest, assessmentDigest, assertionId);
+    }
+
     function relayDigest(bytes memory message) external pure returns (bytes32) {
         return P.relayDigest(message);
     }
@@ -299,6 +308,18 @@ contract ContinuousProtocolTest is Test {
         assertEq(c.cutoff, _u64At(string.concat(v, ".input.cutoff")));
         assertEq(c.slotCount, 1);
         assertEq(c.evidenceAssertions, _hashesAt(string.concat(v, ".input.evidence_assertions")));
+        assertEq(c.bindingIdentities.length, 2);
+        assertEq(c.bindingIdentities[0], _bindingAt(string.concat(v, ".input.slots[0].current")));
+        assertEq(c.bindingIdentities[1], _bindingAt(string.concat(v, ".input.slots[0].comparison")));
+    }
+
+    function _bindingAt(string memory path) internal view returns (bytes32) {
+        return p.bindingIdentity(
+            vm.parseJsonString(json, string.concat(path, ".record_id")),
+            _hashAt(string.concat(path, ".evidence_digest")),
+            _hashAt(string.concat(path, ".assessment_digest")),
+            _hashAt(string.concat(path, ".assertion_id"))
+        );
     }
 
     function _assertContext(P.ClaimContext memory c, string memory path) internal view {
