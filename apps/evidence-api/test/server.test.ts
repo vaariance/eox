@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AddressInfo } from "node:net";
-import { pool, recordObservation, recordSourcePayload, type NewObservation } from "@eox/evidence-store";
+import { pool, recordObservation, recordSourcePayload, recordSourceRelease, type NewObservation } from "@eox/evidence-store";
 import { periodOrdinal, seriesIdentity } from "@eox/methodology";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEvidenceServer } from "../src/server.js";
@@ -153,6 +153,7 @@ describe("GET /v1/records/:recordId", () => {
       coverage: null,
       revision: { revises: null, orderBasis: "retrieval", sourceEdition: null },
       supersedes: null,
+      publication: null,
     });
     expect(Number.isInteger(fact.recordedAt)).toBe(true);
   });
@@ -205,6 +206,72 @@ describe("revision provenance", () => {
     const fact = await (await get(`/v1/records/eox:observation:${second.id}`)).json();
     expect(fact.revision).toEqual({ revises: `eox:observation:${first.id}`, orderBasis: "source-edition", sourceEdition: "202507" });
     expect(fact.period).toBe("2025-Q1");
+  });
+});
+
+describe("publication evidence", () => {
+  async function release(releasedAt: string, latestPeriod: string) {
+    const digest = async (label: string) =>
+      (
+        await recordSourcePayload({
+          sourceId: "imf-portwatch",
+          requestUrl: `https://example.test/${label}`,
+          httpStatus: 200,
+          contentType: "application/json",
+          body: new TextEncoder().encode(`${label}-${releasedAt}`),
+        })
+      ).sha256;
+    return recordSourceRelease({
+      sourceId: "imf-portwatch",
+      dataset: "Daily_Ports_Data",
+      releasedAt,
+      latestPeriod,
+      metadataSha256: await digest("layer"),
+      periodsSha256: await digest("latest"),
+    });
+  }
+
+  it("links the release that first contained the day and the earlier one that lacked it", async () => {
+    const previous = await release("2026-10-05T10:00:00.000Z", "2026-10-01");
+    const current = await release("2026-10-06T18:41:27.589Z", "2026-10-02");
+    const row = await recordObservation({
+      countryIso3: "JPN",
+      indicatorId: "container_throughput",
+      periodStart: "2026-10-02",
+      periodEnd: "2026-10-02",
+      value: "567356",
+      rawSha256: portPayloadSha,
+      sourceId: "imf-portwatch",
+      vintage: "daily_estimate",
+      publishedAt: "2026-10-06T18:41:27.589Z",
+      releaseId: current.id,
+    });
+    const fact = await (await get(`/v1/records/eox:observation:${row.id}`)).json();
+    expect(fact.publishedAt).toBeNull();
+    expect(fact.publication).toEqual({
+      basis: "source-data-edit",
+      release: { releasedAtMs: 1791312087589, latestPeriod: "2026-10-02", metadataDigest: current.metadataSha256, periodsDigest: current.periodsSha256 },
+      previousRelease: { releasedAtMs: 1791194400000, latestPeriod: "2026-10-01", metadataDigest: previous.metadataSha256, periodsDigest: previous.periodsSha256 },
+    });
+  });
+
+  it("reports a whole-second release time as publishedAt", async () => {
+    const current = await release("2026-10-07T09:00:00.000Z", "2026-10-03");
+    const row = await recordObservation({
+      countryIso3: "JPN",
+      indicatorId: "container_throughput",
+      periodStart: "2026-10-03",
+      periodEnd: "2026-10-03",
+      value: "1",
+      rawSha256: portPayloadSha,
+      sourceId: "imf-portwatch",
+      vintage: "daily_estimate",
+      publishedAt: "2026-10-07T09:00:00.000Z",
+      releaseId: current.id,
+    });
+    const fact = await (await get(`/v1/records/eox:observation:${row.id}`)).json();
+    expect(fact.publishedAt).toBe(1791363600);
+    expect(fact.publication.previousRelease.latestPeriod).toBe("2026-10-02");
   });
 });
 
