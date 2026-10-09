@@ -32,8 +32,15 @@ export interface EvidenceFact {
   recordedAt: number;
   artifactDigest: string;
   coverage: { reported: number; total: number } | null;
+  revision: {
+    revises: string | null;
+    orderBasis: "source-edition" | "retrieval";
+    sourceEdition: string | null;
+  };
   supersedes: string | null;
 }
+
+const EDITION_VINTAGE = /^oecd-edition-([0-9]{6})$/;
 
 export function toRecordId(observationId: string): string {
   return `${RECORD_PREFIX}${observationId}`;
@@ -99,6 +106,11 @@ export function toEvidenceFact(observation: Observation): EvidenceFact | null {
       observation.coverageReported === null || observation.coverageTotal === null
         ? null
         : { reported: observation.coverageReported, total: observation.coverageTotal },
+    revision: {
+      revises: observation.revisesId === null ? null : toRecordId(observation.revisesId),
+      orderBasis: EDITION_VINTAGE.test(observation.vintage) ? "source-edition" : "retrieval",
+      sourceEdition: EDITION_VINTAGE.exec(observation.vintage)?.[1] ?? null,
+    },
     supersedes: observation.supersedesId === null ? null : toRecordId(observation.supersedesId),
   };
 }
