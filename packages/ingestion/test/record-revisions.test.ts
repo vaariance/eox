@@ -48,8 +48,10 @@ describe("snapshot series", () => {
     expect(await recordRevisions([{ ...base, coverageReported: 8, rawSha256: payloadSha }])).toBe(0);
   });
 
-  it("records a value change", async () => {
+  it("records a value change linked to the latest version", async () => {
     expect(await recordRevisions([{ ...base, value: "1200.000000", coverageReported: 8 }])).toBe(1);
+    const versions = await getVersions(q);
+    expect(versions.at(-1)!.revisesId).toBe(versions.at(-2)!.id);
     expect(await recordRevisions([{ ...base, value: "1200.000000", coverageReported: 8 }])).toBe(0);
   });
 });
@@ -87,6 +89,14 @@ describe("vintaged series", () => {
   it("does not re-record an edition only to add a payload link", async () => {
     const payloadSha = await storePayload("vintage-provenance");
     expect(await recordRevisions([{ ...edition("202610", "130.000000"), rawSha256: payloadSha }])).toBe(0);
+  });
+
+  it("links each recorded edition to the edition it revises", async () => {
+    const versions = await getVersions(q);
+    const byVintage = new Map(versions.map((row) => [row.vintage, row]));
+    expect(byVintage.get("oecd-edition-202506")!.revisesId).toBeNull();
+    expect(byVintage.get("oecd-edition-202512")!.revisesId).toBe(byVintage.get("oecd-edition-202506")!.id);
+    expect(byVintage.get("oecd-edition-202609")!.revisesId).toBe(byVintage.get("oecd-edition-202506")!.id);
   });
 
   it("orders a mixed batch so each edition is compared with its true predecessor", async () => {
