@@ -151,6 +151,7 @@ describe("GET /v1/records/:recordId", () => {
       publishedAt: null,
       artifactDigest: payloadSha,
       coverage: null,
+      revision: { revises: null, orderBasis: "retrieval", sourceEdition: null },
       supersedes: null,
     });
     expect(Number.isInteger(fact.recordedAt)).toBe(true);
@@ -182,6 +183,31 @@ describe("GET /v1/records/:recordId", () => {
   });
 });
 
+describe("revision provenance", () => {
+  it("links a GDP edition to the edition it revises, ordered by source edition", async () => {
+    const base = {
+      countryIso3: "JPN",
+      indicatorId: "gdp_real_volume",
+      periodStart: "2025-01-01",
+      periodEnd: "2025-03-31",
+      rawSha256: payloadSha,
+      sourceId: "oecd",
+    };
+    const first = await recordObservation({ ...base, value: "140263950", rawValue: "140263950000000", vintage: "oecd-edition-202506", knownAt: "2025-06-01T00:00:00Z" });
+    const second = await recordObservation({
+      ...base,
+      value: "140385450",
+      rawValue: "140385450000000",
+      vintage: "oecd-edition-202507",
+      knownAt: "2025-07-01T00:00:00Z",
+      revisesId: first.id,
+    });
+    const fact = await (await get(`/v1/records/eox:observation:${second.id}`)).json();
+    expect(fact.revision).toEqual({ revises: `eox:observation:${first.id}`, orderBasis: "source-edition", sourceEdition: "202507" });
+    expect(fact.period).toBe("2025-Q1");
+  });
+});
+
 describe("GET /v1/records/:recordId/constituents", () => {
   it("returns each port's exact source values from the stored artifact", async () => {
     const res = await get(`/v1/records/eox:observation:${ids.container}/constituents`);
@@ -203,10 +229,13 @@ describe("GET /v1/changes", () => {
   it("lists every evidence record exactly once across pages and skips non-evidence rows", async () => {
     const changes = await allChanges(2);
     const recordIds = changes.map((change) => change.recordId);
-    expect(recordIds).toEqual([ids.cpi, ids.unemploymentNzl, ids.container].map((id) => `eox:observation:${id}`));
-    expect(changes.map((change) => change.changeId)).toEqual(
-      [ids.cpi, ids.unemploymentNzl, ids.container].map((id) => `eox:change:${id}`),
-    );
+    expect(new Set(recordIds).size).toBe(recordIds.length);
+    const evidence = [ids.cpi, ids.unemploymentNzl, ids.container].map((id) => `eox:observation:${id}`);
+    expect(recordIds.filter((id) => evidence.includes(id))).toEqual(evidence);
+    for (const key of ["notInCatalogue", "noPayload", "badPeriod"]) {
+      expect(recordIds).not.toContain(`eox:observation:${ids[key]}`);
+    }
+    expect(changes.every((change) => change.changeId === change.recordId.replace("eox:observation:", "eox:change:"))).toBe(true);
   });
 
   it("returns the same cursor when there is nothing new", async () => {

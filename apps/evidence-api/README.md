@@ -54,6 +54,7 @@ frequency. Everything else returns 404 and is left out of the change feed.
 | `knownAt`, `recordedAt` | Unix seconds |
 | `artifactDigest` | SHA-256 of the raw response, retrievable from `/v1/artifacts` |
 | `coverage` | `{ reported, total }` for container throughput, else `null` |
+| `revision` | `revises`: the `recordId` this revision replaces (the predecessor known when it was recorded), or `null`; `orderBasis`: `source-edition` when the source states the edition (GDP, with `sourceEdition` `YYYYMM`), otherwise `retrieval`, meaning the order rests on `recordedAt` and the differing stored artifact |
 | `supersedes` | the corrected record's `recordId`, or `null` |
 
 Facts deliberately leave out `confidenceBps`, `manifest` and `comparisonRecordId`.
