@@ -14,7 +14,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 
 contract EoxAssertionAdapterTest is Test {
     uint16 constant YEAR = 2025;
-    uint256 constant CUTOFF_2025 = 1_785_456_000; // 2026-07-31T00:00:00Z
+    uint256 constant CUTOFF_2025 = 1_785_456_000;
     uint256 constant MIN_BOND = 500e6;
     uint256 constant BOND = 1_000e6;
     bytes32 constant IMAGE_ID = bytes32(uint256(0x2222));
@@ -28,8 +28,6 @@ contract EoxAssertionAdapterTest is Test {
     address owner = makeAddr("owner");
     address asserter = makeAddr("asserter");
     address stranger = makeAddr("stranger");
-    // Hashed once here: calling the SHA-256 precompile is an external call, which would use up
-    // a pending vm.prank or vm.expectRevert.
     bytes32 uriHash;
 
     function setUp() public {
@@ -279,8 +277,6 @@ contract EoxAssertionAdapterTest is Test {
         assertEq(uint8(payload[6]), 0xe9);
     }
 
-    /// The same bytes are parsed by the Solana program's tests (`GOLDEN_PAYLOAD`), so a change
-    /// to the layout on either side fails a test.
     function test_golden_payload() public {
         settled();
         assertEq(

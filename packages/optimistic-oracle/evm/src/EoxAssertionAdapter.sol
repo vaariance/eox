@@ -10,19 +10,9 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IOptimisticOracleV3, IOptimisticOracleV3CallbackRecipient} from "./interfaces/IOptimisticOracleV3.sol";
 import {IWormhole} from "./interfaces/IWormhole.sol";
 
-/// @notice Settles each yearly EOX epoch through UMA's Optimistic Oracle V3 and publishes the
-/// result over Wormhole for the EOX Solana program.
-///
-/// After an epoch's evidence cutoff, anyone may assert its result: the hashes the methodology
-/// produces from the official snapshot. The assertion goes to UMA with a bond. If nobody
-/// disputes it within the liveness period, or UMA's vote upholds it, it becomes the epoch's
-/// result. A false assertion clears the way for a new one until the assertion window closes.
-/// Once settled, anyone may publish the result to Wormhole; the Solana program accepts only
-/// messages emitted by this contract.
 contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2Step, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    /// The claim for an epoch. Matches `ClaimBody` in the Solana program.
     struct Claim {
         bytes32 evidenceRoot;
         bytes32 methodologyImageId;
@@ -45,15 +35,10 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         Claim claim;
     }
 
-    /// How long an assertion can be disputed before it settles as true.
     uint64 public constant LIVENESS = 72 hours;
-    /// How long after the cutoff new assertions are accepted. Leaves room for a dispute and
-    /// UMA's vote to finish before the Solana program's result deadline.
     uint256 public constant ASSERTION_WINDOW = 21 days;
-    /// Wormhole consistency level: wait for the source chain to finalize.
     uint8 public constant CONSISTENCY_FINALIZED = 1;
 
-    /// Identifies an EOX result message, followed by the payload version.
     bytes4 public constant PAYLOAD_MAGIC = "EOXR";
     uint8 public constant PAYLOAD_VERSION = 1;
 
@@ -102,7 +87,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         identifier = oracle_.defaultIdentifier();
     }
 
-    /// Opens `year` for assertions, pinning the methodology the result must be computed with.
     function openEpoch(uint16 year, bytes32 methodologyImageId, uint256 bond) external onlyOwner {
         Epoch storage epoch = _epochs[year];
         if (epoch.opened) revert EpochAlreadyOpen(year);
@@ -115,9 +99,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         emit EpochOpened(year, methodologyImageId, bond);
     }
 
-    /// Asserts `claim` as the result for `year`. The caller posts the epoch's bond, which UMA
-    /// returns to them if the assertion holds. `resolutionUri` is where the snapshot and output
-    /// bundle are published; its SHA-256 must equal `claim.resolutionUriHash`.
     function assertResult(uint16 year, Claim calldata claim, string calldata resolutionUri)
         external
         nonReentrant
@@ -157,8 +138,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         emit ResultAsserted(year, assertionId, msg.sender, claim);
     }
 
-    /// Publishes a settled epoch's result to Wormhole. Anyone may call it, and may call it again
-    /// if a message is lost; the Solana program records a result only once.
     function publishResult(uint16 year) external payable nonReentrant returns (uint64 sequence) {
         if (!_epochs[year].settled) revert EpochNotSettled(year);
         uint256 fee = wormhole.messageFee();
@@ -195,9 +174,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         return _epochs[year];
     }
 
-    /// The Wormhole payload for a settled epoch, read by the Solana program:
-    /// "EOXR" | version (1) | year (2, big-endian) | evidence root | methodology image ID |
-    /// output hash | resolution URI hash | UMA assertion ID. 167 bytes.
     function resultPayload(uint16 year) public view returns (bytes memory) {
         Epoch storage epoch = _epochs[year];
         if (!epoch.settled) revert EpochNotSettled(year);
@@ -214,8 +190,6 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         );
     }
 
-    /// The text UMA voters see if an assertion is disputed. It states exactly what makes the
-    /// assertion true, so a voter can check it by re-running the methodology.
     function claimText(uint16 year, Claim calldata claim, string calldata resolutionUri)
         public
         pure
@@ -241,15 +215,10 @@ contract EoxAssertionAdapter is IOptimisticOracleV3CallbackRecipient, Ownable2St
         );
     }
 
-    /// 31 July of the year after `year`, 00:00 UTC. Matches `cutoff_timestamp` in the Solana
-    /// program.
     function cutoffTimestamp(uint16 year) public pure returns (uint256) {
-        // Days since 1970-01-01 for (year + 1)-07-31, Howard Hinnant's days_from_civil. July is
-        // after February, so the year needs no adjustment.
         uint256 y = uint256(year) + 1;
         uint256 era = y / 400;
         uint256 yearOfEra = y - era * 400;
-        // Day of the March-based year for 31 July: (153 * (7 - 3) + 2) / 5 + 31 - 1, in integers.
         uint256 dayOfYear = 152;
         uint256 dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear;
         return (era * 146_097 + dayOfEra - 719_468) * SECONDS_PER_DAY;

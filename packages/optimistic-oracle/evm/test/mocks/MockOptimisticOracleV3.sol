@@ -6,8 +6,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IOptimisticOracleV3, IOptimisticOracleV3CallbackRecipient} from "../../src/interfaces/IOptimisticOracleV3.sol";
 
-/// Stands in for UMA's Optimistic Oracle V3: takes the bond the way the real oracle does
-/// (pulled from the caller) and lets a test decide when and how each assertion resolves.
 contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
     using SafeERC20 for IERC20;
 
@@ -45,7 +43,6 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
     ) external returns (bytes32 assertionId) {
         require(bond >= minimumBond, "bond below minimum");
         currency.safeTransferFrom(msg.sender, address(this), bond);
-        // Depends only on a counter, so the claim text can change without moving golden test values.
         assertionId = keccak256(abi.encode(++_nonce));
         assertions[assertionId] = Recorded({
             claim: claim,
@@ -72,7 +69,6 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
         return assertions[assertionId].claim;
     }
 
-    /// What the real oracle does when liveness passes undisputed, or when the vote resolves.
     function resolve(bytes32 assertionId, bool truthful) external {
         IOptimisticOracleV3CallbackRecipient(assertions[assertionId].callbackRecipient)
             .assertionResolvedCallback(assertionId, truthful);
