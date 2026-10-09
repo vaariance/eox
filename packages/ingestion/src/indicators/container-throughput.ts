@@ -1,9 +1,11 @@
 import type { NewObservation } from "@eox/evidence-store";
+import { sumDecimals } from "../decimal.js";
 import type { CountryPortPayload, PortRecord } from "../sources/portwatch.js";
+import { toStoredDecimal } from "../sources/sdmx.js";
 
 export interface CountryAggregate {
   iso3: string;
-  tonnage: number;
+  tonnage: string;
   portsReported: number;
   portsTotal: number;
   payloadSha256: string;
@@ -16,10 +18,7 @@ function isReported(record: PortRecord): boolean {
 export function aggregateCountry(iso3: string, country: CountryPortPayload): CountryAggregate | null {
   const reported = country.records.filter(isReported);
   if (reported.length === 0) return null;
-  const tonnage = reported.reduce(
-    (total, record) => total + (record.importContainer as number) + (record.exportContainer as number),
-    0,
-  );
+  const tonnage = sumDecimals(reported.flatMap((record) => [record.importContainer as string, record.exportContainer as string]));
   return {
     iso3,
     tonnage,
@@ -35,7 +34,7 @@ export function toObservations(date: string, aggregates: readonly CountryAggrega
     indicatorId: "container_throughput",
     periodStart: date,
     periodEnd: date,
-    value: aggregate.tonnage.toFixed(6),
+    value: toStoredDecimal(aggregate.tonnage),
     sourceId: "imf-portwatch",
     vintage: "daily_estimate",
     rawSha256: aggregate.payloadSha256,
