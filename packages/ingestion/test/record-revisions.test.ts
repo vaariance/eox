@@ -1,4 +1,4 @@
-import { getVersions, pool, recordSourcePayload, type NewObservation } from "@eox/evidence-store";
+import { getVersions, pool, recordSourcePayload, recordSourceRelease, type NewObservation } from "@eox/evidence-store";
 import { afterAll, describe, expect, it } from "vitest";
 import { recordRevisions } from "../src/record-revisions.js";
 
@@ -53,6 +53,35 @@ describe("snapshot series", () => {
     const versions = await getVersions(q);
     expect(versions.at(-1)!.revisesId).toBe(versions.at(-2)!.id);
     expect(await recordRevisions([{ ...base, value: "1200.000000", coverageReported: 8 }])).toBe(0);
+  });
+});
+
+describe("publication evidence", () => {
+  it("re-records an unchanged value once verified release evidence arrives", async () => {
+    const series: NewObservation = {
+      countryIso3: "JPN",
+      indicatorId: "container_throughput",
+      periodStart: "2026-10-02",
+      periodEnd: "2026-10-02",
+      value: "500.000000",
+      sourceId: "imf-portwatch",
+      vintage: "daily_estimate",
+      coverageReported: 3,
+      coverageTotal: 3,
+    };
+    expect(await recordRevisions([series])).toBe(1);
+    const release = await recordSourceRelease({
+      sourceId: "imf-portwatch",
+      dataset: "Daily_Ports_Data",
+      releasedAt: "2026-10-06T18:41:27.589Z",
+      latestPeriod: "2026-10-02",
+      metadataSha256: await storePayload("release-layer"),
+      periodsSha256: await storePayload("release-latest"),
+    });
+    const withRelease = { ...series, publishedAt: "2026-10-06T18:41:27.589Z", releaseId: release.id };
+    expect(await recordRevisions([withRelease])).toBe(1);
+    expect(await recordRevisions([withRelease])).toBe(0);
+    expect(await recordRevisions([series])).toBe(0);
   });
 });
 
