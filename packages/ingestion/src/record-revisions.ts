@@ -1,6 +1,7 @@
 import { getVersions, recordObservation, type NewObservation, type Observation } from "@eox/evidence-store";
 
 interface StoredVersion {
+  id: string | null;
   knownAt: number;
   value: string;
   hasPayload: boolean;
@@ -14,6 +15,7 @@ function periodKey(observation: { periodStart: string; periodEnd: string }): str
 
 function toStoredVersion(observation: Observation): StoredVersion {
   return {
+    id: observation.id,
     knownAt: new Date(observation.knownAt).getTime(),
     value: observation.value,
     hasPayload: observation.rawSha256 !== null,
@@ -24,6 +26,7 @@ function toStoredVersion(observation: Observation): StoredVersion {
 
 function toIncomingVersion(observation: NewObservation, knownAt: number): StoredVersion {
   return {
+    id: null,
     knownAt,
     value: String(observation.value),
     hasPayload: Boolean(observation.rawSha256),
@@ -64,11 +67,13 @@ async function loadVersions(sample: NewObservation): Promise<Map<string, StoredV
   return byPeriod;
 }
 
+function predecessorOf(versions: readonly StoredVersion[], incoming: StoredVersion, vintaged: boolean): StoredVersion | undefined {
+  return vintaged ? versions.filter((version) => version.knownAt < incoming.knownAt).at(-1) : versions.at(-1);
+}
+
 function isRedundant(versions: readonly StoredVersion[], incoming: StoredVersion, vintaged: boolean): boolean {
   if (vintaged && versions.some((version) => version.knownAt === incoming.knownAt)) return true;
-  const predecessor = vintaged
-    ? versions.filter((version) => version.knownAt < incoming.knownAt).at(-1)
-    : versions.at(-1);
+  const predecessor = predecessorOf(versions, incoming, vintaged);
   return predecessor !== undefined && carriesSameEvidence(predecessor, incoming, vintaged);
 }
 
@@ -93,7 +98,8 @@ export async function recordRevisions(observations: readonly NewObservation[]): 
       const vintaged = observation.knownAt !== undefined;
       const incoming = toIncomingVersion(observation, vintaged ? Date.parse(observation.knownAt as string) : Date.now());
       if (isRedundant(versions, incoming, vintaged)) continue;
-      const stored = await recordObservation(observation);
+      const predecessor = predecessorOf(versions, incoming, vintaged);
+      const stored = await recordObservation(predecessor?.id ? { ...observation, revisesId: predecessor.id } : observation);
       insertSorted(versions, toStoredVersion(stored));
       byPeriod.set(key, versions);
       recorded++;
