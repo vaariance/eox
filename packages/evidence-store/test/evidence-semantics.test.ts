@@ -170,3 +170,24 @@ describe("getVersions", () => {
     ]);
   });
 });
+
+describe("revision links", () => {
+  const series = { countryIso3: "GBR", indicatorId: "policy_rate", sourceId: "bis", vintage: "revision-test" };
+
+  it("links a revision to the version it revises", async () => {
+    const first = await recordObservation({ ...series, periodStart: "2025-03-01", periodEnd: "2025-03-31", value: "4.5" });
+    const second = await recordObservation({ ...series, periodStart: "2025-03-01", periodEnd: "2025-03-31", value: "4.25", revisesId: first.id });
+    expect(second.revisesId).toBe(first.id);
+    expect(first.revisesId).toBeNull();
+  });
+
+  it("rejects a revision link to a different series or period", async () => {
+    const first = await recordObservation({ ...series, periodStart: "2025-04-01", periodEnd: "2025-04-30", value: "4.5" });
+    await expect(
+      recordObservation({ ...series, periodStart: "2025-05-01", periodEnd: "2025-05-31", value: "4.5", revisesId: first.id }),
+    ).rejects.toThrow(/must revise the same series and period/);
+    await expect(
+      recordObservation({ ...series, countryIso3: "USA", periodStart: "2025-04-01", periodEnd: "2025-04-30", value: "4.5", revisesId: first.id }),
+    ).rejects.toThrow(/must revise the same series and period/);
+  });
+});
