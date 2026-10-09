@@ -1,0 +1,38 @@
+{
+  "environment": "dev",
+  "audience": "",
+  "keys": {
+    "oracle-operator": {
+      "keyVersion": "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/oracle-operator/cryptoKeyVersions/1",
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "validFrom": 0
+    },
+    "solana-relayer": {
+      "keyVersion": "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/solana-relayer/cryptoKeyVersions/1",
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "validFrom": 0
+    },
+    "uma-asserter": {
+      "keyVersion": "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/uma-asserter/cryptoKeyVersions/1",
+      "network": "eip155:11155111",
+      "validFrom": 0
+    },
+    "uma-challenger": {
+      "keyVersion": "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/uma-challenger/cryptoKeyVersions/1",
+      "network": "eip155:11155111",
+      "validFrom": 0
+    },
+    "oracle-checker": {
+      "keyVersion": "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/oracle-checker/cryptoKeyVersions/1",
+      "network": "eip155:11155111",
+      "validFrom": 0
+    },
+    "evm-relayer": {
+      "keyVersion": "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/evm-relayer/cryptoKeyVersions/1",
+      "network": "eip155:11155111",
+      "validFrom": 0
+    }
+  },
+  "callers": {},
+  "bindings": {}
+}
