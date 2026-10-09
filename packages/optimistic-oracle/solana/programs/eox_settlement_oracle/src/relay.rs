@@ -1,15 +1,6 @@
-//! Reads results relayed from the EVM adapter over Wormhole.
-//!
-//! Wormhole's core bridge verifies a VAA's guardian signatures in `post_vaa` and only then
-//! writes it to an account it owns, prefixed with `b"vaa"`. So an account owned by the core
-//! bridge that starts with that prefix holds a verified message. The program checks the owner
-//! and prefix, then who emitted the message and what it says.
 
 use crate::state::ClaimBody;
 
-/// Prefix of a verified, posted VAA. The core bridge also owns accounts prefixed `msg` and
-/// `msu` with the same layout: those are messages Solana programs send out, never verified
-/// messages coming in, so they are rejected.
 pub const POSTED_VAA_MAGIC: &[u8; 3] = b"vaa";
 
 pub const PAYLOAD_MAGIC: &[u8; 4] = b"EOXR";
@@ -24,7 +15,6 @@ pub struct PostedVaa<'a> {
     pub payload: &'a [u8],
 }
 
-/// A result as the EVM adapter's `resultPayload` encodes it.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RelayedResult {
     pub year: u16,
@@ -51,10 +41,6 @@ impl<'a> Reader<'a> {
     }
 }
 
-/// Parses the core bridge's `PostedVAAData`: the `vaa` prefix, then Borsh `MessageData`
-/// (vaa_version u8, consistency_level u8, vaa_time u32, vaa_signature_account [u8; 32],
-/// submission_time u32, nonce u32, sequence u64, emitter_chain u16, emitter_address [u8; 32],
-/// payload Vec<u8>), integers little-endian.
 pub fn parse_posted_vaa(data: &[u8]) -> Option<PostedVaa<'_>> {
     let mut r = Reader { data };
     if r.take(3)? != POSTED_VAA_MAGIC {
@@ -69,9 +55,6 @@ pub fn parse_posted_vaa(data: &[u8]) -> Option<PostedVaa<'_>> {
     Some(PostedVaa { sequence, emitter_chain, emitter_address, payload })
 }
 
-/// Parses `"EOXR" | version | year (big-endian u16) | evidence root | methodology image ID |
-/// output hash | resolution URI hash | assertion ID`. Anything else is rejected, including
-/// trailing bytes.
 pub fn parse_result(payload: &[u8]) -> Option<RelayedResult> {
     if payload.len() != PAYLOAD_LEN {
         return None;
@@ -95,7 +78,6 @@ pub fn parse_result(payload: &[u8]) -> Option<RelayedResult> {
 pub(crate) mod tests {
     use super::*;
 
-    /// `resultPayload(2025)` from the EVM adapter's `test_golden_payload`.
     pub const GOLDEN_PAYLOAD: &str = concat!(
         "454f58520107e9",
         "0000000000000000000000000000000000000000000000000000000000001111",
@@ -115,15 +97,14 @@ pub(crate) mod tests {
         w
     }
 
-    /// Lays out a posted VAA account field by field, as the core bridge's Borsh does.
     pub fn posted_vaa(magic: &[u8; 3], sequence: u64, chain: u16, emitter: [u8; 32], payload: &[u8]) -> Vec<u8> {
         let mut d = magic.to_vec();
-        d.push(1); // vaa_version
-        d.push(1); // consistency_level
-        d.extend_from_slice(&1_785_500_000u32.to_le_bytes()); // vaa_time
-        d.extend_from_slice(&[7u8; 32]); // vaa_signature_account
-        d.extend_from_slice(&1_785_500_100u32.to_le_bytes()); // submission_time
-        d.extend_from_slice(&0u32.to_le_bytes()); // nonce
+        d.push(1);
+        d.push(1);
+        d.extend_from_slice(&1_785_500_000u32.to_le_bytes());
+        d.extend_from_slice(&[7u8; 32]);
+        d.extend_from_slice(&1_785_500_100u32.to_le_bytes());
+        d.extend_from_slice(&0u32.to_le_bytes());
         d.extend_from_slice(&sequence.to_le_bytes());
         d.extend_from_slice(&chain.to_le_bytes());
         d.extend_from_slice(&emitter);

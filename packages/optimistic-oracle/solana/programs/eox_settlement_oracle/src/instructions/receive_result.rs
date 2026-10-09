@@ -27,8 +27,6 @@ pub struct ResultReceived {
     pub wormhole_sequence: u64,
 }
 
-/// Records the result UMA settled for an epoch, as relayed by the EVM adapter. Anyone may
-/// submit it once the VAA is posted; the epoch takes one result only.
 pub fn handle_receive_result(ctx: Context<ReceiveResult>) -> Result<()> {
     let config = &ctx.accounts.config;
     let epoch = &mut ctx.accounts.epoch;

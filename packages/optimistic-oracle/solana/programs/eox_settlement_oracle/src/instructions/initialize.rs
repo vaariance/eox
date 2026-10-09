@@ -14,8 +14,6 @@ pub struct Initialize<'info> {
         bump
     )]
     pub config: Account<'info, Config>,
-    /// Only whoever can upgrade this program may set it up, so nobody can front-run the
-    /// deploy and point it at their own emitter.
     #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
     pub program: Program<'info, EoxSettlementOracle>,
     #[account(

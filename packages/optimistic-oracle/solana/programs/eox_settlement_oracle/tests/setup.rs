@@ -42,7 +42,6 @@ fn initialize_rejects_program_data_that_is_not_this_programs() {
     let attacker = Keypair::new();
     env.svm.airdrop(&attacker.pubkey(), 1_000_000_000).unwrap();
 
-    // A genuine program-data account, but at another address and naming the attacker.
     let mut forged = env.svm.get_account(&program_data_pda(&eox_settlement_oracle::id())).unwrap();
     forged.data[12] = 1;
     forged.data[13..45].copy_from_slice(attacker.pubkey().as_ref());

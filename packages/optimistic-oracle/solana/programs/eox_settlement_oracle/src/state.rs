@@ -4,11 +4,8 @@ use anchor_lang::prelude::*;
 #[derive(InitSpace)]
 pub struct Config {
     pub authority: Pubkey,
-    /// The Wormhole core bridge program. Verified VAAs are accounts it owns.
     pub wormhole_program: Pubkey,
-    /// Wormhole chain ID of the chain the EVM adapter lives on (Base is 30).
     pub emitter_chain: u16,
-    /// The EVM adapter's address, left-padded to 32 bytes, as Wormhole names emitters.
     pub emitter_address: [u8; 32],
     pub bump: u8,
 }
@@ -20,7 +17,6 @@ pub enum EpochStatus {
     Voided,
 }
 
-/// The hashes a result commits to. Matches `Claim` in the EVM adapter.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 pub struct ClaimBody {
     pub evidence_root: [u8; 32],
@@ -37,9 +33,7 @@ pub struct Epoch {
     pub methodology_image_id: [u8; 32],
     pub status: EpochStatus,
     pub result: Option<ClaimBody>,
-    /// The UMA assertion that settled the epoch.
     pub assertion_id: [u8; 32],
-    /// Sequence of the Wormhole message the result arrived in.
     pub wormhole_sequence: u64,
     pub bump: u8,
 }
@@ -59,9 +53,6 @@ impl Epoch {
     }
 }
 
-
-/// Values the TypeScript SDK pins too (`sdk/test/solana.test.ts`), so the client and the
-/// program cannot drift apart unnoticed.
 #[cfg(test)]
 mod sdk_vectors {
     use super::*;
@@ -70,27 +61,27 @@ mod sdk_vectors {
     use std::str::FromStr;
 
     const SETTLED_2025: &str = concat!(
-        "5d537859978a986c", // account discriminator
-        "e907",             // year
-        "80e56b6a00000000", // cutoff
+        "5d537859978a986c",
+        "e907",
+        "80e56b6a00000000",
         "2222222222222222222222222222222222222222222222222222222222222222",
-        "01",               // status: Settled
-        "01",               // result: Some
+        "01",
+        "01",
         "1111111111111111111111111111111111111111111111111111111111111111",
         "2222222222222222222222222222222222222222222222222222222222222222",
         "3333333333333333333333333333333333333333333333333333333333333333",
         "4444444444444444444444444444444444444444444444444444444444444444",
-        "5555555555555555555555555555555555555555555555555555555555555555", // assertion id
-        "1100000000000000", // wormhole sequence
-        "ff",               // bump
+        "5555555555555555555555555555555555555555555555555555555555555555",
+        "1100000000000000",
+        "ff",
     );
     const OPEN_2026: &str = concat!(
         "5d537859978a986c",
         "ea07",
         "00194d6c00000000",
         "2222222222222222222222222222222222222222222222222222222222222222",
-        "00", // status: Open
-        "00", // result: None
+        "00",
+        "00",
         "0000000000000000000000000000000000000000000000000000000000000000",
         "0000000000000000",
         "fe",

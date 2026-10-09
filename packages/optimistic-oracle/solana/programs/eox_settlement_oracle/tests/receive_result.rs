@@ -89,7 +89,6 @@ fn a_result_must_be_for_this_epoch_and_methodology() {
     let mut env = TestEnv::new();
     env.open_epoch(2026, IMAGE_ID).unwrap();
 
-    // A genuine 2025 result submitted against the 2026 epoch, inside 2026's window.
     env.set_time(cutoff_timestamp(2026) + 4 * DAY);
     let vaa = env.post_result(1, &payload(YEAR, IMAGE_ID));
     assert_error(env.receive(2026, vaa), ErrorCode::WrongEpoch);

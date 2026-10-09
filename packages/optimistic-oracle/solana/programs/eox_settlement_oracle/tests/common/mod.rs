@@ -25,7 +25,6 @@ pub const IMAGE_ID: [u8; 32] = word(0x2222);
 pub const BASE_CHAIN: u16 = 30;
 pub const DAY: i64 = 86_400;
 
-/// `resultPayload(2025)` from the EVM adapter's `test_golden_payload`.
 pub const GOLDEN_PAYLOAD: &str = concat!(
     "454f58520107e9",
     "0000000000000000000000000000000000000000000000000000000000001111",
@@ -47,7 +46,6 @@ pub fn unhex(s: &str) -> Vec<u8> {
     (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
 }
 
-/// The golden payload with its year and methodology replaced.
 pub fn payload(year: u16, image_id: [u8; 32]) -> Vec<u8> {
     let mut p = unhex(GOLDEN_PAYLOAD);
     p[5..7].copy_from_slice(&year.to_be_bytes());
@@ -55,14 +53,13 @@ pub fn payload(year: u16, image_id: [u8; 32]) -> Vec<u8> {
     p
 }
 
-/// A posted VAA account's data, laid out as the core bridge writes it.
 pub fn posted_vaa_data(magic: &[u8; 3], sequence: u64, chain: u16, emitter: [u8; 32], payload: &[u8]) -> Vec<u8> {
     let mut d = magic.to_vec();
-    d.extend_from_slice(&[1, 1]); // vaa_version, consistency_level
-    d.extend_from_slice(&1_785_500_000u32.to_le_bytes()); // vaa_time
-    d.extend_from_slice(&[7u8; 32]); // vaa_signature_account
-    d.extend_from_slice(&1_785_500_100u32.to_le_bytes()); // submission_time
-    d.extend_from_slice(&0u32.to_le_bytes()); // nonce
+    d.extend_from_slice(&[1, 1]);
+    d.extend_from_slice(&1_785_500_000u32.to_le_bytes());
+    d.extend_from_slice(&[7u8; 32]);
+    d.extend_from_slice(&1_785_500_100u32.to_le_bytes());
+    d.extend_from_slice(&0u32.to_le_bytes());
     d.extend_from_slice(&sequence.to_le_bytes());
     d.extend_from_slice(&chain.to_le_bytes());
     d.extend_from_slice(&emitter);
@@ -91,12 +88,9 @@ pub fn program_data_pda(program: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[program.as_ref()], &bpf_loader_upgradeable::ID).0
 }
 
-/// LiteSVM deploys programs with no upgrade authority; this writes one in, the way a real
-/// `solana program deploy` would.
 pub fn set_upgrade_authority(svm: &mut LiteSVM, program: &Pubkey, authority: Option<Pubkey>) {
     let address = program_data_pda(program);
     let mut account = svm.get_account(&address).unwrap();
-    // bincode UpgradeableLoaderState::ProgramData: u32 tag, u64 slot, Option<Pubkey>.
     account.data[12..45].fill(0);
     if let Some(authority) = authority {
         account.data[12] = 1;
@@ -122,15 +116,12 @@ fn ix<A: InstructionData, M: ToAccountMetas>(data: A, accounts: M) -> Instructio
 pub struct TestEnv {
     pub svm: LiteSVM,
     pub authority: Keypair,
-    /// Stands in for the Wormhole core bridge: posted VAAs are accounts it owns.
     pub wormhole: Pubkey,
-    /// The EVM adapter's address as a 32-byte Wormhole emitter.
     pub emitter: [u8; 32],
     pub payer: Keypair,
 }
 
 impl TestEnv {
-    /// The program deployed with the authority as its upgrade key, not yet initialized.
     pub fn uninitialized() -> Self {
         let mut svm = LiteSVM::new();
         let bytes = include_bytes!(concat!(env!("CARGO_TARGET_TMPDIR"), "/../deploy/eox_settlement_oracle.so"));
@@ -147,7 +138,6 @@ impl TestEnv {
         Self { svm, authority, wormhole: Pubkey::new_unique(), emitter, payer }
     }
 
-    /// Initialized with the test Wormhole program and emitter, and epoch `YEAR` open.
     pub fn new() -> Self {
         let mut env = Self::uninitialized();
         let authority = env.authority.insecure_clone();
@@ -212,7 +202,6 @@ impl TestEnv {
         address
     }
 
-    /// A verified VAA from the adapter carrying `payload`.
     pub fn post_result(&mut self, sequence: u64, payload: &[u8]) -> Pubkey {
         let data = posted_vaa_data(b"vaa", sequence, BASE_CHAIN, self.emitter, payload);
         self.post(self.wormhole, data)

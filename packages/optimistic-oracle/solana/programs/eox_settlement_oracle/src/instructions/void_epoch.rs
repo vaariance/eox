@@ -12,7 +12,6 @@ pub struct VoidEpoch<'info> {
     pub epoch: Box<Account<'info, Epoch>>,
 }
 
-/// Anyone may void an epoch that has no result by the deadline, so markets on it can unwind.
 pub fn handle_void_epoch(ctx: Context<VoidEpoch>) -> Result<()> {
     let epoch = &mut ctx.accounts.epoch;
     require!(epoch.status == EpochStatus::Open, ErrorCode::InvalidEpochStatus);
