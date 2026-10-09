@@ -8,4 +8,6 @@ interface IWormhole {
         returns (uint64 sequence);
 
     function messageFee() external view returns (uint256);
+
+    function chainId() external view returns (uint16);
 }

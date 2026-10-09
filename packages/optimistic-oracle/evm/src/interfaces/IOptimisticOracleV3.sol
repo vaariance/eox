@@ -4,6 +4,29 @@ pragma solidity ^0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IOptimisticOracleV3 {
+    struct EscalationManagerSettings {
+        bool arbitrateViaEscalationManager;
+        bool discardOracle;
+        bool validateDisputers;
+        address assertingCaller;
+        address escalationManager;
+    }
+
+    struct Assertion {
+        EscalationManagerSettings escalationManagerSettings;
+        address asserter;
+        uint64 assertionTime;
+        bool settled;
+        IERC20 currency;
+        uint64 expirationTime;
+        bool settlementResolution;
+        bytes32 domainId;
+        bytes32 identifier;
+        uint256 bond;
+        address callbackRecipient;
+        address disputer;
+    }
+
     function assertTruth(
         bytes memory claim,
         address asserter,
@@ -19,6 +42,8 @@ interface IOptimisticOracleV3 {
     function defaultIdentifier() external view returns (bytes32);
 
     function getMinimumBond(address currency) external view returns (uint256);
+
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory);
 }
 
 interface IOptimisticOracleV3CallbackRecipient {
