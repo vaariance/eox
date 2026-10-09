@@ -1,0 +1,23 @@
+{
+  "name": "@eox/signer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "build": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "key-directory": "tsx scripts/key-directory.ts"
+  },
+  "dependencies": {
+    "@eox/signing": "workspace:*",
+    "@solana/web3.js": "^1.98.0",
+    "google-auth-library": "^9.15.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
