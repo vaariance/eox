@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { getObservation, getSourcePayload, readChanges, type ChangeCursor } from "@eox/evidence-store";
+import { parsePortRecords } from "@eox/ingestion";
 import { parseRecordId, toEvidenceFact, toRecordId } from "./facts.js";
 
 const DEFAULT_PAGE_SIZE = 128;
@@ -56,13 +57,44 @@ async function changes(url: URL, res: ServerResponse): Promise<void> {
   sendJson(res, 200, { cursor: encodeCursor(page.cursor), changes: facts });
 }
 
-async function record(recordId: string, res: ServerResponse): Promise<void> {
+async function evidenceFact(recordId: string) {
   const observationId = parseRecordId(recordId);
   if (observationId === null) throw new HttpError(400, "invalid record id");
   const observation = await getObservation(observationId);
   const fact = observation ? toEvidenceFact(observation) : null;
   if (!fact || fact.recordId !== toRecordId(observationId)) throw new HttpError(404, "record not found");
-  sendJson(res, 200, fact);
+  return fact;
+}
+
+async function constituents(recordId: string, res: ServerResponse): Promise<void> {
+  const fact = await evidenceFact(recordId);
+  if (fact.indicator !== "container_throughput") throw new HttpError(404, "record has no constituents");
+  const payload = await getSourcePayload(fact.artifactDigest);
+  if (!payload) throw new HttpError(500, "stored artifact is missing");
+  const ports = parsePortRecords(payload.body.toString("utf8"))
+    .filter((port) => port.iso3 === fact.countryIso3 && port.date === fact.period)
+    .map((port) => ({
+      portId: port.portId,
+      date: port.date,
+      importContainer: port.importContainer,
+      exportContainer: port.exportContainer,
+      portCalls: port.portCalls,
+      reported: port.importContainer !== null && port.exportContainer !== null,
+    }));
+  sendJson(res, 200, {
+    recordId: fact.recordId,
+    indicator: fact.indicator,
+    country: fact.country,
+    period: fact.period,
+    artifactDigest: fact.artifactDigest,
+    aggregation: "sum of import_container and export_container over ports that report both; values are the source's exact decimal text",
+    coverage: fact.coverage,
+    ports,
+  });
+}
+
+async function record(recordId: string, res: ServerResponse): Promise<void> {
+  sendJson(res, 200, await evidenceFact(recordId));
 }
 
 async function artifact(digest: string, res: ServerResponse): Promise<void> {
@@ -93,6 +125,9 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (url.pathname === "/health") return sendJson(res, 200, { status: "ok" });
   if (segments.length === 2 && segments[0] === "v1" && segments[1] === "changes") return changes(url, res);
   if (segments.length === 3 && segments[0] === "v1" && segments[1] === "records") return record(segments[2]!, res);
+  if (segments.length === 4 && segments[0] === "v1" && segments[1] === "records" && segments[3] === "constituents") {
+    return constituents(segments[2]!, res);
+  }
   if (segments.length === 3 && segments[0] === "v1" && segments[1] === "artifacts") return artifact(segments[2]!, res);
   throw new HttpError(404, "not found");
 }
