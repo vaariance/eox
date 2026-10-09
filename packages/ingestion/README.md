@@ -69,7 +69,10 @@ invents source data:
 Source: IMF PortWatch `Daily_Ports_Data` ArcGIS FeatureServer (public, no API key).
 Daily port-level container import/export tonnage estimates, aggregated to a
 per-country daily total over ports that reported both estimates. One request
-per country, so each country total links to a single stored payload.
+per country, so each country total links to a single stored payload. Port values
+are read as the source's exact decimal text (never through floating point) and
+summed exactly; only the stored `value` is normalised to six decimals. The exact
+per-port values are served by the evidence API's `/constituents` route.
 
 ```bash
 pnpm --filter @eox/ingestion ingest:container-throughput          # latest available date

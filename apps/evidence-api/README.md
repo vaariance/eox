@@ -16,6 +16,7 @@ pnpm --filter @eox/evidence-api test
 |---|---|
 | `GET /v1/changes?cursor=&limit=` | `{ cursor, changes: [{ changeId, recordId }] }`, oldest first, at most `limit` (1–500, default 128) rows scanned per page |
 | `GET /v1/records/:recordId` | one evidence fact, below |
+| `GET /v1/records/:recordId/constituents` | container throughput only: every port/day `importContainer`, `exportContainer` and `portCalls` as the source's exact decimal text, whether the port counted, and coverage; reparsed from the stored artifact |
 | `GET /v1/artifacts/:sha256` | the exact raw source response; `x-content-sha256` and `x-source-content-type` headers |
 | `GET /health` | `{ status: "ok" }` |
 
