@@ -25,6 +25,7 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
     uint256 public minimumBond;
     uint256 private _nonce;
     mapping(bytes32 => Recorded) public assertions;
+    mapping(bytes32 => IOptimisticOracleV3.Assertion) private _state;
 
     constructor(uint256 minimumBond_) {
         minimumBond = minimumBond_;
@@ -55,6 +56,25 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
             identifier: identifier,
             domainId: domainId
         });
+        IOptimisticOracleV3.Assertion storage state = _state[assertionId];
+        state.escalationManagerSettings.assertingCaller = msg.sender;
+        state.escalationManagerSettings.escalationManager = escalationManager;
+        state.asserter = asserter;
+        state.assertionTime = uint64(block.timestamp);
+        state.currency = currency;
+        state.expirationTime = uint64(block.timestamp) + liveness;
+        state.domainId = domainId;
+        state.identifier = identifier;
+        state.bond = bond;
+        state.callbackRecipient = callbackRecipient;
+    }
+
+    function getAssertion(bytes32 assertionId)
+        external
+        view
+        returns (IOptimisticOracleV3.Assertion memory)
+    {
+        return _state[assertionId];
     }
 
     function defaultIdentifier() external pure returns (bytes32) {
@@ -70,11 +90,14 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
     }
 
     function resolve(bytes32 assertionId, bool truthful) external {
+        _state[assertionId].settled = true;
+        _state[assertionId].settlementResolution = truthful;
         IOptimisticOracleV3CallbackRecipient(assertions[assertionId].callbackRecipient)
             .assertionResolvedCallback(assertionId, truthful);
     }
 
     function dispute(bytes32 assertionId) external {
+        _state[assertionId].disputer = msg.sender;
         IOptimisticOracleV3CallbackRecipient(assertions[assertionId].callbackRecipient)
             .assertionDisputedCallback(assertionId);
     }

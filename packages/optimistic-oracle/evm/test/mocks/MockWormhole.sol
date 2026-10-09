@@ -13,10 +13,15 @@ contract MockWormhole is IWormhole {
     }
 
     uint256 public fee;
+    uint16 public chainId = 10_002;
     Published[] public published;
 
     function setFee(uint256 fee_) external {
         fee = fee_;
+    }
+
+    function setChainId(uint16 chainId_) external {
+        chainId = chainId_;
     }
 
     function publishMessage(uint32 nonce, bytes memory payload, uint8 consistencyLevel)
