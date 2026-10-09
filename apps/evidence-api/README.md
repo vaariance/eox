@@ -50,7 +50,8 @@ frequency. Everything else returns 404 and is left out of the change feed.
 | `indicator`, `source`, `unit`, `frequency` | catalogue values |
 | `period`, `periodOrdinal` | native label (`YYYY-MM-DD`, `YYYY-MM`, `YYYY-Qn`) and `periodOrdinal` |
 | `value`, `rawValue` | stored normalised value and the source's exact string |
-| `publishedAt` | Unix seconds, or `null`: no current source states one (`SYSTEM.md` §5.4) |
+| `publishedAt` | Unix seconds, only when the release time is an exact whole second; otherwise `null` (never rounded). Set only with verified release evidence |
+| `publication` | `null`, or `{ basis: "source-data-edit", release, previousRelease }`: the source release that first contained the observation and the earlier release that lacked it, each with `releasedAtMs`, `latestPeriod` and the digests of the archived responses that prove them (fetch from `/v1/artifacts`) |
 | `knownAt`, `recordedAt` | Unix seconds |
 | `artifactDigest` | SHA-256 of the raw response, retrievable from `/v1/artifacts` |
 | `coverage` | `{ reported, total }` for container throughput, else `null` |
