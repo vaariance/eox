@@ -5,6 +5,7 @@ interface StoredVersion {
   knownAt: number;
   value: string;
   hasPayload: boolean;
+  hasRelease: boolean;
   coverageReported: number | null;
   coverageTotal: number | null;
 }
@@ -19,6 +20,7 @@ function toStoredVersion(observation: Observation): StoredVersion {
     knownAt: new Date(observation.knownAt).getTime(),
     value: observation.value,
     hasPayload: observation.rawSha256 !== null,
+    hasRelease: observation.releaseId !== null,
     coverageReported: observation.coverageReported,
     coverageTotal: observation.coverageTotal,
   };
@@ -30,6 +32,7 @@ function toIncomingVersion(observation: NewObservation, knownAt: number): Stored
     knownAt,
     value: String(observation.value),
     hasPayload: Boolean(observation.rawSha256),
+    hasRelease: Boolean(observation.releaseId),
     coverageReported: observation.coverageReported ?? null,
     coverageTotal: observation.coverageTotal ?? null,
   };
@@ -40,7 +43,8 @@ function carriesSameEvidence(stored: StoredVersion, incoming: StoredVersion, vin
     stored.value === incoming.value &&
     stored.coverageReported === incoming.coverageReported &&
     stored.coverageTotal === incoming.coverageTotal &&
-    (vintaged || stored.hasPayload || !incoming.hasPayload)
+    (vintaged || stored.hasPayload || !incoming.hasPayload) &&
+    (stored.hasRelease || !incoming.hasRelease)
   );
 }
 
