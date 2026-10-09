@@ -10,9 +10,9 @@ export interface PortRecord {
   date: string;
   iso3: string;
   portId: string;
-  portCalls: number | null;
-  importContainer: number | null;
-  exportContainer: number | null;
+  portCalls: string | null;
+  importContainer: string | null;
+  exportContainer: string | null;
 }
 
 interface ArcGISFeature {
@@ -20,9 +20,9 @@ interface ArcGISFeature {
     date: string;
     ISO3: string;
     portid: string;
-    portcalls_container: number | null;
-    import_container: number | null;
-    export_container: number | null;
+    portcalls_container: string | null;
+    import_container: string | null;
+    export_container: string | null;
   };
 }
 
@@ -69,12 +69,26 @@ export async function fetchCountryPortRecords(iso3: string, date: string): Promi
   const res = await fetch(url);
   if (!res.ok) throw new Error(`PortWatch request failed: ${res.status} ${res.statusText}`);
   const payload = await capturePayload(url, res);
-  const body = JSON.parse(payloadText(payload)) as ArcGISQueryResponse;
-  if (body.error) throw new Error(`PortWatch error: ${body.error.message ?? JSON.stringify(body.error)}`);
-  if (body.exceededTransferLimit) {
-    throw new Error(`PortWatch returned more than ${PAGE_SIZE} ports for ${iso3} on ${date}`);
+  const records = parsePortRecords(payloadText(payload));
+  return { payload, records };
+}
+
+const DECIMAL_TEXT_PATTERN = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/;
+
+function exactNumbers(_key: string, value: unknown, context?: { source?: string }): unknown {
+  if (typeof value !== "number") return value;
+  const source = context?.source;
+  if (source === undefined || !DECIMAL_TEXT_PATTERN.test(source)) {
+    throw new Error(`PortWatch number is not a plain decimal: ${source ?? value}`);
   }
-  const records = (body.features ?? []).map((feature) => ({
+  return source;
+}
+
+export function parsePortRecords(text: string): PortRecord[] {
+  const body = JSON.parse(text, exactNumbers as (key: string, value: unknown) => unknown) as ArcGISQueryResponse;
+  if (body.error) throw new Error(`PortWatch error: ${body.error.message ?? JSON.stringify(body.error)}`);
+  if (body.exceededTransferLimit) throw new Error(`PortWatch returned more than ${PAGE_SIZE} ports in one response`);
+  return (body.features ?? []).map((feature) => ({
     date: feature.attributes.date,
     iso3: feature.attributes.ISO3,
     portId: feature.attributes.portid,
@@ -82,7 +96,6 @@ export async function fetchCountryPortRecords(iso3: string, date: string): Promi
     importContainer: feature.attributes.import_container,
     exportContainer: feature.attributes.export_container,
   }));
-  return { payload, records };
 }
 
 export async function fetchLatestAvailableDate(): Promise<string> {
