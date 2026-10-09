@@ -1,6 +1,6 @@
 {
   "environment": "dev",
-  "audience": "",
+  "audience": "https://eox-signer-529206295845.us-central1.run.app",
   "keys": {
     "oracle-operator": {
       "keyVersion": "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/oracle-operator/cryptoKeyVersions/1",
