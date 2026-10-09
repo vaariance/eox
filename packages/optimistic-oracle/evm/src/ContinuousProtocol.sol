@@ -60,6 +60,7 @@ library ContinuousProtocol {
         uint64 cutoff;
         uint32 slotCount;
         bytes32[] evidenceAssertions;
+        bytes32[] bindingIdentities;
     }
 
     struct RelayHeader {
@@ -179,6 +180,7 @@ library ContinuousProtocol {
             _require(bound[i] != bytes32(0));
         }
         claim.evidenceAssertions = evidence;
+        claim.bindingIdentities = bound;
         claimDigest = digest(SNAPSHOT_DOMAIN, data);
     }
 
@@ -241,6 +243,23 @@ library ContinuousProtocol {
             _le64(e.eventCount),
             e.eventDigest,
             e.accepted
+        );
+    }
+
+    function bindingIdentity(
+        string memory recordId,
+        bytes32 evidenceDigest,
+        bytes32 assessmentDigest,
+        bytes32 assertionId
+    ) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                _le32(uint32(bytes(recordId).length)),
+                recordId,
+                evidenceDigest,
+                assessmentDigest,
+                assertionId
+            )
         );
     }
 
