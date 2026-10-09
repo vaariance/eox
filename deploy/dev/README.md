@@ -1,14 +1,14 @@
 # Dev server
 
 A single Compute Engine VM running the evidence store (Postgres 16 via docker
-compose) and the six ingestion pipelines on a daily cron.
+compose) and the six ingestion pipelines on an hourly cron.
 
 | | |
 |---|---|
 | Project | `colosseum-eox` |
 | Instance | `eox-dev`, `us-central1-a`, e2-small, Debian 12 |
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
-| Ingests | daily 06:00 UTC as system user `eox`, log in `/opt/eox/logs/ingest.log` |
+| Ingests | hourly at :05 UTC as system user `eox`; each job holds its own lock in `/opt/eox/locks` (a run still in progress is skipped, not doubled) and is stopped after 50 minutes; log in `/opt/eox/logs/ingest.log` |
 | Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
 | Backups | daily 05:30 UTC to `gs://colosseum-eox-db-backups`, kept 30 days, log in `/opt/eox/logs/backup.log` |
 | Service account | `eox-dev-vm`, which can only create objects in the backup bucket |
