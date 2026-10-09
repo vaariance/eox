@@ -14,7 +14,7 @@ if ((await getHistory(q, period.periodStart)).length === 0) {
   for (const r of releases) {
     await recordObservation({
       ...q, ...period, value: r.value, vintage: r.vintage,
-      publishedAt: r.date, knownAt: r.date,
+      knownAt: r.date,
     });
   }
 }

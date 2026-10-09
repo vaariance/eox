@@ -12,7 +12,6 @@ beforeAll(async () => {
     value: "3.2",
     sourceId: "nbs-ng",
     vintage: "first",
-    publishedAt: "2025-05-30T10:00:00Z",
   });
   observationId = row.id;
 });

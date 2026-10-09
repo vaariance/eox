@@ -15,7 +15,6 @@ describe("recordObservation and time-travel queries", () => {
       ...period,
       value: "3.2",
       vintage: "first",
-      publishedAt: "2025-05-30T10:00:00Z",
       knownAt: "2025-05-30T10:00:00Z",
     });
     await recordObservation({
@@ -23,7 +22,6 @@ describe("recordObservation and time-travel queries", () => {
       ...period,
       value: "2.9",
       vintage: "second",
-      publishedAt: "2025-06-30T10:00:00Z",
       knownAt: "2025-06-30T10:00:00Z",
     });
 
@@ -54,7 +52,6 @@ describe("recordCorrection", () => {
       value: "3.0",
       sourceId: "bls-us",
       vintage: "first",
-      publishedAt: "2025-02-15T00:00:00Z",
     });
 
     await expect(
@@ -68,7 +65,6 @@ describe("recordCorrection", () => {
           value: "3.1",
           sourceId: "bls-us",
           vintage: "fix",
-          publishedAt: "2025-02-15T00:00:00Z",
         },
         "",
       ),
@@ -84,7 +80,6 @@ describe("recordCorrection", () => {
       value: "3.0",
       sourceId: "bls-us",
       vintage: "first",
-      publishedAt: "2025-03-15T00:00:00Z",
     });
 
     const fixed = await recordCorrection(
@@ -97,7 +92,6 @@ describe("recordCorrection", () => {
         value: "3.4",
         sourceId: "bls-us",
         vintage: "fix",
-        publishedAt: "2025-03-15T00:00:00Z",
       },
       "parsing bug in original ingest",
     );

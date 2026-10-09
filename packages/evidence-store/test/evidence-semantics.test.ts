@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { getVersions, pool, recordObservation, recordSourcePayload } from "../src/index.js";
+import { getReleaseBefore, getVersions, pool, recordObservation, recordSourcePayload, recordSourceRelease } from "../src/index.js";
 
 afterAll(async () => {
   await pool.end();
@@ -191,3 +191,64 @@ describe("revision links", () => {
     ).rejects.toThrow(/must revise the same series and period/);
   });
 });
+
+describe("source releases", () => {
+  const series = { countryIso3: "USA", indicatorId: "container_throughput", sourceId: "imf-portwatch", vintage: "daily_estimate" };
+
+  async function payload(label: string) {
+    return (
+      await recordSourcePayload({
+        sourceId: "imf-portwatch",
+        requestUrl: `https://example.test/${label}`,
+        httpStatus: 200,
+        contentType: "application/json",
+        body: new TextEncoder().encode(`${label}-${Date.now()}-${Math.random()}`),
+      })
+    ).sha256;
+  }
+
+  async function release(releasedAt: string, latestPeriod: string) {
+    return recordSourceRelease({
+      sourceId: "imf-portwatch",
+      dataset: "Daily_Ports_Data",
+      releasedAt,
+      latestPeriod,
+      metadataSha256: await payload("layer"),
+      periodsSha256: await payload("latest-date"),
+    });
+  }
+
+  it("accepts a publication time only with matching release evidence", async () => {
+    const r = await release("2026-10-06T18:41:27.589Z", "2026-10-02");
+    const row = await recordObservation({ ...series, periodStart: "2026-10-02", periodEnd: "2026-10-02", value: "5", publishedAt: "2026-10-06T18:41:27.589Z", releaseId: r.id });
+    expect(row.releaseId).toBe(r.id);
+    expect(row.publishedAt?.toISOString()).toBe("2026-10-06T18:41:27.589Z");
+    await expect(
+      recordObservation({ ...series, periodStart: "2026-10-03", periodEnd: "2026-10-03", value: "5", publishedAt: "2026-10-06T18:41:27.589Z" }),
+    ).rejects.toThrow(/observations_publication_needs_release/);
+    await expect(
+      recordObservation({ ...series, periodStart: "2026-10-03", periodEnd: "2026-10-03", value: "5", publishedAt: "2026-10-06T19:00:00Z", releaseId: r.id }),
+    ).rejects.toThrow(/must equal its linked/);
+    await expect(
+      recordObservation({ ...series, sourceId: "bis", indicatorId: "policy_rate", periodStart: "2026-10-01", periodEnd: "2026-10-31", value: "5", publishedAt: "2026-10-06T18:41:27.589Z", releaseId: r.id }),
+    ).rejects.toThrow(/must equal its linked/);
+  });
+
+  it("records each release once and finds the one before a time", async () => {
+    const earlier = await release("2026-10-05T10:00:00Z", "2026-10-01");
+    const again = await recordSourceRelease({
+      sourceId: "imf-portwatch",
+      dataset: "Daily_Ports_Data",
+      releasedAt: "2026-10-05T10:00:00Z",
+      latestPeriod: "2026-10-01",
+      metadataSha256: earlier.metadataSha256,
+      periodsSha256: earlier.periodsSha256,
+    });
+    expect(again.id).toBe(earlier.id);
+    const before = await getReleaseBefore("imf-portwatch", "Daily_Ports_Data", new Date("2026-10-06T18:41:27.589Z"));
+    expect(before?.id).toBe(earlier.id);
+    expect(before?.latestPeriod).toBe("2026-10-01");
+    await expect(pool.query("UPDATE source_releases SET dataset = 'x' WHERE id = $1", [earlier.id])).rejects.toThrow(/append-only/);
+  });
+});
+
