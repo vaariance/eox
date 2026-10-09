@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {ContinuousProtocol as P} from "../src/ContinuousProtocol.sol";
+import {ClaimEncoder} from "./utils/ClaimEncoder.sol";
 
 contract ProtocolHarness {
     function decodeEvidenceClaim(bytes memory data)
@@ -151,6 +152,25 @@ contract ContinuousProtocolTest is Test {
             history = p.appendEvent(history, _relay(_vector(FIRST_RELAY + i, names[i])));
             assertEq(history, vm.parseBytes32(string.concat("0x", expected[i])), names[i]);
         }
+    }
+
+    function test_the_test_claim_encoder_reproduces_the_vectors() public view {
+        string memory v = _vector(EVIDENCE, "evidence");
+        string memory x = string.concat(v, ".input");
+        P.EvidenceClaim memory e;
+        e.context = _contextAt(string.concat(x, ".context"));
+        e.evidenceDigest = _hashAt(string.concat(x, ".evidence_digest"));
+        e.metadataDigest = _hashAt(string.concat(x, ".metadata_digest"));
+        e.recordId = vm.parseJsonString(json, string.concat(x, ".record_id"));
+        e.artifactDigests = _hashesAt(string.concat(x, ".artifact_digests"));
+        e.assessmentDigest = _hashAt(string.concat(x, ".assessment_digest"));
+        e.provenanceDigests = _hashesAt(string.concat(x, ".provenance_digests"));
+        assertEq(ClaimEncoder.evidence(e), _encoded(v));
+
+        v = _vector(SNAPSHOT_INITIAL, "snapshot-initial");
+        assertEq(ClaimEncoder.snapshot(_snapshotAt(v, false)), _encoded(v));
+        v = _vector(SNAPSHOT_REUSED, "snapshot-reused-evidence");
+        assertEq(ClaimEncoder.snapshot(_snapshotAt(v, true)), _encoded(v));
     }
 
     function test_evidence_rejects_trailing_and_truncated_bytes() public {
@@ -320,6 +340,52 @@ contract ContinuousProtocolTest is Test {
             _hashAt(string.concat(path, ".assessment_digest")),
             _hashAt(string.concat(path, ".assertion_id"))
         );
+    }
+
+    function _snapshotAt(string memory v, bool hasPredecessor)
+        internal
+        view
+        returns (ClaimEncoder.Snapshot memory s)
+    {
+        string memory x = string.concat(v, ".input");
+        s.context = _contextAt(string.concat(x, ".context"));
+        s.proposal = _hashAt(string.concat(x, ".proposal"));
+        s.precommitment = _hashAt(string.concat(x, ".precommitment"));
+        s.hasPredecessor = hasPredecessor;
+        if (hasPredecessor) s.predecessor = _hashAt(string.concat(x, ".predecessor"));
+        s.cutoff = _u64At(string.concat(x, ".cutoff"));
+        s.slots = new ClaimEncoder.Slot[](1);
+        s.slots[0].country = uint8(vm.parseJsonUint(json, string.concat(x, ".slots[0].country")));
+        s.slots[0].indicator =
+            uint8(vm.parseJsonUint(json, string.concat(x, ".slots[0].indicator")));
+        s.slots[0].current = _encoderBindingAt(string.concat(x, ".slots[0].current"));
+        s.slots[0].hasComparison = true;
+        s.slots[0].comparison = _encoderBindingAt(string.concat(x, ".slots[0].comparison"));
+        s.evidenceAssertions = _hashesAt(string.concat(x, ".evidence_assertions"));
+    }
+
+    function _encoderBindingAt(string memory path)
+        internal
+        view
+        returns (ClaimEncoder.Binding memory)
+    {
+        return ClaimEncoder.Binding({
+            recordId: vm.parseJsonString(json, string.concat(path, ".record_id")),
+            evidenceDigest: _hashAt(string.concat(path, ".evidence_digest")),
+            assessmentDigest: _hashAt(string.concat(path, ".assessment_digest")),
+            assertionId: _hashAt(string.concat(path, ".assertion_id"))
+        });
+    }
+
+    function _contextAt(string memory path) internal view returns (P.ClaimContext memory c) {
+        c.evmChainId = _u64At(string.concat(path, ".evm_chain_id"));
+        c.adapter = _addressAt(string.concat(path, ".adapter"));
+        c.solanaProgram = _hashAt(string.concat(path, ".solana_program"));
+        c.registry = _hashAt(string.concat(path, ".registry"));
+        c.epoch = _u64At(string.concat(path, ".epoch"));
+        c.methodologyManifest = _hashAt(string.concat(path, ".methodology_manifest"));
+        c.configurationDigest = _hashAt(string.concat(path, ".configuration_digest"));
+        c.evidencePolicy = _hashAt(string.concat(path, ".evidence_policy"));
     }
 
     function _assertContext(P.ClaimContext memory c, string memory path) internal view {
