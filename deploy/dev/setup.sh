@@ -57,7 +57,7 @@ sudo -u eox -H PNPM_VERSION="$pnpm_version" bash -c '
 
 printf '%s\n' \
   "30 5 * * * /opt/eox/backup-db.sh ${backup_bucket} >> /opt/eox/logs/backup.log 2>&1" \
-  "0 6 * * * /opt/eox/run-ingests.sh >> /opt/eox/logs/ingest.log 2>&1" | crontab -u eox -
+  "5 * * * * /opt/eox/run-ingests.sh >> /opt/eox/logs/ingest.log 2>&1" | crontab -u eox -
 install -m 0644 /opt/eox/app/deploy/dev/eox-evidence-api.service /etc/systemd/system/eox-evidence-api.service
 systemctl daemon-reload
 systemctl enable eox-evidence-api >/dev/null
