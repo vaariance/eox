@@ -32,7 +32,16 @@ export type { OecdQuery } from "./sources/oecd.js";
 export { capturePayload, payloadText } from "./sources/payload.js";
 export type { FetchedPayload } from "./sources/payload.js";
 export { sumDecimals } from "./decimal.js";
-export { fetchCountryPortRecords, fetchLatestAvailableDate, parsePortRecords } from "./sources/portwatch.js";
+export {
+  fetchCountryPortRecords,
+  fetchLatestAvailableDate,
+  fetchLayerMetadata,
+  parseLayerMetadata,
+  parsePortRecords,
+  PORTWATCH_DATASET,
+} from "./sources/portwatch.js";
+export type { LatestAvailableDate, LayerMetadata } from "./sources/portwatch.js";
+export { publicationFor } from "./indicators/port-publication.js";
 export type { CountryPortPayload, PortRecord } from "./sources/portwatch.js";
 export { fetchSdmxCsv, periodBounds, toStoredDecimal } from "./sources/sdmx.js";
 export type { PeriodBounds, SdmxResponse, SdmxRow } from "./sources/sdmx.js";
