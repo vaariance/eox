@@ -1,0 +1,568 @@
+{
+  "generator": "eox-app-api-fixture-generator 0.1.0",
+  "mathCrate": "eox-oracle-math (packages/oracle/crates/math)",
+  "scenarios": [
+    {
+      "baseline": [
+        "100000000",
+        "100000000",
+        "100000000",
+        "100000000"
+      ],
+      "countries": [
+        "US",
+        "JP",
+        "GB",
+        "NG"
+      ],
+      "evaluationTime": "1800000000",
+      "evidenceDigest": "3319638eb2dcf98ea23fd2bcff32a51eca7c61a788b000c928a873ef125f5cb6",
+      "file": "baseline.json",
+      "multiplier": 20,
+      "pairs": [
+        {
+          "base": "US",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "JP",
+          "ratio": "1000000"
+        },
+        {
+          "base": "US",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "GB",
+          "ratio": "1000000"
+        },
+        {
+          "base": "US",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "NG",
+          "ratio": "1000000"
+        },
+        {
+          "base": "JP",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "US",
+          "ratio": "1000000"
+        },
+        {
+          "base": "JP",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "GB",
+          "ratio": "1000000"
+        },
+        {
+          "base": "JP",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "NG",
+          "ratio": "1000000"
+        },
+        {
+          "base": "GB",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "US",
+          "ratio": "1000000"
+        },
+        {
+          "base": "GB",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "JP",
+          "ratio": "1000000"
+        },
+        {
+          "base": "GB",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "NG",
+          "ratio": "1000000"
+        },
+        {
+          "base": "NG",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "US",
+          "ratio": "1000000"
+        },
+        {
+          "base": "NG",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "JP",
+          "ratio": "1000000"
+        },
+        {
+          "base": "NG",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "GB",
+          "ratio": "1000000"
+        }
+      ],
+      "references": [
+        {
+          "change": "0",
+          "confidence": "1000000",
+          "country": "US",
+          "expressed": "100000000",
+          "ratio": "1000000"
+        },
+        {
+          "change": "0",
+          "confidence": "1000000",
+          "country": "JP",
+          "expressed": "100000000",
+          "ratio": "1000000"
+        },
+        {
+          "change": "0",
+          "confidence": "1000000",
+          "country": "GB",
+          "expressed": "100000000",
+          "ratio": "1000000"
+        },
+        {
+          "change": "0",
+          "confidence": "1000000",
+          "country": "NG",
+          "expressed": "100000000",
+          "ratio": "1000000"
+        }
+      ],
+      "sha256": "6c0765a1518154b4d0bee913e234e89a43e331ab97c739504fbbb31187e7e2ed",
+      "slots": [
+        {
+          "country": "US",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "0101010101010101010101010101010101010101010101010101010101010101"
+        },
+        {
+          "country": "US",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "0202020202020202020202020202020202020202020202020202020202020202"
+        },
+        {
+          "country": "US",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "0303030303030303030303030303030303030303030303030303030303030303"
+        },
+        {
+          "country": "US",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "0404040404040404040404040404040404040404040404040404040404040404"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "0909090909090909090909090909090909090909090909090909090909090909"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "1212121212121212121212121212121212121212121212121212121212121212"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "1313131313131313131313131313131313131313131313131313131313131313"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "1414141414141414141414141414141414141414141414141414141414141414"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "1919191919191919191919191919191919191919191919191919191919191919"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c"
+        }
+      ],
+      "states": [
+        {
+          "confidence": "1000000",
+          "country": "US",
+          "saturated": false,
+          "stale": false,
+          "state": "100000000"
+        },
+        {
+          "confidence": "1000000",
+          "country": "JP",
+          "saturated": false,
+          "stale": false,
+          "state": "100000000"
+        },
+        {
+          "confidence": "1000000",
+          "country": "GB",
+          "saturated": false,
+          "stale": false,
+          "state": "100000000"
+        },
+        {
+          "confidence": "1000000",
+          "country": "NG",
+          "saturated": false,
+          "stale": false,
+          "state": "100000000"
+        }
+      ],
+      "world": {
+        "confidence": "1000000",
+        "saturated": false,
+        "stale": false,
+        "state": "100000000"
+      }
+    },
+    {
+      "baseline": [
+        "100000000",
+        "100000000",
+        "100000000",
+        "100000000"
+      ],
+      "countries": [
+        "US",
+        "JP",
+        "GB",
+        "NG"
+      ],
+      "evaluationTime": "1800000000",
+      "evidenceDigest": "d1264c7a05eb635210e379a1b2dc6dc6ccf5fcebac5c74543eae4069d98f7802",
+      "file": "us-improves.json",
+      "multiplier": 20,
+      "pairs": [
+        {
+          "base": "US",
+          "change": "1500",
+          "confidence": "1000000",
+          "expressed": "103000000",
+          "quote": "JP",
+          "ratio": "1001500"
+        },
+        {
+          "base": "US",
+          "change": "1500",
+          "confidence": "1000000",
+          "expressed": "103000000",
+          "quote": "GB",
+          "ratio": "1001500"
+        },
+        {
+          "base": "US",
+          "change": "1500",
+          "confidence": "1000000",
+          "expressed": "103000000",
+          "quote": "NG",
+          "ratio": "1001500"
+        },
+        {
+          "base": "JP",
+          "change": "-1498",
+          "confidence": "1000000",
+          "expressed": "97004493",
+          "quote": "US",
+          "ratio": "998502"
+        },
+        {
+          "base": "JP",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "GB",
+          "ratio": "1000000"
+        },
+        {
+          "base": "JP",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "NG",
+          "ratio": "1000000"
+        },
+        {
+          "base": "GB",
+          "change": "-1498",
+          "confidence": "1000000",
+          "expressed": "97004493",
+          "quote": "US",
+          "ratio": "998502"
+        },
+        {
+          "base": "GB",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "JP",
+          "ratio": "1000000"
+        },
+        {
+          "base": "GB",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "NG",
+          "ratio": "1000000"
+        },
+        {
+          "base": "NG",
+          "change": "-1498",
+          "confidence": "1000000",
+          "expressed": "97004493",
+          "quote": "US",
+          "ratio": "998502"
+        },
+        {
+          "base": "NG",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "JP",
+          "ratio": "1000000"
+        },
+        {
+          "base": "NG",
+          "change": "0",
+          "confidence": "1000000",
+          "expressed": "100000000",
+          "quote": "GB",
+          "ratio": "1000000"
+        }
+      ],
+      "references": [
+        {
+          "change": "1125",
+          "confidence": "1000000",
+          "country": "US",
+          "expressed": "102249157",
+          "ratio": "1001125"
+        },
+        {
+          "change": "-375",
+          "confidence": "1000000",
+          "country": "JP",
+          "expressed": "99250281",
+          "ratio": "999625"
+        },
+        {
+          "change": "-375",
+          "confidence": "1000000",
+          "country": "GB",
+          "expressed": "99250281",
+          "ratio": "999625"
+        },
+        {
+          "change": "-375",
+          "confidence": "1000000",
+          "country": "NG",
+          "expressed": "99250281",
+          "ratio": "999625"
+        }
+      ],
+      "sha256": "620875a1add923b8f8864a2acef609a0fd901a56448a8af086a4eafa5bbef0de",
+      "slots": [
+        {
+          "country": "US",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "0101010101010101010101010101010101010101010101010101010101010101"
+        },
+        {
+          "country": "US",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "0202020202020202020202020202020202020202020202020202020202020202"
+        },
+        {
+          "country": "US",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "0303030303030303030303030303030303030303030303030303030303030303"
+        },
+        {
+          "country": "US",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "0404040404040404040404040404040404040404040404040404040404040404"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "0909090909090909090909090909090909090909090909090909090909090909"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+        },
+        {
+          "country": "JP",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "1212121212121212121212121212121212121212121212121212121212121212"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "1313131313131313131313131313131313131313131313131313131313131313"
+        },
+        {
+          "country": "GB",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "1414141414141414141414141414141414141414141414141414141414141414"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-0",
+          "publishedAt": "1799996400",
+          "recordId": "1919191919191919191919191919191919191919191919191919191919191919"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-1",
+          "publishedAt": "1799996400",
+          "recordId": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-2",
+          "publishedAt": "1799996400",
+          "recordId": "1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b"
+        },
+        {
+          "country": "NG",
+          "indicator": "indicator-3",
+          "publishedAt": "1799996400",
+          "recordId": "1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c"
+        }
+      ],
+      "states": [
+        {
+          "confidence": "1000000",
+          "country": "US",
+          "saturated": false,
+          "stale": false,
+          "state": "100150000"
+        },
+        {
+          "confidence": "1000000",
+          "country": "JP",
+          "saturated": false,
+          "stale": false,
+          "state": "100000000"
+        },
+        {
+          "confidence": "1000000",
+          "country": "GB",
+          "saturated": false,
+          "stale": false,
+          "state": "100000000"
+        },
+        {
+          "confidence": "1000000",
+          "country": "NG",
+          "saturated": false,
+          "stale": false,
+          "state": "100000000"
+        }
+      ],
+      "world": {
+        "confidence": "1000000",
+        "saturated": false,
+        "stale": false,
+        "state": "100037500"
+      }
+    }
+  ]
+}
