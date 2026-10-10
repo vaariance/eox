@@ -29,6 +29,7 @@ export const canRun = spawnSync("anvil", ["--version"]).status === 0 && existsSy
 export const owner = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
 export const asserter = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
 export const relayer = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a");
+export const challenger = privateKeyToAccount("0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6");
 
 export const word = (value: number): Hex => pad(`0x${value.toString(16)}`, { size: 32 });
 const bytes = (hex: Hex): number[] => [...hexToBytes(hex)];
@@ -65,6 +66,7 @@ export async function startChain(basePort: number) {
     owner: createWalletClient({ chain: foundry, transport, account: owner }),
     asserter: createWalletClient({ chain: foundry, transport, account: asserter }),
     relayer: createWalletClient({ chain: foundry, transport, account: relayer }),
+    challenger: createWalletClient({ chain: foundry, transport, account: challenger }),
   };
   const anvil: ChildProcess = spawn("anvil", ["--port", String(port), "--silent"], { stdio: "ignore" });
   for (let i = 0; i < 100; i++) {
@@ -125,13 +127,13 @@ export async function startChain(basePort: number) {
     assessment_digest: fill(tag + 1),
   });
 
-  const evidenceClaim = (item: EvidenceRecord, overrides: { epoch?: bigint } = {}): Hex =>
+  const evidenceClaim = (item: EvidenceRecord, overrides: { epoch?: bigint; artifacts?: number[] } = {}): Hex =>
     bytesToHex(
       encodeEvidenceClaim({
         context: context(overrides),
         ...item,
         metadata_digest: fill(200),
-        artifact_digests: [fill(201)],
+        artifact_digests: (overrides.artifacts ?? [201]).map(fill),
         provenance_digests: [fill(202)],
       }),
     );
@@ -156,7 +158,7 @@ export async function startChain(basePort: number) {
       }),
     );
 
-  const senderFor = (name: "asserter" | "relayer"): Sender => ({
+  const senderFor = (name: "asserter" | "relayer" | "challenger"): Sender => ({
     address: wallets[name].account.address,
     send: (transaction) => wallets[name].sendTransaction(transaction),
   });
@@ -170,3 +172,5 @@ export async function startChain(basePort: number) {
 }
 
 export type Chain = Awaited<ReturnType<typeof startChain>>;
+
+export const artifactOf = (tag: number): string => tag.toString(16).padStart(2, "0").repeat(32);
