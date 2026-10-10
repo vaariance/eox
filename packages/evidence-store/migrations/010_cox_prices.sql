@@ -67,9 +67,10 @@ CREATE TABLE price_observations (
 CREATE TABLE snapshots (
   id              BIGSERIAL PRIMARY KEY,
   cutoff          BIGINT NOT NULL UNIQUE CHECK (cutoff > 0 AND cutoff % 60 = 0),
-  observation_ids BIGINT[] NOT NULL CHECK (cardinality(observation_ids) >= 1),
+  observation_ids BIGINT[] NOT NULL,
   snapshot_digest TEXT NOT NULL CHECK (snapshot_digest ~ '^[0-9a-f]{64}$'),
   admissible      BOOLEAN NOT NULL,
+  CHECK (cardinality(observation_ids) >= 1 OR NOT admissible),
   recorded_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   inserted_xid    xid8 NOT NULL DEFAULT pg_current_xact_id()
 );
