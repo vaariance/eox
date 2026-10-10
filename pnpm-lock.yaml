@@ -114,6 +114,28 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
 
+  apps/uma-relay:
+    dependencies:
+      viem:
+        specifier: ^2.21.0
+        version: 2.57.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+    devDependencies:
+      '@eox/oracle-worker':
+        specifier: workspace:*
+        version: link:../oracle-worker
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
+      tsx:
+        specifier: ^4.16.0
+        version: 4.23.15
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.5)
+
   packages/app-api:
     devDependencies:
       '@types/node':
@@ -2927,7 +2949,7 @@ snapshots:
     dependencies:
       ws: 7.5.13(bufferutil@4.1.0)(utf-8-validate@6.0.6)
 
-  isows@1.0.7(ws@8.21.0(bufferutil@4.1.0)):
+  isows@1.0.7(ws@8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)):
     dependencies:
       ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
 
@@ -3208,7 +3230,7 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@5.9.3)
-      isows: 1.0.7(ws@8.21.0(bufferutil@4.1.0))
+      isows: 1.0.7(ws@8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
       ox: 0.14.45(typescript@5.9.3)
       ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     optionalDependencies:
