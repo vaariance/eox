@@ -297,3 +297,11 @@ another agent needs to know.
 - **Rules for agents:** This is a review draft, not a deployed mechanism or an amendment to EOX `SYSTEM.md`. Do not introduce fundamentals, market-cap growth, volume scoring, mandatory terminal epochs or a signal multiplier. Preserve the distinction between COX reference and redeemable value; the illustrative normalized transfer formula is not selected and its common benchmark cancels.
 - **Open:** Benchmark policy, final transfer rule, holdable CRYPTO rights, source/cutoff rules, exceptional states and production proofs.
 - **Refs:** `docs/cox/cox-paper-3.md`, `docs/cox/build_pdf.py`, `docs/cox/verification.json`; EOX Paper 3 and RPM Paper 1 in `docs/papers`.
+
+### 2026-10-10 · Joel (Claude Code) · Dev VM moved to the EU
+
+- **Area:** `deploy/dev`, GCP project `colosseum-eox`.
+- **What:** Bybit's API refused the US-region dev VM (HTTP 403, CloudFront country block); the team is in Nigeria, which is not a Bybit-restricted jurisdiction. The VM `eox-dev` was stopped, snapshotted (`eox-dev-move-20261010`) and recreated from that snapshot in `europe-west1-b`, same machine type and service account. Verified after the move: 15,622 observations, 76 payloads with valid hashes, 9 migrations and commit `5c8b5a1`, as before; evidence API and both app APIs healthy; cron restored; a backup uploaded to `gs://colosseum-eox-db-backups`; Bybit, Kraken and Coinbase all return 200. External IP is now `104.155.21.77`.
+- **Rules for agents:** Address the VM as `eox-dev` in zone `europe-west1-b` (the `deploy.sh` default). The stopped `eox-dev` in `us-central1-a` and the snapshot are kept until the EU VM has run cleanly; never start the old one alongside the new one. Bybit is reached directly, with no proxy or VPN, as `SYSTEM.md` §10.1 requires.
+- **Open:** Delete the old US VM and the snapshot after a few days of clean running (Joel). Bybit's terms of use before any public launch.
+- **Refs:** `deploy/dev/README.md`, `deploy/dev/deploy.sh`.
