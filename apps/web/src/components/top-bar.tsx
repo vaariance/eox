@@ -1,8 +1,8 @@
 "use client";
 
-import { Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { WalletButton } from "./wallet-button";
 
 const links = [
   { href: "/", label: "Markets" },
@@ -49,13 +49,7 @@ export function TopBar() {
         <div className="ml-auto flex items-center gap-2">
           <span className="hidden rounded-pill border border-line px-2 py-1 text-xs text-muted lg:inline">Solana devnet</span>
           <span className="hidden rounded-pill border border-warn px-2 py-1 text-xs text-warn sm:inline">Test collateral · MVP-0</span>
-          <button
-            type="button"
-            className="flex h-10 cursor-pointer items-center gap-2 rounded-pill bg-accent px-4 text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90"
-          >
-            <Wallet size={16} aria-hidden="true" />
-            Connect wallet
-          </button>
+          <WalletButton />
         </div>
       </div>
       <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden">

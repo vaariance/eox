@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Change } from "@/components/change";
 import { RequestList } from "@/components/request-list";
+import { WalletAction } from "@/components/wallet-action";
+import { WalletNote } from "@/components/wallet-note";
 import { formatAmount, formatWhole } from "@/lib/format";
 import { account, findClass, positions, requests } from "@/lib/sample";
 
@@ -17,7 +19,7 @@ export default function PortfolioPage() {
       <div>
         <h1 className="font-display text-title font-semibold tracking-tight">Portfolio</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          No wallet is connected, so this shows a sample wallet. Your return comes from unit values, not from the reference charts.
+          <WalletNote /> Your return comes from unit values, not from the reference charts.
         </p>
       </div>
 
@@ -40,9 +42,9 @@ export default function PortfolioPage() {
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Ready to withdraw</div>
           <div className="num mt-2 text-2xl">{formatAmount(account.withdrawalPayable)} <span className="text-xs text-muted">tCOX</span></div>
-          <button type="button" disabled className="mt-3 h-10 w-full rounded-pill bg-accent text-sm font-medium text-accent-ink opacity-50">
-            Connect wallet to withdraw
-          </button>
+          <div className="mt-3 flex flex-col gap-2">
+            <WalletAction needsWallet="Connect wallet to withdraw" className="h-10 w-full rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+          </div>
         </div>
       </div>
 

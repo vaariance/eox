@@ -5,6 +5,7 @@ import { useState } from "react";
 import { formatAmount, formatWhole } from "@/lib/format";
 import type { ClaimClass, ClassId } from "@/lib/sample";
 import { Countdown } from "./countdown";
+import { WalletAction } from "./wallet-action";
 
 type Operation = "deposit" | "switch" | "redeem";
 
@@ -108,9 +109,7 @@ export function TradeForm({ claim, others, nextBatch }: { claim: ClaimClass; oth
           This is an estimate, not a quote. Your request is queued and executes at the unit value fixed by the next publication. You can cancel until the batch closes.
         </p>
 
-        <button type="submit" disabled className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink opacity-50">
-          Connect wallet to continue
-        </button>
+        <WalletAction needsWallet="Connect wallet to continue" className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );
