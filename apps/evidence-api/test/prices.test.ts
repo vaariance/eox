@@ -71,7 +71,7 @@ describe("price cutoffs", () => {
     const res = await get(`/v1/prices/cutoffs/${CUTOFF}`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, any>;
-    expect(body).toMatchObject({ schema: "cox.evidence/v1", rule: "COX/PRICE-FALLBACK/V1", cutoff: CUTOFF, priceScale: "100000000", snapshot: { digest: "e".repeat(64), admissible: true } });
+    expect(body).toMatchObject({ schema: "cox.evidence/v1", rule: "COX/PRICE-FALLBACK/V1", cutoff: CUTOFF, priceScale: "100000000", snapshot: { digest: "e".repeat(64), digestEncoding: "COX/WIRE/V1", admissible: true } });
     expect(body.assets.map((a: { assetId: string }) => a.assetId)).toEqual(["BTC", "TRX"]);
     expect(body.assets[0].price).toMatchObject({ venue: "kraken", step: 1, close: "82758.6", priceE8: "8275860000000", artifactDigest: digests.kraken, admissible: true });
     expect(body.assets[1].attempts).toEqual([
@@ -100,10 +100,11 @@ describe("price changes", () => {
   it("lists archived cutoffs once, in commit order, and resumes from the returned cursor", async () => {
     const first = await (await get("/v1/prices/changes?limit=1")).json() as { after: string; cutoffs: { cutoff: number }[] };
     expect(first.cutoffs.map((c) => c.cutoff)).toEqual([CUTOFF]);
-    const ids = await recordSnapshot({ cutoff: CUTOFF + 120, observationIds: [], snapshotDigest: "f".repeat(64), admissible: false });
-    expect(ids.admissible).toBe(false);
+    const ids = await recordSnapshot({ cutoff: CUTOFF + 120, observationIds: [], snapshotDigest: null, admissible: false });
+    expect(ids).toMatchObject({ admissible: false, snapshotDigest: null, digestEncoding: null });
+    await expect(recordSnapshot({ cutoff: CUTOFF + 180, observationIds: [], snapshotDigest: null, admissible: true })).rejects.toThrow();
     const next = await (await get(`/v1/prices/changes?after=${first.after}`)).json() as { after: string; cutoffs: { cutoff: number; admissible: boolean }[] };
-    expect(next.cutoffs).toEqual([{ cutoff: CUTOFF + 120, admissible: false, snapshotDigest: "f".repeat(64) }]);
+    expect(next.cutoffs).toEqual([{ cutoff: CUTOFF + 120, admissible: false, snapshotDigest: null }]);
     const empty = await (await get(`/v1/prices/changes?after=${next.after}`)).json() as { after: string; cutoffs: unknown[] };
     expect(empty).toMatchObject({ after: next.after, cutoffs: [] });
     expect((await get("/v1/prices/changes?after=nope")).status).toBe(400);
