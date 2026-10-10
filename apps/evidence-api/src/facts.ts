@@ -27,7 +27,7 @@ export interface EvidenceFact {
   periodOrdinal: string;
   value: string;
   rawValue: string | null;
-  publishedAt: number | null;
+  publishedAt: number;
   knownAt: number;
   recordedAt: number;
   artifactDigest: string;
@@ -38,8 +38,10 @@ export interface EvidenceFact {
     sourceEdition: string | null;
   };
   supersedes: string | null;
-  publication: PublicationEvidence | null;
+  publication: PublicationEvidence;
 }
+
+export const PUBLICATION_POLICY = "PUBLICATION/RELEASE-OR-FIRST-OBSERVED/V1";
 
 export interface ReleaseEvidence {
   releasedAtMs: number;
@@ -48,11 +50,18 @@ export interface ReleaseEvidence {
   periodsDigest: string;
 }
 
-export interface PublicationEvidence {
-  basis: "source-data-edit";
-  release: ReleaseEvidence;
-  previousRelease: ReleaseEvidence;
-}
+export type PublicationEvidence =
+  | {
+      policy: typeof PUBLICATION_POLICY;
+      basis: "source-data-edit";
+      release: ReleaseEvidence;
+      previousRelease: ReleaseEvidence;
+    }
+  | {
+      policy: typeof PUBLICATION_POLICY;
+      basis: "first-observed";
+      firstObservedAtMs: number;
+    };
 
 const EDITION_VINTAGE = /^oecd-edition-([0-9]{6})$/;
 
@@ -68,10 +77,6 @@ function unixSeconds(value: Date): number {
   return Math.floor(value.getTime() / 1000);
 }
 
-function exactSeconds(value: Date): number | null {
-  const millis = value.getTime();
-  return millis % 1000 === 0 ? millis / 1000 : null;
-}
 
 function lastDayOfMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -117,7 +122,7 @@ export function toEvidenceFact(observation: Observation): EvidenceFact | null {
     periodOrdinal: periodOrdinal(descriptor.frequency, period),
     value: observation.value,
     rawValue: observation.rawValue,
-    publishedAt: observation.publishedAt === null ? null : exactSeconds(new Date(observation.publishedAt)),
+    publishedAt: unixSeconds(new Date(observation.recordedAt)),
     knownAt: unixSeconds(new Date(observation.knownAt)),
     recordedAt: unixSeconds(new Date(observation.recordedAt)),
     artifactDigest: observation.rawSha256,
@@ -131,6 +136,10 @@ export function toEvidenceFact(observation: Observation): EvidenceFact | null {
       sourceEdition: EDITION_VINTAGE.exec(observation.vintage)?.[1] ?? null,
     },
     supersedes: observation.supersedesId === null ? null : toRecordId(observation.supersedesId),
-    publication: null,
+    publication: {
+      policy: PUBLICATION_POLICY,
+      basis: "first-observed",
+      firstObservedAtMs: new Date(observation.recordedAt).getTime(),
+    },
   };
 }

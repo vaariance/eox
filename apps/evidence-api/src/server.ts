@@ -10,7 +10,7 @@ import {
   type SourceRelease,
 } from "@eox/evidence-store";
 import { parsePortRecords } from "@eox/ingestion";
-import { parseRecordId, toEvidenceFact, toRecordId, type ReleaseEvidence } from "./facts.js";
+import { parseRecordId, PUBLICATION_POLICY, toEvidenceFact, toRecordId, type ReleaseEvidence } from "./facts.js";
 
 const DEFAULT_PAGE_SIZE = 128;
 const MAX_PAGE_SIZE = 500;
@@ -75,7 +75,13 @@ async function evidenceFact(recordId: string) {
     const release = await getSourceRelease(observation!.releaseId);
     const previous = release ? await getReleaseBefore(release.sourceId, release.dataset, release.releasedAt) : null;
     if (!release || !previous) throw new HttpError(500, "publication evidence is incomplete");
-    fact.publication = { basis: "source-data-edit", release: releaseEvidence(release), previousRelease: releaseEvidence(previous) };
+    fact.publishedAt = Math.floor(release.releasedAt.getTime() / 1000);
+    fact.publication = {
+      policy: PUBLICATION_POLICY,
+      basis: "source-data-edit",
+      release: releaseEvidence(release),
+      previousRelease: releaseEvidence(previous),
+    };
   }
   return fact;
 }
