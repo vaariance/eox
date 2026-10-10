@@ -28,11 +28,16 @@ export const adapterAbi = parseAbi([
 ]);
 
 export const oracleAbi = parseAbi([
+  "struct EscalationManagerSettings { bool arbitrateViaEscalationManager; bool discardOracle; bool validateDisputers; address assertingCaller; address escalationManager; }",
+  "struct Assertion { EscalationManagerSettings escalationManagerSettings; address asserter; uint64 assertionTime; bool settled; address currency; uint64 expirationTime; bool settlementResolution; bytes32 domainId; bytes32 identifier; uint256 bond; address callbackRecipient; address disputer; }",
   "function settleAssertion(bytes32 assertionId)",
+  "function disputeAssertion(bytes32 assertionId, address disputer)",
+  "function getAssertion(bytes32 assertionId) view returns (Assertion)",
   "function getMinimumBond(address currency) view returns (uint256)",
 ]);
 
 export const wormholeAbi = parseAbi(["function messageFee() view returns (uint256)"]);
 
+export const CLAIM_EVIDENCE = 0;
 export const CLAIM_SNAPSHOT = 1;
 export const STATUS_PENDING = 1;

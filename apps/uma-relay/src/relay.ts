@@ -21,7 +21,7 @@ export interface Transaction {
 
 export interface Operation {
   id: string;
-  kind: "settle" | "close" | "publish" | "approve" | "assert-evidence" | "assert-snapshot";
+  kind: "settle" | "close" | "publish" | "approve" | "assert-evidence" | "assert-snapshot" | "dispute";
 }
 
 export interface Sender {
