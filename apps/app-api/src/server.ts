@@ -12,7 +12,7 @@ import {
   type ReferenceSnapshot,
   type Status,
 } from "@eox/app-api";
-import { pairKey, type PublishedSnapshot, type ReferenceSource } from "./source.js";
+import type { PublishedSnapshot, ReferenceSource } from "./source.js";
 
 const COUNTRY_PATTERN = /^[A-Z]{2}$/;
 const SNAPSHOT_PATTERN = /^[A-Za-z0-9:._-]{1,128}$/;
@@ -60,13 +60,15 @@ export function createAppApiServer(options: AppApiServerOptions): Server {
     const asOf = now();
     const age = latest ? asOf - latest.identity.publishedAt : null;
     const stale = age === null || age > STALE_AFTER_SECONDS;
+    const paused = await source.paused();
     return {
       asOf,
       latestSequence: latest?.identity.sequence ?? null,
       referenceAgeSeconds: age,
       staleAfterSeconds: STALE_AFTER_SECONDS,
       stale,
-      eligibleForExecution: latest !== undefined && !stale,
+      paused,
+      eligibleForExecution: latest !== undefined && !stale && !paused,
     };
   }
 
@@ -127,7 +129,8 @@ export function createAppApiServer(options: AppApiServerOptions): Server {
       if (!COUNTRY_PATTERN.test(base) || !COUNTRY_PATTERN.test(quote)) {
         throw new ApiError(400, "INVALID_PAIR", "pair countries must be ISO2 codes");
       }
-      const reference = base === quote ? undefined : snapshot.pairs.get(pairKey(base, quote));
+      const known = new Set(snapshot.countries.map((c) => c.country));
+      const reference = base === quote || !known.has(base) || !known.has(quote) ? null : await source.pair(snapshot, base, quote);
       if (!reference) {
         throw new ApiError(400, "INVALID_PAIR", `${base}/${quote} is not a pair in snapshot ${snapshot.identity.snapshotId}`);
       }

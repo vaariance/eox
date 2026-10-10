@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type {
   CountryReference,
@@ -69,8 +70,13 @@ const countryState = (value: Omit<GeneratedState, "country">): CountryState => (
   stale: value.stale,
 });
 
+function fixtureDigest(label: string): string {
+  return createHash("sha256").update(`eox-app-api-fixture:${label}`).digest("hex");
+}
+
 export class FixtureReferenceSource implements ReferenceSource {
   private readonly snapshots: PublishedSnapshot[];
+  private readonly pairs = new Map<string, ReadonlyMap<string, Reference>>();
   private readonly currentProposal: Proposal | null;
   private readonly slotReadiness: EvidenceReadiness;
   private readonly info: Deployment;
@@ -108,20 +114,25 @@ export class FixtureReferenceSource implements ReferenceSource {
             snapshotId: entry.snapshotId,
             sequence: entry.sequence,
             epoch: timeline.epoch,
-            methodology: timeline.methodology,
+            epochAddress: null,
+            configurationDigest: fixtureDigest(`configuration:${timeline.methodology}`),
             baselineId: timeline.baselineId,
             predecessor,
             cutoff: at(entry.cutoffOffset),
             postcommittedAt: at(entry.postcommittedOffset),
             publishedAt: at(entry.publishedOffset),
-            evidenceCommitment: scenario.evidenceDigest,
-            finalization: { transaction: null, finalized: true },
+            evidenceDigest: scenario.evidenceDigest,
+            precommitment: fixtureDigest(`precommitment:${entry.snapshotId}`),
+            postcommitment: fixtureDigest(`postcommitment:${entry.snapshotId}`),
+            challengeEventDigest: fixtureDigest(`challenge-events:${entry.snapshotId}`),
+            challengeEventCount: 0,
+            finalization: { transaction: null, slot: null, finalized: true },
           },
           multiplier: scenario.multiplier,
           world: countryState(scenario.world),
           countries,
-          pairs: new Map(scenario.pairs.map((pair) => [pairKey(pair.base, pair.quote), reference(pair)])),
         };
+        this.pairs.set(entry.snapshotId, new Map(scenario.pairs.map((pair) => [pairKey(pair.base, pair.quote), reference(pair)])));
         predecessor = entry.snapshotId;
         return snapshot;
       });
@@ -163,6 +174,14 @@ export class FixtureReferenceSource implements ReferenceSource {
 
   async publications(): Promise<readonly PublishedSnapshot[]> {
     return this.snapshots;
+  }
+
+  async pair(snapshot: PublishedSnapshot, base: string, quote: string): Promise<Reference | null> {
+    return this.pairs.get(snapshot.identity.snapshotId)?.get(pairKey(base, quote)) ?? null;
+  }
+
+  async paused(): Promise<boolean> {
+    return false;
   }
 
   async proposal(): Promise<Proposal | null> {

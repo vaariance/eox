@@ -105,6 +105,8 @@ describe("references", () => {
     const empty: ReferenceSource = {
       deployment: async () => ({ origin: "fixture", network: "fixture", oracleProgram: null, registry: null, fixtureSource: "empty" }),
       publications: async () => [],
+      pair: async () => null,
+      paused: async () => false,
       proposal: async () => null,
       readiness: async () => ({ evaluatedAt: anchor, slots: [] }),
       onPublication: () => () => {},
