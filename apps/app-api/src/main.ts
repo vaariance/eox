@@ -1,4 +1,5 @@
 import anchor, { type Idl } from "@coral-xyz/anchor";
+import type { Server } from "node:http";
 import { Connection } from "@solana/web3.js";
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -11,6 +12,8 @@ import { ReadinessTracker } from "./readiness.js";
 import type { ReferenceSource } from "./source.js";
 import { createAppApiServer } from "./server.js";
 import { SolanaChainClient } from "./solana-chain.js";
+import { createCoxApiServer } from "./cox/server.js";
+import { CoxFixtureSource } from "./cox/fixture-source.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -94,13 +97,21 @@ async function liveSource(): Promise<{ source: ReferenceSource; stop: () => void
 }
 
 const mode = process.env.APP_API_SOURCE ?? "fixture";
-if (mode !== "fixture" && mode !== "live") throw new Error(`unsupported APP_API_SOURCE: ${mode}`);
+if (mode !== "fixture" && mode !== "live" && mode !== "cox-fixture") throw new Error(`unsupported APP_API_SOURCE: ${mode}`);
 const host = process.env.APP_API_HOST ?? "127.0.0.1";
 const port = Number(process.env.APP_API_PORT ?? "8790");
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`invalid APP_API_PORT: ${port}`);
 
-const { source, stop } = mode === "live" ? await liveSource() : await fixtureSource();
-const server = createAppApiServer({ source, onError: (error) => console.error("app-api request failed", error) });
+const onError = (error: unknown) => console.error("app-api request failed", error);
+let stop: () => void = () => {};
+let server: Server;
+if (mode === "cox-fixture") {
+  server = createCoxApiServer({ source: new CoxFixtureSource(join(here, "..", "fixtures", "cox-fixture.json")), onError });
+} else {
+  const built = mode === "live" ? await liveSource() : await fixtureSource();
+  stop = built.stop;
+  server = createAppApiServer({ source: built.source, onError });
+}
 server.listen(port, host, () => console.log(`app-api (${mode}) listening on http://${host}:${port}`));
 
 function shutdown(): void {
