@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@eox/signing": "workspace:*",
     "viem": "^2.21.0"
   },
   "devDependencies": {
