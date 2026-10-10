@@ -187,8 +187,14 @@ recorded as `archive_late`, never invented.
 | `COX_BYBIT_ENABLED` | `true` only where Bybit is reachable and permitted |
 | `COX_COINBASE_ENABLED` | `false` disables Coinbase |
 
-The snapshot digest uses a provisional binary encoding of the `SYSTEM.md` §6.1
-fields (`src/cox/digest.ts`) until Peter's specification pins it.
+Price and snapshot digests follow `COX/WIRE/V1` (`packages/cox/SPEC.md` §3) in
+`src/cox/digest.ts`; `test/cox-digest.test.ts` checks them byte for byte against
+the P1 wire vectors. A digest exists only for a complete admissible snapshot (one
+price for every roster asset, none rejected). Snapshots recorded before migration
+`011` carry an unlabelled provisional digest (`digest_encoding` null) and must
+not be compared with `COX/WIRE/V1`. Kraken and Coinbase closes must match
+`^(0|[1-9][0-9]*)(\.[0-9]{1,8})?$` exactly; even a ninth trailing zero is
+`excess_decimals`.
 
 Feed check: `pnpm --filter @eox/ingestion cox:feed-check [days]` prints, per
 asset, the share of inadmissible cutoffs (fails above 0.1%), the share resolved
