@@ -2,6 +2,7 @@
 
 import { Info } from "lucide-react";
 import { useState } from "react";
+import { COLLATERAL } from "@/lib/config";
 import { formatAmount, formatUtcTime } from "@/lib/format";
 import type { ClassView } from "@/lib/view";
 import { Countdown } from "./countdown";
@@ -32,11 +33,11 @@ export function TradeForm({ claim, others, nextCutoff }: { claim: ClassView; oth
     : operation === "deposit"
       ? { value: parsed / sourceValue, unit: `${claim.id} units` }
       : operation === "redeem"
-        ? { value: parsed * sourceValue, unit: "tCOX" }
+        ? { value: parsed * sourceValue, unit: "tUSDC" }
         : { value: (parsed * sourceValue) / destinationValue, unit: `${destination.id} units` };
 
-  const amountLabel = operation === "deposit" ? "Amount (tCOX)" : `${claim.id} units`;
-  const conditionLabel = operation === "deposit" ? "Minimum units" : operation === "redeem" ? "Minimum proceeds (tCOX)" : "Minimum units out";
+  const amountLabel = operation === "deposit" ? "Amount (tUSDC)" : `${claim.id} units`;
+  const conditionLabel = operation === "deposit" ? "Minimum units" : operation === "redeem" ? "Minimum proceeds (tUSDC)" : "Minimum units out";
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 shadow-card">
@@ -55,6 +56,10 @@ export function TradeForm({ claim, others, nextCutoff }: { claim: ClassView; oth
           </button>
         ))}
       </div>
+
+      <p className="mb-3 text-xs text-muted">
+        You put {COLLATERAL.name} into the {claim.id} class and get units, a share of that class. You do not buy {claim.id === "CRYPTO" ? "the coins" : claim.id}.
+      </p>
 
       <form className="flex flex-col gap-3" onSubmit={(event) => event.preventDefault()}>
         {operation === "switch" && (

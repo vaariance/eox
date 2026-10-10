@@ -81,7 +81,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Class unit value</div>
           <div className="num mt-2 text-2xl">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</div>
-          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} tCOX backing</div>
+          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} tUSDC backing</div>
         </div>
       </div>
 
@@ -107,8 +107,8 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
             {holding ? (
               <dl className="mt-3 flex flex-col gap-2 text-sm">
                 <div className="flex justify-between"><dt className="text-muted">Units</dt><dd className="num">{formatAmount(toNumber(holding.units, SCALE_DIGITS))}</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Redeemable value</dt><dd className="num">{formatAmount(toNumber(holding.redeemableValue, decimals))} tCOX</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Deposited</dt><dd className="num">{formatAmount(toNumber(holding.depositedBasis, decimals))} tCOX</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Redeemable value</dt><dd className="num">{formatAmount(toNumber(holding.redeemableValue, decimals))} tUSDC</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Deposited</dt><dd className="num">{formatAmount(toNumber(holding.depositedBasis, decimals))} tUSDC</dd></div>
                 <div className="flex justify-between border-t border-line pt-2">
                   <dt className="text-muted">Profit and loss</dt>
                   <dd><Change ratio={toNumber(holding.redeemableValue, decimals) / toNumber(holding.depositedBasis, decimals) - 1} /></dd>

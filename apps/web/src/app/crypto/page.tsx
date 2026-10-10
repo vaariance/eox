@@ -48,7 +48,7 @@ export default async function CryptoPage() {
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Class unit value</div>
           <div className="num mt-2 text-2xl">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</div>
-          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} tCOX backing</div>
+          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} tUSDC backing</div>
         </div>
       </div>
 

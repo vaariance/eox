@@ -17,27 +17,27 @@ function subject(request: CoxRequest): string {
 }
 
 function size(request: CoxRequest, decimals: number): { value: number; unit: string } {
-  if (request.amount !== null) return { value: toNumber(request.amount, decimals), unit: "tCOX" };
+  if (request.amount !== null) return { value: toNumber(request.amount, decimals), unit: "tUSDC" };
   return { value: toNumber(request.units ?? "0", SCALE_DIGITS), unit: "units" };
 }
 
 function minimum(request: CoxRequest, decimals: number): string {
   if (BigInt(request.minimumOut) === 0n) return "No minimum";
-  if (request.operation === "redeem") return `Min ${formatAmount(toNumber(request.minimumOut, decimals))} tCOX`;
+  if (request.operation === "redeem") return `Min ${formatAmount(toNumber(request.minimumOut, decimals))} tUSDC`;
   return `Min ${formatAmount(toNumber(request.minimumOut, SCALE_DIGITS))} units`;
 }
 
 function outcome(receipt: Receipt, decimals: number): string {
   const parts: string[] = [];
   if (receipt.unitsOut !== null) parts.push(`received ${formatAmount(toNumber(receipt.unitsOut, SCALE_DIGITS))} units`);
-  if (receipt.collateralOut !== null) parts.push(`received ${formatAmount(toNumber(receipt.collateralOut, decimals))} tCOX`);
+  if (receipt.collateralOut !== null) parts.push(`received ${formatAmount(toNumber(receipt.collateralOut, decimals))} tUSDC`);
   parts.push(`unit value ${formatAmount(toNumber(receipt.unitValue, SCALE_DIGITS), 6)}`);
   const text = parts.join(" at ");
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function paid(receipt: Receipt, decimals: number): { value: number; unit: string } {
-  if (receipt.collateralIn !== null) return { value: toNumber(receipt.collateralIn, decimals), unit: "tCOX" };
+  if (receipt.collateralIn !== null) return { value: toNumber(receipt.collateralIn, decimals), unit: "tUSDC" };
   return { value: toNumber(receipt.unitsIn ?? "0", SCALE_DIGITS), unit: "units" };
 }
 

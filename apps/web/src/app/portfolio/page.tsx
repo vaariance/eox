@@ -38,22 +38,22 @@ export default async function PortfolioPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Redeemable value</div>
-          <div className="num mt-2 text-2xl">{formatAmount(redeemable)} <span className="text-xs text-muted">tCOX</span></div>
+          <div className="num mt-2 text-2xl">{formatAmount(redeemable)} <span className="text-xs text-muted">tUSDC</span></div>
           {deposited > 0 && <div className="mt-1 text-xs"><Change ratio={redeemable / deposited - 1} /> <span className="text-muted">on deposits</span></div>}
         </div>
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Deposited</div>
-          <div className="num mt-2 text-2xl">{formatAmount(deposited)} <span className="text-xs text-muted">tCOX</span></div>
+          <div className="num mt-2 text-2xl">{formatAmount(deposited)} <span className="text-xs text-muted">tUSDC</span></div>
           <div className="mt-1 text-xs text-muted">In active positions</div>
         </div>
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Pending deposits</div>
-          <div className="num mt-2 text-2xl">{formatAmount(pendingDeposits)} <span className="text-xs text-muted">tCOX</span></div>
+          <div className="num mt-2 text-2xl">{formatAmount(pendingDeposits)} <span className="text-xs text-muted">tUSDC</span></div>
           <div className="mt-1 text-xs text-muted">Still yours until the batch executes</div>
         </div>
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Ready to withdraw</div>
-          <div className="num mt-2 text-2xl">{formatAmount(toNumber(portfolio.withdrawalPayable, decimals))} <span className="text-xs text-muted">tCOX</span></div>
+          <div className="num mt-2 text-2xl">{formatAmount(toNumber(portfolio.withdrawalPayable, decimals))} <span className="text-xs text-muted">tUSDC</span></div>
           <div className="mt-3 flex flex-col gap-2">
             <WalletAction needsWallet="Connect wallet to withdraw" className="h-10 w-full rounded-pill bg-accent text-sm font-medium text-accent-ink" />
           </div>
@@ -72,8 +72,8 @@ export default async function PortfolioPage() {
                 <th scope="col" className="px-4 py-3 text-right font-normal">Units</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Locked in requests</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Unit value</th>
-                <th scope="col" className="px-4 py-3 text-right font-normal">Redeemable (tCOX)</th>
-                <th scope="col" className="px-4 py-3 text-right font-normal">Deposited (tCOX)</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal">Redeemable (tUSDC)</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal">Deposited (tUSDC)</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Profit and loss</th>
               </tr>
             </thead>

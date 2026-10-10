@@ -41,7 +41,7 @@ export function StatusBanner({ status, sample }: { status: CoxStatus; sample: bo
         {sample && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Sample data, not from the API</span>}
       </div>
       <p className="mx-auto w-full max-w-7xl px-4 pb-2 pt-1 text-xs text-muted sm:px-6">
-        Solana devnet · Test collateral · MVP-0 is a test mechanism · Prices attested by the operator from exchange data
+        Solana devnet · Test collateral (tUSDC has no real value) · MVP-0 is a test mechanism · Prices attested by the operator from exchange data
       </p>
     </div>
   );

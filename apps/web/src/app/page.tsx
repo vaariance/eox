@@ -29,7 +29,7 @@ export default async function MarketsPage() {
         <dl className="flex gap-8 text-sm">
           <div>
             <dt className="text-xs text-muted">Active backing</dt>
-            <dd className="num mt-0.5 text-lg">{formatAmount(active)} <span className="text-xs text-muted">tCOX</span></dd>
+            <dd className="num mt-0.5 text-lg">{formatAmount(active)} <span className="text-xs text-muted">tUSDC</span></dd>
           </div>
           <div>
             <dt className="text-xs text-muted">CRYPTO level</dt>
