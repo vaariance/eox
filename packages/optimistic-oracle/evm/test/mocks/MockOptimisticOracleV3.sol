@@ -120,6 +120,17 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
             .assertionResolvedCallback(assertionId, truthful);
     }
 
+    function disputeAssertion(bytes32 assertionId, address disputer) external {
+        IOptimisticOracleV3.Assertion storage state = _state[assertionId];
+        require(state.asserter != address(0), "Assertion does not exist");
+        require(state.disputer == address(0), "Assertion already disputed");
+        require(state.expirationTime > block.timestamp, "Assertion is expired");
+        state.disputer = disputer;
+        state.currency.safeTransferFrom(msg.sender, address(this), state.bond);
+        IOptimisticOracleV3CallbackRecipient(state.callbackRecipient)
+            .assertionDisputedCallback(assertionId);
+    }
+
     function dispute(bytes32 assertionId) external {
         _state[assertionId].disputer = msg.sender;
         IOptimisticOracleV3CallbackRecipient(assertions[assertionId].callbackRecipient)
