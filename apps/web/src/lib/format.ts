@@ -25,3 +25,9 @@ export function direction(ratio: number): "up" | "down" | "flat" {
   if (ratio < -0.000005) return "down";
   return "flat";
 }
+
+export function formatPrice(value: number): string {
+  if (value >= 1) return formatAmount(value, 2);
+  if (value >= 0.01) return formatAmount(value, 4);
+  return formatAmount(value, 6);
+}

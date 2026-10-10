@@ -47,8 +47,6 @@ export function TopBar() {
           <NavLinks pathname={pathname} />
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <span className="hidden rounded-pill border border-line px-2 py-1 text-xs text-muted lg:inline">Solana devnet</span>
-          <span className="hidden rounded-pill border border-warn px-2 py-1 text-xs text-warn sm:inline">Test collateral · MVP-0</span>
           <WalletButton />
         </div>
       </div>

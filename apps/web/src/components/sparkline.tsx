@@ -1,4 +1,4 @@
-import type { Point } from "@/lib/sample";
+import type { Point } from "@/lib/view";
 
 const WIDTH = 120;
 const HEIGHT = 32;

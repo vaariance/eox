@@ -2,8 +2,8 @@
 
 import { Info } from "lucide-react";
 import { useState } from "react";
-import { formatAmount, formatWhole } from "@/lib/format";
-import type { ClaimClass, ClassId } from "@/lib/sample";
+import { formatAmount, formatUtcTime } from "@/lib/format";
+import type { ClassView } from "@/lib/view";
 import { Countdown } from "./countdown";
 import { WalletAction } from "./wallet-action";
 
@@ -17,21 +17,23 @@ const operations: { id: Operation; label: string }[] = [
 
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-export function TradeForm({ claim, others, nextBatch }: { claim: ClaimClass; others: ClaimClass[]; nextBatch: number }) {
+export function TradeForm({ claim, others, nextCutoff }: { claim: ClassView; others: ClassView[]; nextCutoff: number }) {
   const [operation, setOperation] = useState<Operation>("deposit");
   const [amount, setAmount] = useState("250");
-  const [target, setTarget] = useState<ClassId>(others[0].id);
+  const [target, setTarget] = useState(others[0].id);
   const parsed = Number(amount);
   const valid = Number.isFinite(parsed) && parsed > 0;
   const destination = others.find((item) => item.id === target) ?? others[0];
 
+  const sourceValue = claim.unitValue ?? 1;
+  const destinationValue = destination.unitValue ?? 1;
   const estimate = !valid
     ? null
     : operation === "deposit"
-      ? { value: parsed / claim.unitValue, unit: `${claim.id} units` }
+      ? { value: parsed / sourceValue, unit: `${claim.id} units` }
       : operation === "redeem"
-        ? { value: parsed * claim.unitValue, unit: "tCOX" }
-        : { value: (parsed * claim.unitValue) / destination.unitValue, unit: `${destination.id} units` };
+        ? { value: parsed * sourceValue, unit: "tCOX" }
+        : { value: (parsed * sourceValue) / destinationValue, unit: `${destination.id} units` };
 
   const amountLabel = operation === "deposit" ? "Amount (tCOX)" : `${claim.id} units`;
   const conditionLabel = operation === "deposit" ? "Minimum units" : operation === "redeem" ? "Minimum proceeds (tCOX)" : "Minimum units out";
@@ -58,7 +60,7 @@ export function TradeForm({ claim, others, nextBatch }: { claim: ClaimClass; oth
         {operation === "switch" && (
           <div>
             <label htmlFor="trade-target" className="mb-1 block text-xs text-muted">Switch into</label>
-            <select id="trade-target" value={target} onChange={(event) => setTarget(event.target.value as ClassId)} className={`${field} cursor-pointer`}>
+            <select id="trade-target" value={target} onChange={(event) => setTarget(event.target.value)} className={`${field} cursor-pointer`}>
               {others.map((item) => (
                 <option key={item.id} value={item.id}>{item.id}</option>
               ))}
@@ -88,11 +90,11 @@ export function TradeForm({ claim, others, nextBatch }: { claim: ClaimClass; oth
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted">Target batch</dt>
-            <dd className="num">#{formatWhole(nextBatch)} · closes in <Countdown /></dd>
+            <dd className="num">{formatUtcTime(nextCutoff)} · closes in <Countdown /></dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Last unit value</dt>
-            <dd className="num">{formatAmount(claim.unitValue, 6)}</dd>
+            <dd className="num">{claim.unitValue === null ? "1.000000 (empty class)" : formatAmount(claim.unitValue, 6)}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Estimate</dt>
