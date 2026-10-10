@@ -1,0 +1,117 @@
+"use client";
+
+import { Info } from "lucide-react";
+import { useState } from "react";
+import { formatAmount, formatWhole } from "@/lib/format";
+import type { ClaimClass, ClassId } from "@/lib/sample";
+import { Countdown } from "./countdown";
+
+type Operation = "deposit" | "switch" | "redeem";
+
+const operations: { id: Operation; label: string }[] = [
+  { id: "deposit", label: "Deposit" },
+  { id: "switch", label: "Switch" },
+  { id: "redeem", label: "Redeem" },
+];
+
+const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
+
+export function TradeForm({ claim, others, nextBatch }: { claim: ClaimClass; others: ClaimClass[]; nextBatch: number }) {
+  const [operation, setOperation] = useState<Operation>("deposit");
+  const [amount, setAmount] = useState("250");
+  const [target, setTarget] = useState<ClassId>(others[0].id);
+  const parsed = Number(amount);
+  const valid = Number.isFinite(parsed) && parsed > 0;
+  const destination = others.find((item) => item.id === target) ?? others[0];
+
+  const estimate = !valid
+    ? null
+    : operation === "deposit"
+      ? { value: parsed / claim.unitValue, unit: `${claim.id} units` }
+      : operation === "redeem"
+        ? { value: parsed * claim.unitValue, unit: "tCOX" }
+        : { value: (parsed * claim.unitValue) / destination.unitValue, unit: `${destination.id} units` };
+
+  const amountLabel = operation === "deposit" ? "Amount (tCOX)" : `${claim.id} units`;
+  const conditionLabel = operation === "deposit" ? "Minimum units" : operation === "redeem" ? "Minimum proceeds (tCOX)" : "Minimum units out";
+
+  return (
+    <section className="rounded-card border border-line bg-surface p-4 shadow-card">
+      <div role="group" aria-label="Operation" className="mb-4 grid grid-cols-3 gap-1 rounded-control bg-surface-2 p-1">
+        {operations.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={operation === item.id}
+            onClick={() => setOperation(item.id)}
+            className={`h-10 cursor-pointer rounded-control text-sm transition-colors duration-150 ${
+              operation === item.id ? "bg-accent font-medium text-accent-ink" : "text-muted hover:text-ink"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <form className="flex flex-col gap-3" onSubmit={(event) => event.preventDefault()}>
+        {operation === "switch" && (
+          <div>
+            <label htmlFor="trade-target" className="mb-1 block text-xs text-muted">Switch into</label>
+            <select id="trade-target" value={target} onChange={(event) => setTarget(event.target.value as ClassId)} className={`${field} cursor-pointer`}>
+              {others.map((item) => (
+                <option key={item.id} value={item.id}>{item.id}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div>
+          <label htmlFor="trade-amount" className="mb-1 block text-xs text-muted">{amountLabel}</label>
+          <input id="trade-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
+          {!valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="trade-condition" className="mb-1 block text-xs text-muted">{conditionLabel}</label>
+            <input id="trade-condition" inputMode="decimal" placeholder="Optional" className={field} />
+          </div>
+          <div>
+            <label htmlFor="trade-expiry" className="mb-1 block text-xs text-muted">Expires after</label>
+            <select id="trade-expiry" defaultValue="3" className={`${field} cursor-pointer`}>
+              <option value="1">1 batch</option>
+              <option value="3">3 batches</option>
+              <option value="10">10 batches</option>
+            </select>
+          </div>
+        </div>
+
+        <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted">Target batch</dt>
+            <dd className="num">#{formatWhole(nextBatch)} · closes in <Countdown /></dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted">Last unit value</dt>
+            <dd className="num">{formatAmount(claim.unitValue, 6)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted">Estimate</dt>
+            <dd className="num">{estimate ? `≈ ${formatAmount(estimate.value)} ${estimate.unit}` : "n/a"}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted">Fee</dt>
+            <dd className="num">0</dd>
+          </div>
+        </dl>
+
+        <p className="flex gap-2 rounded-control bg-surface-2 p-3 text-xs text-muted">
+          <Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+          This is an estimate, not a quote. Your request is queued and executes at the unit value fixed by the next publication. You can cancel until the batch closes.
+        </p>
+
+        <button type="submit" disabled className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink opacity-50">
+          Connect wallet to continue
+        </button>
+      </form>
+    </section>
+  );
+}
