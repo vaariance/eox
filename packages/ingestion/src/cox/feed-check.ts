@@ -23,14 +23,19 @@ export interface FeedCheck {
   from: number;
   to: number;
   snapshots: number;
+  lateSnapshots: number;
   admissibleSnapshots: number;
   assets: AssetCheck[];
   venues: VenueCheck[];
 }
 
 export async function feedCheck(from: number, to: number): Promise<FeedCheck> {
+  const timely = `cutoff >= $1 AND cutoff < $2
+      AND NOT EXISTS (SELECT 1 FROM incidents i WHERE i.cutoff = snapshots.cutoff AND i.kind = 'archive_late')`;
   const snapshots = await pool.query(
-    `SELECT count(*)::int AS total, count(*) FILTER (WHERE admissible)::int AS admissible FROM snapshots WHERE cutoff >= $1 AND cutoff < $2`,
+    `SELECT (SELECT count(*)::int FROM snapshots WHERE cutoff >= $1 AND cutoff < $2) AS archived,
+            count(*)::int AS total, count(*) FILTER (WHERE admissible)::int AS admissible
+       FROM snapshots WHERE ${timely}`,
     [from, to],
   );
   const total: number = snapshots.rows[0].total;
@@ -39,14 +44,15 @@ export async function feedCheck(from: number, to: number): Promise<FeedCheck> {
             count(o.id) FILTER (WHERE o.admissible)::int AS admissible,
             coalesce(max(o.trade_age_minutes), 0)::int AS "maxTradeAge"
        FROM assets a
-       LEFT JOIN price_observations o ON o.asset_id = a.asset_id AND o.cutoff >= $1 AND o.cutoff < $2
+       LEFT JOIN price_observations o ON o.asset_id = a.asset_id
+             AND o.cutoff IN (SELECT cutoff FROM snapshots WHERE ${timely})
       GROUP BY a.asset_id, a.position
       ORDER BY a.position`,
     [from, to],
   );
   const steps = await pool.query(
     `SELECT asset_id AS "assetId", venue || ':' || step AS step, count(*)::int AS n
-       FROM price_observations WHERE cutoff >= $1 AND cutoff < $2 GROUP BY 1, 2`,
+       FROM price_observations WHERE cutoff IN (SELECT cutoff FROM snapshots WHERE ${timely}) GROUP BY 1, 2`,
     [from, to],
   );
   const venues = await pool.query(
@@ -61,6 +67,7 @@ export async function feedCheck(from: number, to: number): Promise<FeedCheck> {
     from,
     to,
     snapshots: total,
+    lateSnapshots: snapshots.rows[0].archived - total,
     admissibleSnapshots: snapshots.rows[0].admissible,
     assets: assets.rows.map((row: { assetId: string; admissible: number; maxTradeAge: number }) => {
       const inadmissible = total - row.admissible;
@@ -84,7 +91,8 @@ export function renderFeedCheck(check: FeedCheck): string {
   const lines = [
     `# COX feed check ${new Date(check.from * 1000).toISOString()} to ${new Date(check.to * 1000).toISOString()}`,
     "",
-    `Snapshots: ${check.snapshots}, admissible: ${check.admissibleSnapshots} (${percent(check.snapshots ? check.admissibleSnapshots / check.snapshots : 0)}).`,
+    `Snapshots archived on time: ${check.snapshots}, admissible: ${check.admissibleSnapshots} (${percent(check.snapshots ? check.admissibleSnapshots / check.snapshots : 0)}).`,
+    `Snapshots finished late by the archiver itself (restarts, catch-up), excluded below: ${check.lateSnapshots}.`,
     `An asset fails above ${percent(FAIL_ABOVE_SHARE)} inadmissible cutoffs.`,
     "",
     "| Asset | Inadmissible | Kraken | Coinbase | Bybit | Carried | Max trade age (min) | Result |",

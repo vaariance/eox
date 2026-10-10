@@ -193,4 +193,4 @@ fields (`src/cox/digest.ts`) until Peter's specification pins it.
 Feed check: `pnpm --filter @eox/ingestion cox:feed-check [days]` prints, per
 asset, the share of inadmissible cutoffs (fails above 0.1%), the share resolved
 by each venue and step and the longest trade age, and per venue the archived
-responses and rate-limited attempts.
+responses and rate-limited attempts. Cutoffs the archiver itself finished late (`archive_late`: restarts, deploys, catch-up) are counted separately and excluded from the per-asset shares, because they say nothing about the venues.

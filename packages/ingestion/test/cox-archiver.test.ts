@@ -101,11 +101,18 @@ describe("COX archiver", () => {
     }
     expect(seen).toEqual([BASE, BASE + 60, BASE + 120]);
     const check = await feedCheck(BASE, BASE + 180);
-    expect(check).toMatchObject({ snapshots: 3, admissibleSnapshots: 2 });
+    expect(check).toMatchObject({ snapshots: 2, lateSnapshots: 1, admissibleSnapshots: 2 });
     const btc = check.assets.find((a) => a.assetId === "BTC")!;
-    expect(btc).toMatchObject({ inadmissible: 1, passes: false });
+    expect(btc).toMatchObject({ cutoffs: 2, inadmissible: 0, passes: true });
     const trx = check.assets.find((a) => a.assetId === "TRX")!;
-    expect(trx.byStep["bybit:3"]).toBeCloseTo(1 / 3);
-    expect(renderFeedCheck(check)).toContain("| TRX | 0 (0.00%)");
+    expect(trx.byStep["bybit:3"]).toBeCloseTo(1 / 2);
+    expect(renderFeedCheck(check)).toContain("excluded below: 1");
+
+    const onTime = BASE + 180;
+    const failing: Script = (url, c) => (url.includes("XXBTZUSD") || url.includes("BTC") ? { status: 503, body: "down" } : everyoneTrades(url, c));
+    await archiveCutoff(deps(failing, onTime, onTime + 8), ROSTER, onTime, () => (onTime + 20) * 1000);
+    const after = await feedCheck(BASE, BASE + 240);
+    expect(after.assets.find((a) => a.assetId === "BTC")).toMatchObject({ cutoffs: 3, inadmissible: 1, passes: false });
+    expect(after.assets.find((a) => a.assetId === "ETH")).toMatchObject({ cutoffs: 3, inadmissible: 0, passes: true });
   });
 });
