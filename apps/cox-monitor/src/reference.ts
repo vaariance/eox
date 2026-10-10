@@ -26,6 +26,7 @@ export function computeReference(input: ReferenceInput): ReferenceResult {
 
   const assetGrowth = currentPrices.map((price, index) => divideNearest(times(price, SCALE), previousPrices[index]!));
   const benchmarkGrowth = divideNearest(sum(assetGrowth), BigInt(count));
+  if (benchmarkGrowth <= 0n) fail("InvalidBenchmark");
   const benchmark = divideNearest(times(previousBenchmark, benchmarkGrowth), SCALE);
   if (benchmark <= 0n) fail("InvalidBenchmark");
 
