@@ -6,6 +6,7 @@
   "main": "src/relay.ts",
   "scripts": {
     "start": "tsx src/main.ts",
+    "challenger": "tsx src/challenger-main.ts",
     "build": "tsc --noEmit",
     "test": "vitest run"
   },
