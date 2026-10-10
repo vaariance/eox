@@ -69,18 +69,18 @@ export function createAppApiClient(options: AppApiClientOptions) {
       get<PairReference>(`${scope(snapshotId)}/pairs/${segment(base, "base")}/${segment(quote, "quote")}`),
     proposal: () => get<Proposal | null>("proposals/current"),
     evidenceReadiness: () => get<EvidenceReadiness>("evidence/readiness"),
-    publications: (after = 0, limit = 100) => {
-      if (!Number.isSafeInteger(after) || after < 0) throw new AppApiError("INVALID_REQUEST", "invalid after", 0);
+    publications: (after: number | null = null, limit = 100) => {
+      if (after !== null && (!Number.isSafeInteger(after) || after < 0)) throw new AppApiError("INVALID_REQUEST", "invalid after", 0);
       if (!Number.isSafeInteger(limit) || limit < 1) throw new AppApiError("INVALID_REQUEST", "invalid limit", 0);
-      return get<PublicationPage>(`publications?after=${after}&limit=${limit}`);
+      return get<PublicationPage>(after === null ? `publications?limit=${limit}` : `publications?after=${after}&limit=${limit}`);
     },
-    subscribePublications(after: number, onEvent: (event: PublicationEvent) => void): PublicationSubscription {
-      if (!Number.isSafeInteger(after) || after < 0) throw new AppApiError("INVALID_REQUEST", "invalid after", 0);
+    subscribePublications(after: number | null, onEvent: (event: PublicationEvent) => void): PublicationSubscription {
+      if (after !== null && (!Number.isSafeInteger(after) || after < 0)) throw new AppApiError("INVALID_REQUEST", "invalid after", 0);
       const controller = new AbortController();
       let lastSequence = after;
       const closed = (async () => {
         const res = await doFetch(`${baseUrl}/v1/publications/stream`, {
-          headers: { accept: "text/event-stream", "last-event-id": String(lastSequence) },
+          headers: lastSequence === null ? { accept: "text/event-stream" } : { accept: "text/event-stream", "last-event-id": String(lastSequence) },
           signal: controller.signal,
         });
         if (!res.ok || !res.body) throw new AppApiError("INTERNAL_ERROR", `stream failed with ${res.status}`, res.status);
@@ -102,7 +102,7 @@ export function createAppApiClient(options: AppApiClientOptions) {
               .join("\n");
             if (data) {
               const event = JSON.parse(data) as PublicationEvent;
-              if (event.sequence > lastSequence) {
+              if (lastSequence === null || event.sequence > lastSequence) {
                 lastSequence = event.sequence;
                 onEvent(event);
               }

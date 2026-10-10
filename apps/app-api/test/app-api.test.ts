@@ -116,6 +116,7 @@ describe("references", () => {
       await expect(local.client.latestReference()).rejects.toMatchObject({ code: "NO_ACCEPTED_REFERENCE", httpStatus: 404 });
       const { status } = await local.client.deployment();
       expect(status).toMatchObject({ latestSequence: null, stale: true, eligibleForExecution: false });
+      expect((await local.client.publications()).data).toEqual({ events: [], nextAfter: null });
     } finally {
       await local.close();
     }
@@ -156,6 +157,27 @@ describe("publications", () => {
     expect((await api.client.publications(0, 1)).data).toMatchObject({ nextAfter: 1, events: [{ sequence: 1 }] });
     expect((await api.client.publications(1)).data.events.map((event) => event.sequence)).toEqual([2]);
     expect((await api.client.publications(2)).data).toEqual({ events: [], nextAfter: 2 });
+  });
+
+  it("lists from the first publication, including sequence 0, when no sequence is given", async () => {
+    expect((await api.client.publications()).data.events.map((event) => event.sequence)).toEqual([1, 2]);
+    const zero = { ...(await fixtureSource().publications())[0]! };
+    zero.identity = { ...zero.identity, sequence: 0 };
+    const local = await startServer(Object.assign(fixtureSource(), { publications: async () => [zero] }), () => anchor);
+    try {
+      expect((await local.client.publications()).data).toMatchObject({ nextAfter: 0, events: [{ sequence: 0 }] });
+      expect((await local.client.publications(0)).data).toEqual({ events: [], nextAfter: 0 });
+      const seen: PublicationEvent[] = [];
+      const subscription = local.client.subscribePublications(null, (event) => seen.push(event));
+      for (let attempt = 0; attempt < 50 && seen.length === 0; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      subscription.close();
+      await subscription.closed;
+      expect(seen.map((event) => event.sequence)).toEqual([0]);
+    } finally {
+      await local.close();
+    }
   });
 
   it("resumes the publication stream after the last seen sequence", async () => {

@@ -139,7 +139,7 @@ export interface PublicationEvent {
 
 export interface PublicationPage {
   events: PublicationEvent[];
-  nextAfter: number;
+  nextAfter: number | null;
 }
 
 export interface Status {

@@ -45,8 +45,12 @@ function toEvent(snapshot: PublishedSnapshot): PublicationEvent {
   return { sequence: snapshot.identity.sequence, snapshot: snapshot.identity };
 }
 
-function parseSequence(value: string | null | undefined, name: string): number {
-  if (value === null || value === undefined || value === "") return 0;
+function parseAfter(value: string | null | undefined, name: string): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  return parseSequence(value, name);
+}
+
+function parseSequence(value: string, name: string): number {
   if (!SEQUENCE_PATTERN.test(value)) throw new ApiError(400, "INVALID_REQUEST", `invalid ${name}`);
   return Number(value);
 }
@@ -141,12 +145,12 @@ export function createAppApiServer(options: AppApiServerOptions): Server {
   }
 
   async function publications(url: URL, res: ServerResponse): Promise<void> {
-    const after = parseSequence(url.searchParams.get("after"), "after");
+    const after = parseAfter(url.searchParams.get("after"), "after");
     const limitText = url.searchParams.get("limit");
     const limit = limitText === null ? DEFAULT_PAGE : parseSequence(limitText, "limit");
     if (limit < 1 || limit > MAX_PAGE) throw new ApiError(400, "INVALID_REQUEST", `limit must be between 1 and ${MAX_PAGE}`);
     const events = (await source.publications())
-      .filter((snapshot) => snapshot.identity.sequence > after)
+      .filter((snapshot) => after === null || snapshot.identity.sequence > after)
       .slice(0, limit)
       .map(toEvent);
     const page: PublicationPage = { events, nextAfter: events.at(-1)?.sequence ?? after };
@@ -155,7 +159,7 @@ export function createAppApiServer(options: AppApiServerOptions): Server {
 
   async function stream(req: IncomingMessage, url: URL, res: ServerResponse): Promise<void> {
     const header = req.headers["last-event-id"];
-    const after = parseSequence(Array.isArray(header) ? header[0] : header ?? url.searchParams.get("after"), "last-event-id");
+    const after = parseAfter(Array.isArray(header) ? header[0] : header ?? url.searchParams.get("after"), "last-event-id");
     res.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-store",
@@ -164,7 +168,7 @@ export function createAppApiServer(options: AppApiServerOptions): Server {
     });
     let last = after;
     const emit = (snapshot: PublishedSnapshot) => {
-      if (snapshot.identity.sequence <= last) return;
+      if (last !== null && snapshot.identity.sequence <= last) return;
       last = snapshot.identity.sequence;
       res.write(`id: ${last}\nevent: publication\ndata: ${JSON.stringify(toEvent(snapshot))}\n\n`);
     };
