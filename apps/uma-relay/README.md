@@ -54,22 +54,60 @@ Every transaction is simulated first and sent only if the simulation succeeds. A
 transaction is recorded in the state before waiting for its receipt; after a restart the
 relay checks that transaction's outcome before sending again.
 
+## Challenging
+
+UMA only judges a claim somebody disputes; an undisputed claim is accepted after its hour.
+The challenger (`pnpm --filter @eox/uma-relay challenger`, a separate process with the
+`uma-challenger` key) is that somebody. Each tick it reads new evidence claims from
+`ClaimAsserted`, checks each one that is still open, and records a verdict:
+
+| Verdict | Meaning | Action |
+|---|---|---|
+| `valid` | Every check passed | none |
+| `invalid` | A check proved the claim wrong | disputed on UMA when disputes are on |
+| `pending` | A check could not run, for example the evidence API is down | checked again next tick |
+| `disputed` | Disputed by this challenger or anyone else | none |
+| `missed` | The window closed before a verdict or a dispute | none |
+
+It disputes only what a check proves wrong and never treats "could not check" as wrong: a
+lost dispute costs the bond and lowers that evidence's confidence (`product.md` §8.5).
+Disputes are off unless `CHALLENGER_DISPUTE=true`; without it the challenger only reports.
+To dispute it approves UMA for exactly one bond and calls `disputeAssertion`; if it cannot
+afford the bond it holds the verdict and retries.
+
+The one check today is `sourceSupportCheck`, against Joel's evidence API:
+
+- the claim's record is served by `GET /v1/records/:recordId`;
+- the claim's artifact digests include that record's `artifactDigest`;
+- every artifact digest in the claim can be fetched from `GET /v1/artifacts/:sha256` and
+  hashes to that digest.
+
+Not checked yet: the claim's evidence digest, metadata digest and assessment digest
+(`product.md` §8.8, §8.10). Recomputing them needs the worker's mapping from an evidence
+fact to its record, the exact-value conversion and the eight confidence ratings behind
+`assessment_digest`, none of which is published where a challenger can read it. Snapshot
+claims are not checked at all: that needs the methodology's selection rules. A check is a
+function from a decoded claim to a verdict, so these are added to the list when their
+inputs exist.
+
 ## State
 
-`readState` and `writeState` keep the cursor, known proposals and in-flight transactions
-in one JSON file, written atomically. The chain is the source of truth: a relay started
+`readState` and `writeState` keep each process's progress in one JSON file, written
+atomically: the relay's cursor, known proposals and in-flight transactions, and the
+challenger's cursor and verdicts. Give the two processes different files. The chain is the source of truth: a relay started
 with an empty state rebuilds everything from `startBlock` and publishes nothing twice.
 
 ## Signing
 
 `Relay` and `Asserter` each take a `Sender` (`address`, `send(transaction, operation)`).
 `remoteSender` is the one the service runs with: it builds an EIP-1559 transaction for the
-role's key (`evm-relayer` for the relay, `uma-asserter` for claims) from Joel's signing
-service, asks the service to sign it, checks that the returned transaction
+role's key (`evm-relayer` for the relay, `uma-asserter` for claims, `uma-challenger` for
+disputes) from Joel's signing service, asks the service to sign it, checks that the returned transaction
 is the same one and recovers to that key, and broadcasts it. The request ID is derived from
 the unsigned bytes, so a retry of the same bytes is idempotent and a rebuilt transaction is
 a new request under the same operation ID (`settle:<assertion>`, `close:<proposal>`,
-`publish:<proposal>:<event number>`, `assert:<claim digest>`, `approve:<token>:<amount>`). The service never holds a private key
+`publish:<proposal>:<event number>`, `assert:<claim digest>`, `approve:<token>:<amount>`,
+`dispute:<assertion>`). The service never holds a private key
 (`product.md` §8.14). Tests use a local Anvil key behind the same interfaces.
 
 ## Run
@@ -92,12 +130,21 @@ pnpm --filter @eox/uma-relay start
 | `CONFIRMATIONS` | Blocks behind the head that events are read at | `2` |
 | `TICK_SECONDS` | Pause between ticks | `30` |
 
-It authenticates to the signing service with the Google identity token of the service
-account it runs as, read from the metadata server, so it must run on Google Cloud. The
-signing service must list that account as a caller with the `evm-relayer` and
-`uma-asserter` roles. `evm-relayer` needs UMA `settleAssertion` and the adapter's `close`
-and `publish`; `uma-asserter` needs the adapter's `assertEvidence` and `assertSnapshot` and
-the bond token's `approve`.
+The challenger reads `RPC_URL`, `ADAPTER_ADDRESS`, `SIGNER_URL`, `SIGNER_AUDIENCE`,
+`STATE_PATH`, `START_BLOCK`, `CONFIRMATIONS` and `TICK_SECONDS` the same way, plus:
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `EVIDENCE_API_URL` | Joel's evidence API | required |
+| `CHALLENGER_DISPUTE` | `true` to send disputes; anything else only reports | off |
+
+Both processes authenticate to the signing service with the Google identity token of the
+service account they run as, read from the metadata server, so they must run on Google
+Cloud. The signing service must list the relay's account as a caller with the `evm-relayer`
+and `uma-asserter` roles: `evm-relayer` needs UMA `settleAssertion` and the adapter's
+`close` and `publish`; `uma-asserter` needs the adapter's `assertEvidence` and
+`assertSnapshot` and the bond token's `approve`. The challenger's account needs
+`uma-challenger`, with UMA `disputeAssertion` and the bond token's `approve`.
 
 ## Test
 
@@ -114,4 +161,4 @@ worker's encoding.
 
 - A deployment (systemd unit or Cloud Run) and its service account.
 - Fetching the signed Wormhole message and delivering it to the Solana receiver.
-- The challenger.
+- Challenger checks of a claim's digests and of snapshot claims (see Challenging).
