@@ -73,7 +73,7 @@ describe("references", () => {
     const us = data.countries.find((country) => country.country === "US")!;
     expect(us.reference.expressed).toBe("102249157");
     expect(us.baseline).toBe("100000000");
-    expect(data.world.state).toBe("100037500");
+    expect(data.world).toEqual({ state: "100037500", confidence: "1000000", baseline: "100000000" });
     expect(status.latestSequence).toBe(2);
     expect(status.referenceAgeSeconds).toBe(660);
     expect(status.stale).toBe(false);

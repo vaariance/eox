@@ -33,6 +33,12 @@ export interface SnapshotIdentity {
   finalization: { transaction: string | null; slot: number | null; finalized: true };
 }
 
+export interface WorldState {
+  state: FixedPoint;
+  confidence: FixedPoint;
+  baseline: FixedPoint;
+}
+
 export interface CountryState {
   state: FixedPoint;
   confidence: FixedPoint;
@@ -56,7 +62,7 @@ export interface CountryReference extends CountryState {
 export interface ReferenceSnapshot {
   snapshot: SnapshotIdentity;
   multiplier: number;
-  world: CountryState;
+  world: WorldState;
   countries: CountryReference[];
 }
 
@@ -64,7 +70,7 @@ export interface CountryWorldReference {
   snapshot: SnapshotIdentity;
   multiplier: number;
   country: CountryReference;
-  world: CountryState;
+  world: WorldState;
 }
 
 export interface PairReference {

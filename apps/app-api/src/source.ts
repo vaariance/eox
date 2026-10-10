@@ -1,17 +1,17 @@
 import type {
   CountryReference,
-  CountryState,
   Deployment,
   EvidenceReadiness,
   Proposal,
   Reference,
   SnapshotIdentity,
+  WorldState,
 } from "@eox/app-api";
 
 export interface PublishedSnapshot {
   identity: SnapshotIdentity;
   multiplier: number;
-  world: CountryState;
+  world: WorldState;
   countries: CountryReference[];
 }
 

@@ -70,6 +70,12 @@ const countryState = (value: Omit<GeneratedState, "country">): CountryState => (
   stale: value.stale,
 });
 
+function worldBaseline(baseline: readonly string[]): string {
+  const total = baseline.reduce((sum, value) => sum + BigInt(value), 0n);
+  if (total % BigInt(baseline.length) !== 0n) throw new Error("fixture baseline does not average to an exact WORLD baseline");
+  return (total / BigInt(baseline.length)).toString();
+}
+
 function fixtureDigest(label: string): string {
   return createHash("sha256").update(`eox-app-api-fixture:${label}`).digest("hex");
 }
@@ -129,7 +135,7 @@ export class FixtureReferenceSource implements ReferenceSource {
             finalization: { transaction: null, slot: null, finalized: true },
           },
           multiplier: scenario.multiplier,
-          world: countryState(scenario.world),
+          world: { state: scenario.world.state, confidence: scenario.world.confidence, baseline: worldBaseline(scenario.baseline) },
           countries,
         };
         this.pairs.set(entry.snapshotId, new Map(scenario.pairs.map((pair) => [pairKey(pair.base, pair.quote), reference(pair)])));
