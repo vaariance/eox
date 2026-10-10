@@ -329,3 +329,27 @@ another agent needs to know.
 - **Rules for agents:** Call exchanges only through `packages/price-feeds`. Never raise a venue budget above `SYSTEM.md` §10.1. Do not use a proxy or VPN to reach Bybit.
 - **Open:** Joel confirms Bybit is reachable from the US-region dev VM and permitted by its terms; without it TRX and JUP have no fallback. Venue data terms before any public launch.
 - **Refs:** `SYSTEM.md` §3.2 and §10.1; `product.md` J0, J1, G2.
+
+
+### 2026-10-10 · Peter (Codex) · P0 EOX archive tag pushed
+
+- **Area:** Git archive boundary for the COX pivot.
+- **What:** At Peter's request, created and pushed annotated tag `eox-archive` at verified `origin/main` commit `2c0a3aaca7ee4dece134a9fb1c06634a8aa21fcf`. Verified the remote tag resolves to that commit.
+- **Rules for agents:** P0 is complete; the archive prerequisite for the individually assigned COX deletions is satisfied. Preserve this tag.
+- **Refs:** `eox-archive`, `product.md` P0 and section 8 step 0.
+
+### 2026-10-10 · Peter (Codex) · P1 COX specification and provisional vectors
+
+- **Area:** `packages/cox/SPEC.md`, `packages/cox/fixtures`, `packages/cox-methodology`.
+- **What:** Added the P1 draft: canonical methodology/price/snapshot encodings, provisional roster, integer reference/MVP-0/accounting rules, lifecycle and draft ABI. Twelve Node tests and twelve independent byte/math/ledger checks pass. Exact Paper 3 accounting assigns rounding dust to pool residual rather than hiding it in backing.
+- **Rules for agents:** The manifest is unsealed; do not fabricate Joel's feed-check result or a common origin. Bybit is disabled pending its access decision. P1 TypeScript is specification tooling, not the P2 Rust crate or independent monitor. Keep reference and claim value distinct. No EOX deletion or deployment occurred.
+- **Open:** SYSTEM §3.3 requires full commit by +55 seconds, while product P3 allows later execution cranks. SPEC §1 proposes reversible staging plus finalize/abort; Peter must review this resolution before P3. P2 arithmetic parity/simulations and P3 runtime/ABI verification remain required.
+- **Refs:** `packages/cox/SPEC.md`, `packages/cox/fixtures/verification.json`, `packages/cox-methodology/README.md`; SYSTEM.md and product.md unchanged.
+
+### 2026-10-10 · Peter (Codex) · Next-publication eligibility without a fill deadline
+
+- **Area:** `SYSTEM.md` v2.4, `product.md` v12, COX P1 specification, manifest and vectors.
+- **What:** Peter replaced the proposed all-trades-by-deadline rule: requests become eligible from the next valid publication, never when created; filling has no hard deadline. Snapshot acceptance retains +55 seconds. Accepted work continues at fixed values until complete and blocks the next publication. Servers/workers must be provisioned and load-tested for the supported workload within a minute; this is an operating capacity target.
+- **Rules for agents:** Do not cancel, roll or reprice an accepted batch because execution is slow. Evaluate expiry against its accepted batch, not eventual fill time. The 30-asset list is the P1 roster; Joel owns feed validation, not Peter. This supersedes the pending staging/deadline review described in the earlier P1 entry. Other SYSTEM sign-offs remain pending; none are invented.
+- **Open:** P2 parity and P3 runtime/capacity verification; Joel's separately assigned feed check. No deployment or commit performed.
+- **Refs:** `packages/cox/SPEC.md` sections 1 and 7, `SYSTEM.md` section 3.3, `product.md` section 4.

@@ -8,6 +8,8 @@ importers:
 
   .: {}
 
+  packages/cox-methodology: {}
+
   apps/app-api:
     dependencies:
       '@coral-xyz/anchor':

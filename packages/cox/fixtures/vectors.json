@@ -1,0 +1,492 @@
+{
+  "schema": "COX/VECTORS/V1",
+  "status": "P1 specification oracle; P2 Rust parity pending",
+  "integerEncoding": "decimal strings; collateral amounts are base units",
+  "manifest": {
+    "canonical": "[\"COX/METHODOLOGY/V1\",\"pilot-draft-1\",\"draft\",null,[[\"BTC\",\"BTC/USD\",\"XXBTZUSD\",\"BTC-USD\",\"BTCUSDT\",\"1\",\"30\"],[\"ETH\",\"ETH/USD\",\"XETHZUSD\",\"ETH-USD\",\"ETHUSDT\",\"1\",\"30\"],[\"SOL\",\"SOL/USD\",\"SOLUSD\",\"SOL-USD\",\"SOLUSDT\",\"1\",\"30\"],[\"XRP\",\"XRP/USD\",\"XXRPZUSD\",\"XRP-USD\",\"XRPUSDT\",\"1\",\"30\"],[\"BNB\",\"BNB/USD\",\"BNBUSD\",\"BNB-USD\",\"BNBUSDT\",\"1\",\"30\"],[\"TRX\",\"TRX/USD\",\"TRXUSD\",null,\"TRXUSDT\",\"1\",\"30\"],[\"AVAX\",\"AVAX/USD\",\"AVAXUSD\",\"AVAX-USD\",\"AVAXUSDT\",\"1\",\"30\"],[\"DOT\",\"DOT/USD\",\"DOTUSD\",\"DOT-USD\",\"DOTUSDT\",\"1\",\"30\"],[\"NEAR\",\"NEAR/USD\",\"NEARUSD\",\"NEAR-USD\",\"NEARUSDT\",\"1\",\"30\"],[\"SUI\",\"SUI/USD\",\"SUIUSD\",\"SUI-USD\",\"SUIUSDT\",\"1\",\"30\"],[\"APT\",\"APT/USD\",\"APTUSD\",\"APT-USD\",\"APTUSDT\",\"1\",\"30\"],[\"UNI\",\"UNI/USD\",\"UNIUSD\",\"UNI-USD\",\"UNIUSDT\",\"1\",\"30\"],[\"ARB\",\"ARB/USD\",\"ARBUSD\",\"ARB-USD\",\"ARBUSDT\",\"1\",\"30\"],[\"OP\",\"OP/USD\",\"OPUSD\",\"OP-USD\",\"OPUSDT\",\"1\",\"30\"],[\"INJ\",\"INJ/USD\",\"INJUSD\",\"INJ-USD\",\"INJUSDT\",\"1\",\"30\"],[\"AAVE\",\"AAVE/USD\",\"AAVEUSD\",\"AAVE-USD\",\"AAVEUSDT\",\"1\",\"30\"],[\"ZEC\",\"ZEC/USD\",\"XZECZUSD\",\"ZEC-USD\",null,\"1\",\"30\"],[\"STRK\",\"STRK/USD\",\"STRKUSD\",\"STRK-USD\",\"STRKUSDT\",\"1\",\"30\"],[\"HYPE\",\"HYPE/USD\",\"HYPEUSD\",\"HYPE-USD\",\"HYPEUSDT\",\"1\",\"30\"],[\"TAO\",\"TAO/USD\",\"TAOUSD\",\"TAO-USD\",null,\"1\",\"30\"],[\"WLD\",\"WLD/USD\",\"WLDUSD\",\"WLD-USD\",\"WLDUSDT\",\"1\",\"30\"],[\"ONDO\",\"ONDO/USD\",\"ONDOUSD\",\"ONDO-USD\",\"ONDOUSDT\",\"1\",\"30\"],[\"ENA\",\"ENA/USD\",\"ENAUSD\",\"ENA-USD\",\"ENAUSDT\",\"1\",\"30\"],[\"ZRO\",\"ZRO/USD\",\"ZROUSD\",\"ZRO-USD\",\"ZROUSDT\",\"1\",\"30\"],[\"FET\",\"FET/USD\",\"FETUSD\",\"FET-USD\",\"FETUSDT\",\"1\",\"30\"],[\"JUP\",\"JUP/USD\",\"JUPUSD\",null,\"JUPUSDT\",\"1\",\"30\"],[\"AERO\",\"AERO/USD\",\"AEROUSD\",\"AERO-USD\",\"AEROUSDT\",\"1\",\"30\"],[\"RENDER\",\"RENDER/USD\",\"RENDERUSD\",\"RENDER-USD\",\"RENDERUSDT\",\"1\",\"30\"],[\"TIA\",\"TIA/USD\",\"TIAUSD\",\"TIA-USD\",\"TIAUSDT\",\"1\",\"30\"],[\"W\",\"W/USD\",\"WUSD\",\"W-USD\",\"WUSDT\",\"1\",\"30\"]],[\"USD\",\"100000000\"],[\"COMMON_ORIGIN_SNAPSHOT\",null,\"100000000000000\"],[\"UTC_CLOSED_MINUTE\",60,\"COX/PRICE-FALLBACK/V1\",false,[\"USDT/USD\",\"USDTZUSD\",\"USDT-USD\"],\"COX/USDT-USD/V1\",\"HALF_AWAY\",30],[60,30,55,\"SNAPSHOT_ACCEPTANCE_ONLY\",\"NO_FILL_DEADLINE\",60,\"EXECUTION_CAPACITY_TARGET_SECONDS\",3,60,\"REBALANCE_FREEZE\"],[\"solana-devnet\",\"oracle-operator\",\"GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6\"],[\"COX/TRANSFER/MVP-0\",\"TEST_COLLATERAL_ONLY\",\"0\"],[\"1000000000000\",\"i128-checked\",\"HALF_AWAY\",\"u64\",\"u128\",\"1000000000000\",\"FLOOR_USER\",\"FLOOR_AGGREGATE_CLASS\",\"POOL_RESIDUAL_NO_DISTRIBUTION\"],[\"COX/ACCOUNTING/V1\",\"COX/BATCH/ASYNC/V1\",\"COX/WIRE/V1\"]]",
+    "digest": "b6af44b185a48cffa706da7b4b89dbb6d4b7a06ec20d62facec85857d229de8f",
+    "assetCount": 30,
+    "label": "CRYPTO (pilot, 30 assets)"
+  },
+  "wire": {
+    "prices": [
+      {
+        "input": {
+          "assetId": "BTC",
+          "venue": 0,
+          "step": 1,
+          "candleStart": "1791599940",
+          "priceE8": "10000000000",
+          "tradeAgeMinutes": 0
+        },
+        "bytes": "0c000000434f582f50524943452f563103000000425443000144a5c96a0000000000e40b54020000000000",
+        "digest": "dbc0176eedd3138d9563dfe4e0e0d38f8cacd8ed1e1f05fe27eefad9cb785d66"
+      },
+      {
+        "input": {
+          "assetId": "ETH",
+          "venue": 0,
+          "step": 4,
+          "candleStart": "1791599880",
+          "priceE8": "20000000000",
+          "tradeAgeMinutes": 1
+        },
+        "bytes": "0c000000434f582f50524943452f563103000000455448000408a5c96a0000000000c817a8040000000100",
+        "digest": "ebb3b87222a14272c80d264d59712f326575c2472b63ee2b4f68f03c63dc4c7e"
+      }
+    ],
+    "snapshot": {
+      "cutoff": "1791600000",
+      "roster": [
+        "BTC",
+        "ETH"
+      ],
+      "bytes": "0f000000434f582f534e415053484f542f563180a5c96a0000000002000000dbc0176eedd3138d9563dfe4e0e0d38f8cacd8ed1e1f05fe27eefad9cb785d66ebb3b87222a14272c80d264d59712f326575c2472b63ee2b4f68f03c63dc4c7e",
+      "digest": "88a2d25a94f3a4c50f8a269e19a9aaa401584ffedab0acc7ce676efedeb11eaa"
+    }
+  },
+  "cases": [
+    {
+      "name": "equal-returns",
+      "kind": "reference",
+      "input": {
+        "previous": [
+          "100",
+          "100"
+        ],
+        "current": [
+          "110",
+          "110"
+        ],
+        "origin": [
+          "100",
+          "100"
+        ],
+        "previousBenchmark": "100000000000000"
+      },
+      "output": {
+        "gross": [
+          "1100000000000",
+          "1100000000000"
+        ],
+        "benchmarkGross": "1100000000000",
+        "benchmark": "110000000000000",
+        "relative": [
+          "100000000000000",
+          "100000000000000"
+        ],
+        "h": [
+          "1000000000000",
+          "1000000000000",
+          "1000000000000"
+        ]
+      }
+    },
+    {
+      "name": "missed-minute-rebalance-freeze",
+      "kind": "reference",
+      "input": {
+        "previousBatch": 1,
+        "missedBatches": [
+          2
+        ],
+        "publicationBatch": 3,
+        "previous": [
+          "100",
+          "100"
+        ],
+        "current": [
+          "120",
+          "80"
+        ],
+        "origin": [
+          "100",
+          "100"
+        ],
+        "previousBenchmark": "100000000000000"
+      },
+      "output": {
+        "gross": [
+          "1200000000000",
+          "800000000000"
+        ],
+        "benchmarkGross": "1000000000000",
+        "benchmark": "100000000000000",
+        "relative": [
+          "120000000000000",
+          "80000000000000"
+        ],
+        "h": [
+          "1200000000000",
+          "800000000000",
+          "1000000000000"
+        ]
+      }
+    },
+    {
+      "name": "mvp0-redistribution",
+      "kind": "revalue",
+      "input": {
+        "classes": [
+          {
+            "backing": "100",
+            "units": "100000000000000"
+          },
+          {
+            "backing": "50",
+            "units": "50000000000000"
+          },
+          {
+            "backing": "0",
+            "units": "0"
+          }
+        ],
+        "h": [
+          "1200000000000",
+          "800000000000",
+          "1000000000000"
+        ]
+      },
+      "output": {
+        "classes": [
+          {
+            "units": "100000000000000",
+            "backing": "112"
+          },
+          {
+            "units": "50000000000000",
+            "backing": "37"
+          },
+          {
+            "units": "0",
+            "backing": "0"
+          }
+        ],
+        "residual": "1"
+      }
+    },
+    {
+      "name": "paper3-section12",
+      "kind": "batch",
+      "input": {
+        "classes": [
+          {
+            "backing": "90",
+            "units": "100000000000000"
+          },
+          {
+            "backing": "60",
+            "units": "50000000000000"
+          }
+        ],
+        "requests": [
+          {
+            "id": "entry",
+            "kind": "deposit",
+            "to": 0,
+            "amount": "30",
+            "minimum": "0",
+            "expiry": 3
+          },
+          {
+            "id": "exit",
+            "kind": "redeem",
+            "from": 1,
+            "units": "10000000000000",
+            "minimum": "12",
+            "expiry": 3
+          }
+        ],
+        "publicationBatch": 1,
+        "pending": "30",
+        "vault": "180"
+      },
+      "output": {
+        "classes": [
+          {
+            "units": "133333333333333",
+            "backing": "119"
+          },
+          {
+            "units": "40000000000000",
+            "backing": "48"
+          }
+        ],
+        "payable": "12",
+        "refunds": "0",
+        "residual": "1",
+        "receipts": [
+          {
+            "id": "entry",
+            "outcome": "Filled",
+            "minted": "33333333333333",
+            "proceeds": "0"
+          },
+          {
+            "id": "exit",
+            "outcome": "Filled",
+            "minted": "0",
+            "proceeds": "12"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-class",
+      "kind": "batch",
+      "input": {
+        "classes": [
+          {
+            "backing": "0",
+            "units": "0"
+          }
+        ],
+        "requests": [
+          {
+            "id": "bootstrap",
+            "kind": "deposit",
+            "to": 0,
+            "amount": "7",
+            "minimum": "0",
+            "expiry": 1
+          }
+        ],
+        "publicationBatch": 1
+      },
+      "output": {
+        "classes": [
+          {
+            "units": "7000000000000",
+            "backing": "7"
+          }
+        ],
+        "payable": "0",
+        "refunds": "0",
+        "residual": "0",
+        "receipts": [
+          {
+            "id": "bootstrap",
+            "outcome": "Filled",
+            "minted": "7000000000000",
+            "proceeds": "0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "condition-failure",
+      "kind": "batch",
+      "input": {
+        "classes": [
+          {
+            "backing": "90",
+            "units": "100000000000000"
+          },
+          {
+            "backing": "60",
+            "units": "50000000000000"
+          }
+        ],
+        "requests": [
+          {
+            "id": "entry",
+            "kind": "deposit",
+            "to": 0,
+            "amount": "30",
+            "minimum": "34000000000000",
+            "expiry": 3
+          }
+        ],
+        "publicationBatch": 1
+      },
+      "output": {
+        "classes": [
+          {
+            "units": "100000000000000",
+            "backing": "90"
+          },
+          {
+            "units": "50000000000000",
+            "backing": "60"
+          }
+        ],
+        "payable": "0",
+        "refunds": "30",
+        "residual": "0",
+        "receipts": [
+          {
+            "id": "entry",
+            "outcome": "ConditionFailed",
+            "minted": "0",
+            "proceeds": "0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expiry-after-miss",
+      "kind": "batch",
+      "input": {
+        "classes": [
+          {
+            "backing": "90",
+            "units": "100000000000000"
+          },
+          {
+            "backing": "60",
+            "units": "50000000000000"
+          }
+        ],
+        "requests": [
+          {
+            "id": "entry",
+            "kind": "deposit",
+            "to": 0,
+            "amount": "30",
+            "minimum": "0",
+            "expiry": 2
+          }
+        ],
+        "publicationBatch": 3
+      },
+      "output": {
+        "classes": [
+          {
+            "units": "100000000000000",
+            "backing": "90"
+          },
+          {
+            "units": "50000000000000",
+            "backing": "60"
+          }
+        ],
+        "payable": "0",
+        "refunds": "30",
+        "residual": "0",
+        "receipts": [
+          {
+            "id": "entry",
+            "outcome": "Expired",
+            "minted": "0",
+            "proceeds": "0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "switch",
+      "kind": "batch",
+      "input": {
+        "classes": [
+          {
+            "backing": "90",
+            "units": "100000000000000"
+          },
+          {
+            "backing": "60",
+            "units": "50000000000000"
+          }
+        ],
+        "requests": [
+          {
+            "id": "rotate",
+            "kind": "switch",
+            "from": 1,
+            "to": 0,
+            "units": "10000000000000",
+            "minimum": "0",
+            "expiry": 1
+          }
+        ],
+        "publicationBatch": 1
+      },
+      "output": {
+        "classes": [
+          {
+            "units": "113333333333333",
+            "backing": "101"
+          },
+          {
+            "units": "40000000000000",
+            "backing": "48"
+          }
+        ],
+        "payable": "0",
+        "refunds": "0",
+        "residual": "1",
+        "receipts": [
+          {
+            "id": "rotate",
+            "outcome": "Filled",
+            "minted": "13333333333333",
+            "proceeds": "12"
+          }
+        ]
+      }
+    },
+    {
+      "name": "full-drain",
+      "kind": "batch",
+      "input": {
+        "classes": [
+          {
+            "backing": "100",
+            "units": "100000000000000"
+          },
+          {
+            "backing": "50",
+            "units": "50000000000000"
+          }
+        ],
+        "requests": [
+          {
+            "id": "a",
+            "kind": "redeem",
+            "from": 0,
+            "units": "100000000000000",
+            "minimum": "0",
+            "expiry": 1
+          },
+          {
+            "id": "b",
+            "kind": "redeem",
+            "from": 1,
+            "units": "50000000000000",
+            "minimum": "0",
+            "expiry": 1
+          }
+        ],
+        "publicationBatch": 1
+      },
+      "output": {
+        "classes": [
+          {
+            "units": "0",
+            "backing": "0"
+          },
+          {
+            "units": "0",
+            "backing": "0"
+          }
+        ],
+        "payable": "150",
+        "refunds": "0",
+        "residual": "0",
+        "receipts": [
+          {
+            "id": "a",
+            "outcome": "Filled",
+            "minted": "0",
+            "proceeds": "100"
+          },
+          {
+            "id": "b",
+            "outcome": "Filled",
+            "minted": "0",
+            "proceeds": "50"
+          }
+        ]
+      }
+    }
+  ]
+}
