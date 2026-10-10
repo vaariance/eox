@@ -2,68 +2,87 @@ import type { UnixSeconds } from "./types.js";
 
 export const COX_APP_API_SCHEMA_VERSION = "cox.app-api/v1";
 export const COX_PRICE_SCALE = "100000000";
-export const COX_REFERENCE_SCALE = "1000000000000";
-export const COX_UNIT_SCALE = "1000000000000";
+export const COX_SCALE = "1000000000000";
+export const COX_REFERENCE_BASE = "100000000000000";
 export const COX_TRANSFER_RULE = "COX/TRANSFER/MVP-0";
 export const BATCH_SECONDS = 60;
-export const COMMIT_DEADLINE_SECONDS = 55;
+export const ARCHIVE_DEADLINE_SECONDS = 30;
+export const ACCEPTANCE_DEADLINE_SECONDS = 55;
 export const MAX_TRADE_AGE_MINUTES = 30;
 export const DELAYED_AFTER_MISSED_CUTOFFS = 3;
 export const HALTED_AFTER_MISSED_CUTOFFS = 60;
+export const CRYPTO_CLASS = "CRYPTO";
 
 export type CoxOrigin = "fixture" | "live";
 export type Scaled = string;
 export type BaseUnits = string;
+export type UnitQuanta = string;
 export type ClassId = string;
+export type PriceVenue = "kraken" | "coinbase" | "bybit";
+export type FallbackStep = 1 | 2 | 3 | 4;
+
+export interface Methodology {
+  digest: string | null;
+  label: string;
+  status: "draft" | "sealed";
+  assetCount: number;
+}
 
 export interface CoxDeployment {
   origin: CoxOrigin;
   network: string;
   program: string | null;
-  pool: string | null;
+  poolId: string;
+  poolAddress: string | null;
   collateralMint: string | null;
-  collateralDecimals: number;
+  collateralDecimals: number | null;
   testCollateral: true;
   transferRule: typeof COX_TRANSFER_RULE;
-  methodologyDigest: string | null;
+  methodology: Methodology;
   fixtureSource: string | null;
 }
 
-export type PriceVenue = "kraken" | "coinbase" | "bybit";
-export type FallbackStep = 1 | 2 | 3 | 4;
+export interface VenueSymbols {
+  krakenWs: string | null;
+  krakenRest: string | null;
+  coinbase: string | null;
+  bybit: string | null;
+}
 
 export interface CoxAsset {
   assetId: string;
-  position: number;
+  classIndex: number;
   name: string;
-  krakenWsSymbol: string;
-  krakenRestPair: string;
-  coinbaseProduct: string | null;
-  bybitSymbol: string | null;
-  lastVenue: PriceVenue | null;
-  tradeAgeMinutes: number | null;
+  venues: VenueSymbols;
+  latest: { sequence: number; batch: number; priceE8: Scaled; venue: PriceVenue; step: FallbackStep; tradeAgeMinutes: number } | null;
 }
 
 export interface CryptoMember {
   assetId: string;
-  weight: Scaled;
+  weightNumerator: string;
+  weightDenominator: string;
 }
 
 export interface CryptoComposition {
   label: string;
-  methodologyDigest: string;
+  methodologyDigest: string | null;
   members: CryptoMember[];
 }
 
 export interface PublicationIdentity {
-  program: string;
-  pool: string;
+  program: string | null;
+  poolId: string;
   sequence: number;
+  batch: number;
   predecessorSequence: number | null;
+  predecessorBatch: number | null;
+  missedBatches: number[];
   cutoff: UnixSeconds;
-  methodologyDigest: string;
-  snapshotDigest: string;
-  finalization: { transaction: string | null; slot: number | null; finalized: true };
+  manifestDigest: string | null;
+  snapshotDigest: string | null;
+  stateDigest: string | null;
+  committedAt: UnixSeconds | null;
+  finalization: { transaction: string | null; slot: number | null; finalized: boolean };
 }
 
 export interface PublishedPrice {
@@ -71,51 +90,64 @@ export interface PublishedPrice {
   priceE8: Scaled;
   venue: PriceVenue;
   step: FallbackStep;
+  candleStart: UnixSeconds;
   tradeAgeMinutes: number;
 }
 
 export interface AssetReference {
   assetId: string;
+  gross: Scaled | null;
   reference: Scaled;
 }
 
 export interface ClassState {
   backing: BaseUnits;
-  units: Scaled;
+  units: UnitQuanta;
 }
 
 export interface ClassValuation {
   classId: ClassId;
-  preFlow: ClassState;
-  postFlow: ClassState;
-  unitValue: Scaled | null;
+  classIndex: number;
+  transferFactor: Scaled | null;
+  preRevaluation: ClassState;
+  fixed: ClassState;
+  final: ClassState;
 }
 
 export interface LedgerTotals {
-  activeBacking: BaseUnits;
-  pendingDeposits: BaseUnits;
-  withdrawalPayables: BaseUnits;
+  active: BaseUnits;
+  pending: BaseUnits;
+  refundable: BaseUnits;
+  payable: BaseUnits;
   residual: BaseUnits;
   vault: BaseUnits;
+}
+
+export interface BatchFlows {
+  acceptedDeposits: BaseUnits;
+  newPayable: BaseUnits;
+  transferResidual: BaseUnits;
+  flowResidual: BaseUnits;
+  executed: number;
+  rejected: number;
 }
 
 export interface Publication {
   identity: PublicationIdentity;
   prices: PublishedPrice[];
-  cryptoLevel: Scaled;
+  benchmarkGross: Scaled | null;
+  benchmark: Scaled;
   references: AssetReference[];
   classes: ClassValuation[];
-  executedRequests: number;
-  rejectedRequests: number;
+  flows: BatchFlows;
   ledger: LedgerTotals;
+  receiptRoot: string | null;
 }
 
-export type BatchState = "open" | "closed";
-
 export interface Batch {
+  batch: number;
   cutoff: UnixSeconds;
-  commitDeadline: UnixSeconds;
-  state: BatchState;
+  acceptanceDeadline: UnixSeconds;
 }
 
 export type SystemState = "fresh" | "delayed" | "halted" | "incident" | "paused";
@@ -124,16 +156,28 @@ export type MonitorVerdict = "match" | "mismatch" | "pending";
 export interface CoxStatus {
   asOf: UnixSeconds;
   latestSequence: number | null;
+  latestBatch: number | null;
   latestCutoff: UnixSeconds | null;
   ageSeconds: number | null;
   missedCutoffs: number;
   state: SystemState;
+  executing: boolean;
   monitor: { sequence: number; verdict: MonitorVerdict } | null;
-  currentBatch: Batch;
+  currentBatch: Batch | null;
 }
 
 export type RequestOperation = "deposit" | "switch" | "redeem";
-export type RequestState = "queued" | "executed" | "rejected" | "cancelled" | "expired";
+export type ReceiptStatus = "filled" | "condition-failed" | "expired" | "zero-value-class";
+export type RequestState = "queued" | ReceiptStatus | "cancelled" | "refunded";
+
+export interface Receipt {
+  requestId: string;
+  sequence: number;
+  batch: number;
+  status: ReceiptStatus;
+  minted: UnitQuanta;
+  proceeds: BaseUnits;
+}
 
 export interface CoxRequest {
   requestId: string;
@@ -142,41 +186,29 @@ export interface CoxRequest {
   fromClass: ClassId | null;
   toClass: ClassId | null;
   amount: BaseUnits | null;
-  units: Scaled | null;
-  minimumOut: string;
-  batchCutoff: UnixSeconds;
-  expiryCutoff: UnixSeconds;
+  units: UnitQuanta | null;
+  minimumUnits: UnitQuanta | null;
+  minimumProceeds: BaseUnits | null;
+  targetBatch: number;
+  expiryBatch: number;
   state: RequestState;
-  executedSequence: number | null;
-  rejection: string | null;
-}
-
-export interface Receipt {
-  requestId: string;
-  sequence: number;
-  operation: RequestOperation;
-  unitValue: Scaled;
-  unitsIn: Scaled | null;
-  unitsOut: Scaled | null;
-  collateralIn: BaseUnits | null;
-  collateralOut: BaseUnits | null;
+  receipt: Receipt | null;
 }
 
 export interface Position {
   classId: ClassId;
-  units: Scaled;
-  lockedUnits: Scaled;
-  redeemableValue: BaseUnits;
-  depositedBasis: BaseUnits;
+  units: UnitQuanta;
+  locked: UnitQuanta;
 }
 
 export interface Portfolio {
   owner: string;
+  appliedSequence: number | null;
   positions: Position[];
-  pending: CoxRequest[];
-  receipts: Receipt[];
-  withdrawalPayable: BaseUnits;
-  valuedAtSequence: number | null;
+  payable: BaseUnits;
+  refundable: BaseUnits;
+  pending: BaseUnits;
+  requests: CoxRequest[];
 }
 
 export interface CoxPublicationEvent {
@@ -201,6 +233,7 @@ export type CoxErrorCode =
   | "PUBLICATION_NOT_FOUND"
   | "UNKNOWN_ASSET"
   | "UNKNOWN_CLASS"
+  | "UNKNOWN_WALLET"
   | "INVALID_REQUEST"
   | "NOT_FOUND"
   | "METHOD_NOT_ALLOWED"
@@ -215,9 +248,9 @@ export function batchFor(now: UnixSeconds, origin: UnixSeconds): Batch {
   if (!Number.isSafeInteger(now) || !Number.isSafeInteger(origin) || origin % BATCH_SECONDS !== 0) {
     throw new Error("batch times must be whole seconds with a minute-aligned origin");
   }
-  const elapsed = now < origin ? 0 : Math.floor((now - origin) / BATCH_SECONDS) + 1;
-  const cutoff = origin + elapsed * BATCH_SECONDS;
-  return { cutoff, commitDeadline: cutoff + COMMIT_DEADLINE_SECONDS, state: "open" };
+  const batch = now < origin ? 0 : Math.floor((now - origin) / BATCH_SECONDS) + 1;
+  const cutoff = origin + batch * BATCH_SECONDS;
+  return { batch, cutoff, acceptanceDeadline: cutoff + ACCEPTANCE_DEADLINE_SECONDS };
 }
 
 export function systemState(missedCutoffs: number, paused: boolean, incident: boolean): SystemState {
