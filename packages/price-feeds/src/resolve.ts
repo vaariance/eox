@@ -63,6 +63,7 @@ export interface ResolverDeps {
   coinbase: VenueClient | null;
   bybit: VenueClient | null;
   now?: () => number;
+  deadlineFor?: (cutoff: number) => number;
 }
 
 interface Found {
@@ -137,7 +138,7 @@ function assertCutoff(cutoff: number): void {
 export async function resolveUsdtUsd(deps: ResolverDeps, cutoff: number): Promise<UsdtResolution> {
   assertCutoff(cutoff);
   const now = (deps.now ?? Date.now)() / 1000;
-  const deadline = (cutoff + ARCHIVE_DEADLINE_SECONDS) * 1000;
+  const deadline = deps.deadlineFor?.(cutoff) ?? (cutoff + ARCHIVE_DEADLINE_SECONDS) * 1000;
   const attempts: Attempt[] = [];
   const kraken = await krakenCutoffCandle(deps, USDT_USD.krakenWsSymbol, USDT_USD.krakenRestPair, cutoff, deadline);
   attempts.push(attempt("kraken", 1, kraken));
@@ -202,7 +203,7 @@ export async function resolveCutoffPrice(
 ): Promise<Resolution> {
   assertCutoff(cutoff);
   const now = (deps.now ?? Date.now)() / 1000;
-  const deadline = (cutoff + ARCHIVE_DEADLINE_SECONDS) * 1000;
+  const deadline = deps.deadlineFor?.(cutoff) ?? (cutoff + ARCHIVE_DEADLINE_SECONDS) * 1000;
   const attempts: Attempt[] = [];
   const done = (venue: Venue, step: FallbackStep, found: Found, conversion: UsdtResolution | null = null): Resolution => ({
     assetId: asset.assetId,
