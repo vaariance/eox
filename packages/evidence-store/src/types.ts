@@ -189,12 +189,15 @@ export interface AssetResolution {
 export interface NewSnapshot {
   cutoff: number;
   observationIds: string[];
-  snapshotDigest: string;
+  snapshotDigest: string | null;
   admissible: boolean;
 }
 
+export type DigestEncoding = "COX/WIRE/V1";
+
 export interface Snapshot extends NewSnapshot {
   id: string;
+  digestEncoding: DigestEncoding | null;
   recordedAt: Date;
 }
 
