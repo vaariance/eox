@@ -1,0 +1,466 @@
+[
+ {
+  "receivedAt": 1791661511423,
+  "text": "{\"channel\":\"status\",\"type\":\"update\",\"data\":[{\"version\":\"2.0.10\",\"system\":\"online\",\"api_version\":\"v2\",\"connection_id\":2541618099967599666,\"upcoming_maintenance\":[],\"emergency\":[]}]}"
+ },
+ {
+  "receivedAt": 1791661511576,
+  "text": "{\"method\":\"subscribe\",\"result\":{\"channel\":\"ohlc\",\"interval\":1,\"snapshot\":true,\"symbol\":\"BTC/USD\",\"warnings\":[\"timestamp is deprecated, use interval_begin\"]},\"success\":true,\"time_in\":\"2026-10-10T19:45:12.536949Z\",\"time_out\":\"2026-10-10T19:45:12.537021Z\"}"
+ },
+ {
+  "receivedAt": 1791661511576,
+  "text": "{\"method\":\"subscribe\",\"result\":{\"channel\":\"ohlc\",\"interval\":1,\"snapshot\":true,\"symbol\":\"APT/USD\",\"warnings\":[\"timestamp is deprecated, use interval_begin\"]},\"success\":true,\"time_in\":\"2026-10-10T19:45:12.536949Z\",\"time_out\":\"2026-10-10T19:45:12.537021Z\"}"
+ },
+ {
+  "receivedAt": 1791661511576,
+  "text": "{\"method\":\"subscribe\",\"result\":{\"channel\":\"ohlc\",\"interval\":1,\"snapshot\":true,\"symbol\":\"USDT/USD\",\"warnings\":[\"timestamp is deprecated, use interval_begin\"]},\"success\":true,\"time_in\":\"2026-10-10T19:45:12.536949Z\",\"time_out\":\"2026-10-10T19:45:12.537021Z\"}"
+ },
+ {
+  "receivedAt": 1791661511576,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"snapshot\",\"timestamp\":\"2026-10-10T19:45:12.537128387Z\",\"data\":[{\"symbol\":\"APT/USD\",\"open\":0.8650,\"high\":0.8650,\"low\":0.8641,\"close\":0.8641,\"trades\":2,\"volume\":163.79680900,\"vwap\":0.8646,\"interval_begin\":\"2026-10-10T19:29:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:30:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8630,\"high\":0.8632,\"low\":0.8630,\"close\":0.8632,\"trades\":3,\"volume\":579.24461372,\"vwap\":0.8631,\"interval_begin\":\"2026-10-10T19:31:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:32:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8608,\"high\":0.8620,\"low\":0.8608,\"close\":0.8620,\"trades\":2,\"volume\":65.92258011,\"vwap\":0.8617,\"interval_begin\":\"2026-10-10T19:32:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:33:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8615,\"high\":0.8615,\"low\":0.8615,\"close\":0.8615,\"trades\":1,\"volume\":29.30880000,\"vwap\":0.8615,\"interval_begin\":\"2026-10-10T19:36:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:37:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8625,\"high\":0.8625,\"low\":0.8617,\"close\":0.8617,\"trades\":8,\"volume\":1740.32932460,\"vwap\":0.8623,\"interval_begin\":\"2026-10-10T19:38:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:39:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8618,\"high\":0.8618,\"low\":0.8569,\"close\":0.8569,\"trades\":21,\"volume\":4684.07638429,\"vwap\":0.8588,\"interval_begin\":\"2026-10-10T19:39:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:40:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8569,\"high\":0.8574,\"low\":0.8554,\"close\":0.8557,\"trades\":12,\"volume\":4820.76909452,\"vwap\":0.8563,\"interval_begin\":\"2026-10-10T19:40:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:41:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8562,\"high\":0.8589,\"low\":0.8557,\"close\":0.8584,\"trades\":21,\"volume\":5147.70818838,\"vwap\":0.8582,\"interval_begin\":\"2026-10-10T19:41:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:42:00.000000Z\"},{\"symbol\":\"APT/USD\",\"open\":0.8550,\"high\":0.8550,\"low\":0.8540,\"close\":0.8544,\"trades\":8,\"volume\":1091.12280802,\"vwap\":0.8543,\"interval_begin\":\"2026-10-10T19:43:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:44:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661511576,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"snapshot\",\"timestamp\":\"2026-10-10T19:45:12.537225512Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99897,\"trades\":12,\"volume\":9490.59837672,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:36:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:37:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99898,\"high\":0.99898,\"low\":0.99897,\"close\":0.99898,\"trades\":5,\"volume\":4241.65766256,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:37:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:38:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99898,\"trades\":7,\"volume\":2798.91190070,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:38:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:39:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99898,\"trades\":14,\"volume\":16178.29701757,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:39:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:40:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99898,\"high\":0.99898,\"low\":0.99897,\"close\":0.99898,\"trades\":6,\"volume\":4213.87212765,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:40:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:41:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99898,\"trades\":5,\"volume\":1703.56551227,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:41:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:42:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99897,\"low\":0.99897,\"close\":0.99897,\"trades\":2,\"volume\":147.68500000,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:42:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:43:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99898,\"high\":0.99898,\"low\":0.99897,\"close\":0.99897,\"trades\":10,\"volume\":8077.05697841,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:43:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:44:00.000000Z\"},{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99898,\"trades\":6,\"volume\":86995.49579109,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:44:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:45:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661511580,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"snapshot\",\"timestamp\":\"2026-10-10T19:45:12.537952510Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":82999.9,\"high\":83003.3,\"low\":82999.9,\"close\":83000.0,\"trades\":35,\"volume\":1.17414296,\"vwap\":83000.1,\"interval_begin\":\"2026-10-10T19:36:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:37:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83000.0,\"high\":83002.9,\"low\":82999.9,\"close\":83002.8,\"trades\":28,\"volume\":1.51770001,\"vwap\":83001.8,\"interval_begin\":\"2026-10-10T19:37:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:38:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83002.8,\"high\":83006.1,\"low\":83002.7,\"close\":83006.0,\"trades\":31,\"volume\":0.03319110,\"vwap\":83004.6,\"interval_begin\":\"2026-10-10T19:38:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:39:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83006.0,\"high\":83006.1,\"low\":83005.7,\"close\":83005.7,\"trades\":32,\"volume\":0.07622224,\"vwap\":83005.7,\"interval_begin\":\"2026-10-10T19:39:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:40:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83005.8,\"high\":83006.7,\"low\":83005.7,\"close\":83006.7,\"trades\":25,\"volume\":0.10896967,\"vwap\":83006.0,\"interval_begin\":\"2026-10-10T19:40:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:41:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83006.7,\"high\":83018.3,\"low\":83004.9,\"close\":83005.0,\"trades\":65,\"volume\":0.13904894,\"vwap\":83016.4,\"interval_begin\":\"2026-10-10T19:41:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:42:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83005.0,\"high\":83007.9,\"low\":83004.9,\"close\":83007.9,\"trades\":41,\"volume\":0.02244718,\"vwap\":83006.5,\"interval_begin\":\"2026-10-10T19:42:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:43:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83007.8,\"high\":83007.8,\"low\":83002.0,\"close\":83002.1,\"trades\":22,\"volume\":0.07899962,\"vwap\":83002.1,\"interval_begin\":\"2026-10-10T19:43:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:44:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":19,\"volume\":1.04605426,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:44:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:45:00.000000Z\"},{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":8,\"volume\":0.00329795,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661511988,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661512001,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:12.977476442Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":9,\"volume\":0.00338115,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661512552,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:13.529831742Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99897,\"low\":0.99897,\"close\":0.99897,\"trades\":1,\"volume\":3507.52720000,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661512904,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:13.881254804Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":10,\"volume\":0.00375457,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661512988,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661513988,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661514988,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661515988,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661516992,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661517992,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661518997,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661519152,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:20.126730432Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":11,\"volume\":0.00399314,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661519996,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661520992,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661522004,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661522996,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661523714,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:24.693199610Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99897,\"low\":0.99897,\"close\":0.99897,\"trades\":2,\"volume\":3762.47720000,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661523994,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661524060,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:25.038173358Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":12,\"volume\":0.00411701,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661524997,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661526350,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661526995,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661527998,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661528194,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:29.171954232Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":13,\"volume\":0.00447609,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661529003,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661529018,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:29.967940932Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99897,\"low\":0.99897,\"close\":0.99897,\"trades\":3,\"volume\":3787.80237093,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661529451,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:30.429899514Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":14,\"volume\":0.02886437,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661530002,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661531002,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661531870,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:32.847468028Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99898,\"trades\":4,\"volume\":3802.17302900,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661531998,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661532006,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:32.969217880Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":15,\"volume\":0.02903733,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661533007,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661534002,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661534699,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:35.675241600Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":16,\"volume\":0.03304563,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661534942,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:35.918763620Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":17,\"volume\":0.03320263,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661535002,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661536002,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661537014,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661538014,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661539007,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661540002,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661541007,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661541395,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:42.377545208Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":18,\"volume\":0.03372276,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661541898,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:42.873298912Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":19,\"volume\":0.03435726,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661542014,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661542271,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:43.246405172Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":20,\"volume\":0.03440744,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661542294,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:43.275604128Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":21,\"volume\":0.03521240,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661543010,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661544010,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661544063,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:45.040986600Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99897,\"trades\":5,\"volume\":3809.10372900,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661544527,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:45.506338212Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":22,\"volume\":0.03533287,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661544563,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:45.541678340Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":23,\"volume\":0.03651203,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661545011,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661545135,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:46.112320652Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":24,\"volume\":0.03667066,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661546015,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661547015,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661547457,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:48.440818228Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99897,\"high\":0.99898,\"low\":0.99897,\"close\":0.99897,\"trades\":6,\"volume\":3852.22878883,\"vwap\":0.99897,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661548019,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661549016,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661549047,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:50.028641010Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":25,\"volume\":0.04037540,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661549172,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:50.147981460Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":26,\"volume\":0.04049468,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661550019,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661551015,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661552020,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661552263,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:53.242601884Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":27,\"volume\":0.04057346,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661553019,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661554020,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661555020,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661556024,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661557025,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661558026,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661558573,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:45:59.550618090Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":28,\"volume\":0.04078503,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:45:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:46:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661559025,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661559737,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:00.714860140Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.1,\"close\":83002.1,\"trades\":1,\"volume\":0.00023672,\"vwap\":83002.1,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661559991,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:00.973323972Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99898,\"high\":0.99898,\"low\":0.99898,\"close\":0.99898,\"trades\":1,\"volume\":1.74868365,\"vwap\":0.99898,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661559996,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:00.974998848Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.0,\"trades\":2,\"volume\":0.00169189,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661560028,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661560583,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:01.563417572Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":3,\"volume\":0.00171614,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661561030,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661562033,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661562173,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:03.154145630Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":4,\"volume\":0.00231853,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661562233,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:03.213371918Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":5,\"volume\":0.00282804,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661563033,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661564009,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:04.988839584Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99898,\"high\":0.99898,\"low\":0.99898,\"close\":0.99898,\"trades\":2,\"volume\":194.19497887,\"vwap\":0.99898,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661564037,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661564654,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:05.635333808Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":6,\"volume\":0.00544450,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661565041,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661566040,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661567037,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661568037,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661569038,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661569914,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:10.894299370Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":7,\"volume\":0.00549456,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661569969,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:10.949390564Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":8,\"volume\":0.00554456,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661570037,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661571042,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661571762,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:12.742440300Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.1,\"low\":83002.0,\"close\":83002.1,\"trades\":11,\"volume\":0.00677249,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661572042,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661573038,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661574039,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661575039,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661576041,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661576603,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:17.581394916Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.9,\"low\":83002.0,\"close\":83002.9,\"trades\":12,\"volume\":0.00679022,\"vwap\":83002.0,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661576607,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:17.583092538Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99898,\"high\":0.99898,\"low\":0.99898,\"close\":0.99898,\"trades\":3,\"volume\":2769.91211034,\"vwap\":0.99898,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661576717,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:17.697249198Z\",\"data\":[{\"symbol\":\"BTC/USD\",\"open\":83002.1,\"high\":83002.9,\"low\":83002.0,\"close\":83002.9,\"trades\":13,\"volume\":0.03779022,\"vwap\":83002.7,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661577037,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661578046,
+  "text": "{\"channel\":\"heartbeat\"}"
+ },
+ {
+  "receivedAt": 1791661578154,
+  "text": "{\"channel\":\"ohlc\",\"type\":\"update\",\"timestamp\":\"2026-10-10T19:46:19.135996892Z\",\"data\":[{\"symbol\":\"USDT/USD\",\"open\":0.99898,\"high\":0.99898,\"low\":0.99898,\"close\":0.99898,\"trades\":4,\"volume\":4681.83176541,\"vwap\":0.99898,\"interval_begin\":\"2026-10-10T19:46:00.000000000Z\",\"interval\":1,\"timestamp\":\"2026-10-10T19:47:00.000000Z\"}]}"
+ },
+ {
+  "receivedAt": 1791661579042,
+  "text": "{\"channel\":\"heartbeat\"}"
+ }
+]
