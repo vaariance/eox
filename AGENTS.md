@@ -423,3 +423,20 @@ another agent needs to know.
 - **Rules for agents:** Godwin: point the web app at `createCoxApiClient` and `APP_API_SOURCE=cox-fixture` instead of `apps/web/src/lib/sample.ts`. Fixture assets are `SYNA`/`SYNB` with synthetic prices and wallets; never present them as market data. The API computes no reference or claim value. Transaction builders and quotes wait for the P3 IDL.
 - **Open:** Peter: switch Bybit on in `manifest.draft.json` before sealing (the draft disables it). The live COX source (J5) waits on P3. `eox-app-api-live` (port 8791) still indexes the retired EOX devnet program and goes with the other EOX deletions.
 - **Refs:** `apps/app-api/README.md` (COX), commits `1379114`..`d99a85e`.
+
+### 2026-10-10 · Joel (Claude Code) · EOX code removed from Joel's area
+
+- **Area:** `packages/ingestion`, `packages/evidence-store`, `apps/evidence-api`, `apps/app-api`, `packages/app-api`, `deploy/dev`, `postman`.
+- **What:** `product.md` §6.1 deletions after the `eox-archive` tag. Removed:
+  - the hourly EOX ingests and their cron;
+  - the OECD/BIS/PortWatch/SDMX pipelines;
+  - the EOX observation write/query paths in `evidence-store`;
+  - the evidence API's `/v1/changes` and `/v1/records/...` routes;
+  - the EOX reference API, devnet indexer, Rust fixture generator and `eox.app-api/v1` schema;
+  - the `eox-app-api-live` service;
+  - the EOX Postman collection.
+
+  Deployed at `dd93bf7`. The VM runs only `cox-archiver`, `eox-evidence-api` and `cox-app-api`, with the backup job as the only cron. EOX tables and their 15,622 observations stay read-only in the database, still guarded by the append-only triggers (tested). Every remaining package builds, and all of Joel's suites pass.
+- **Rules for agents:** EOX code is only at the `eox-archive` tag. `apps/app-api/fixtures/oracle-preview.json` is kept only because `apps/oracle-worker/test/reference-readers.test.ts` reads it; delete it together with the oracle worker. The `apps/oracle-worker` journal tests still fail only on Windows (`EPERM` on directory fsync), unrelated to these deletions.
+- **Open:** Retiring the EVM signer path and the unused roles (`uma-asserter`, `uma-challenger`, `oracle-checker`, `evm-relayer`, `solana-relayer`) is part of J4, after P3. No exchange Postman collection replaces the EOX one; `@eox/price-feeds` tests use recorded responses instead.
+- **Refs:** commits `0fdf728`..`dd93bf7`.
