@@ -289,7 +289,6 @@ another agent needs to know.
 - **Open:** Live adapter, confidence assessments and economic calibration remain separate deliverables; this change does not claim all source slots are live.
 - **Refs:** `product.md` §8.7, `apps/oracle-worker/src/publication.ts`, `apps/oracle-worker/test/publication.test.ts`.
 
-
 ### 2026-10-10 · Peter (Codex) · COX Paper 3 draft
 
 - **Area:** `docs/cox`, `output/pdf/cox_paper_3.pdf`.
@@ -330,7 +329,6 @@ another agent needs to know.
 - **Open:** Joel confirms Bybit is reachable from the US-region dev VM and permitted by its terms; without it TRX and JUP have no fallback. Venue data terms before any public launch.
 - **Refs:** `SYSTEM.md` §3.2 and §10.1; `product.md` J0, J1, G2.
 
-
 ### 2026-10-10 · Peter (Codex) · P0 EOX archive tag pushed
 
 - **Area:** Git archive boundary for the COX pivot.
@@ -361,3 +359,27 @@ another agent needs to know.
 - **Rules for agents:** The deleted code is at the `eox-archive` tag only. The challenger's tick-and-cursor loop was not moved because it imports the deleted UMA code; G2 rewrites it for COX from the archive. `apps/cox-monitor` is only these three helper files so far and is not a monitor yet.
 - **Open:** `pnpm -r test` does not pass on Godwin's machine for reasons outside this change: `evidence-store`, `ingestion` and `evidence-api` need the local Postgres on port 5433, and `apps/app-api` "fixture provenance" fails because `fixtures/oracle-preview.json` no longer matches `packages/oracle/fixtures` (Joel). Signing, methodology, oracle-worker and signer tests pass. Peter still deletes `packages/oracle/fixtures/protocol-v1.json`; Joel still retires the `uma-asserter`, `uma-challenger` and `evm-relayer` signer roles.
 - **Refs:** commits `65f0a50`..`0427ac2`; `product.md` §6.3 and §7.3.
+
+### 2026-10-10 · Joel (Claude Code) · Dev VM moved to the EU
+
+- **Area:** `deploy/dev`, GCP project `colosseum-eox`.
+- **What:** Bybit's API refused the US-region dev VM (HTTP 403, CloudFront country block); the team is in Nigeria, which is not a Bybit-restricted jurisdiction. The VM `eox-dev` was stopped, snapshotted (`eox-dev-move-20261010`) and recreated from that snapshot in `europe-west1-b`, same machine type and service account. Verified after the move: 15,622 observations, 76 payloads with valid hashes, 9 migrations and commit `5c8b5a1`, as before; evidence API and both app APIs healthy; cron restored; a backup uploaded to `gs://colosseum-eox-db-backups`; Bybit, Kraken and Coinbase all return 200. External IP is now `104.155.21.77`.
+- **Rules for agents:** Address the VM as `eox-dev` in zone `europe-west1-b` (the `deploy.sh` default). The stopped `eox-dev` in `us-central1-a` and the snapshot are kept until the EU VM has run cleanly; never start the old one alongside the new one. Bybit is reached directly, with no proxy or VPN, as `SYSTEM.md` §10.1 requires.
+- **Open:** Delete the old US VM and the snapshot after a few days of clean running (Joel). Bybit's terms of use before any public launch.
+- **Refs:** `deploy/dev/README.md`, `deploy/dev/deploy.sh`.
+
+### 2026-10-10 · Joel (Claude Code) · COX price evidence: price-feeds, archiver and tables live on dev VM
+
+- **Area:** new `packages/price-feeds`; `packages/evidence-store` (migration `010`), `packages/ingestion/src/cox`, `packages/app-api` (COX schema), `deploy/dev`. `dev` and `feat/cox-price-evidence` merged into `main` at `dbf625c` on Joel's instruction.
+- **What:** J0 and J1 of `product.md` v11. `@eox/price-feeds` is the only code that calls an exchange: Kraken WebSocket `ohlc` with gap tracking and REST repair, Coinbase and Bybit REST, budgets at or below `SYSTEM.md` §10.1, backoff, breaker, cache, `COX/PRICE-FALLBACK/V1` with every attempt's evidence, exact USD × 10⁸ (`COX/USDT-USD/V1` for Bybit), `verifyRange` for the monitor and a daily listing watch. Migration `010` adds `assets`, `venue_responses`, `venue_attempts`, `price_observations`, `snapshots` (commit-safe change feed) and `incidents`, all append-only. systemd `cox-archiver` on `eox-dev` archives every cutoff for the 30 assets 6 s after the minute; verified at `dba88d8`: all 30 priced in 2–4 s per minute, 0 rate limits. The 7-day feed check started 2026-10-10 20:33 UTC; `pnpm --filter @eox/ingestion cox:feed-check 7` prints it.
+- **Rules for agents:** Call exchanges only through `@eox/price-feeds` and give each process its own `VenueClient` per venue. Never edit migration `010`; schema changes are new migrations. Read prices from `price_observations.price_e8` with `venue`, `step` and `trade_age_minutes`; a snapshot is usable only when `snapshots.admissible`. The first two to four cutoffs after an archiver restart are late (the WebSocket must cover a whole minute first) and are recorded inadmissible, not filled.
+- **Open:** Peter: the byte encoding of the `COX/PRICE/V1` and `COX/SNAPSHOT/V1` digests; `packages/ingestion/src/cox/digest.ts` uses a provisional little-endian layout (asset id length-prefixed, venue code kraken 0 / coinbase 1 / bybit 2, step, i64 candle start, presence byte plus i64 `price_e8`, u32 trade age; snapshot = cutoff i64, count u32, ordered price digests) until P1 pins it. Peter: whether `dev` should now follow `main`. Joel: J2 price routes on the evidence API; the 7-day report on 2026-10-17. Bybit's terms of use before any public launch.
+- **Refs:** `packages/price-feeds/README.md`, `packages/ingestion/README.md` (COX price archiver), commits `d2d4e7b`..`dba88d8`.
+
+### 2026-10-10 · Joel (Claude Code) · COX price routes on the evidence API (J2)
+
+- **Area:** `apps/evidence-api`, `packages/ingestion/src/cox/feed-check.ts`.
+- **What:** `product.md` J2, deployed at `daf4cb4` on `127.0.0.1:8787`. `GET /v1/prices/cutoffs/:cutoff` serves one archived cutoff: the snapshot digest and admissibility, then per asset in canonical order every fallback attempt and the chosen price (venue, step, candle, close text, `priceE8`, trade evidence and age, USDT/USD for Bybit) with artifact digests, plus the USDT attempts and incidents. `GET /v1/prices/changes?after=&limit=` lists archived cutoffs in commit order with an opaque resumable cursor. Verified on the VM: the latest cutoff served 30 assets and all 30 linked artifacts matched their SHA-256. The feed check now excludes cutoffs the archiver itself finished late (restarts, deploys) and reports them separately.
+- **Rules for agents:** The publisher and the monitor read prices through these routes, never the database. A cutoff returns 404 until its snapshot is written; do not poll the tables to get it earlier. Use only snapshots with `admissible: true` for publication. Each archiver restart makes two to four cutoffs late and inadmissible.
+- **Open:** EOX routes (`/v1/changes`, `/v1/records/...`) stay until the `eox-archive` tag exists. Snapshot digest encoding still waits on Peter's P1.
+- **Refs:** `apps/evidence-api/README.md` (COX prices), commits `bb63d8c`, `daf4cb4`.

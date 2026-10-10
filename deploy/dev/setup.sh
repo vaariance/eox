@@ -77,6 +77,16 @@ start_service eox-evidence-api 8787
 start_service eox-app-api 8790
 start_service eox-app-api-live 8791
 
+install -m 0644 /opt/eox/app/deploy/dev/cox-archiver.service /etc/systemd/system/cox-archiver.service
+systemctl daemon-reload
+systemctl enable cox-archiver >/dev/null
+systemctl restart cox-archiver
+sleep 5
+if ! systemctl is-active --quiet cox-archiver; then
+  journalctl -u cox-archiver -n 40 --no-pager >&2
+  exit 1
+fi
+
 echo "$commit" > /opt/eox/DEPLOYED_COMMIT
 chown eox:eox /opt/eox/DEPLOYED_COMMIT
 

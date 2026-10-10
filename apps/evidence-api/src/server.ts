@@ -1,16 +1,19 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
+  getCutoff,
   getObservation,
   getReleaseBefore,
   getSourcePayload,
   getSourceRelease,
   readChanges,
+  readSnapshotChanges,
   type ChangeCursor,
   type SourceRelease,
 } from "@eox/evidence-store";
 import { parsePortRecords } from "@eox/ingestion";
 import { parseRecordId, PUBLICATION_POLICY, toEvidenceFact, toRecordId, type ReleaseEvidence } from "./facts.js";
+import { cutoffView, parseCutoff, PRICE_SCHEMA } from "./prices.js";
 
 const DEFAULT_PAGE_SIZE = 128;
 const MAX_PAGE_SIZE = 500;
@@ -144,6 +147,23 @@ async function artifact(digest: string, res: ServerResponse): Promise<void> {
   res.end(payload.body);
 }
 
+async function priceCutoff(value: string, res: ServerResponse): Promise<void> {
+  const cutoff = parseCutoff(value);
+  if (cutoff === null) throw new HttpError(400, "cutoff must be Unix seconds on a minute boundary");
+  const record = await getCutoff(cutoff);
+  if (!record.snapshot) throw new HttpError(404, "cutoff not archived");
+  sendJson(res, 200, await cutoffView(record));
+}
+
+async function priceChanges(url: URL, res: ServerResponse): Promise<void> {
+  const page = await readSnapshotChanges(decodeCursor(url.searchParams.get("after")), pageSize(url.searchParams.get("limit")));
+  sendJson(res, 200, {
+    schema: PRICE_SCHEMA,
+    after: encodeCursor(page.cursor),
+    cutoffs: page.snapshots.map((s) => ({ cutoff: s.cutoff, admissible: s.admissible, snapshotDigest: s.snapshotDigest })),
+  });
+}
+
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "GET") {
     res.setHeader("allow", "GET");
@@ -158,6 +178,8 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return constituents(segments[2]!, res);
   }
   if (segments.length === 3 && segments[0] === "v1" && segments[1] === "artifacts") return artifact(segments[2]!, res);
+  if (segments.length === 4 && segments[0] === "v1" && segments[1] === "prices" && segments[2] === "cutoffs") return priceCutoff(segments[3]!, res);
+  if (segments.length === 3 && segments[0] === "v1" && segments[1] === "prices" && segments[2] === "changes") return priceChanges(url, res);
   throw new HttpError(404, "not found");
 }
 

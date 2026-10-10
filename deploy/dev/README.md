@@ -6,7 +6,7 @@ compose) and the six ingestion pipelines on an hourly cron.
 | | |
 |---|---|
 | Project | `colosseum-eox` |
-| Instance | `eox-dev`, `us-central1-a`, e2-small, Debian 12 |
+| Instance | `eox-dev`, `europe-west1-b` (moved from `us-central1-a` on 2026-10-10 so Bybit is reachable), e2-small, Debian 12 |
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
 | Ingests | hourly at :05 UTC as system user `eox`; each job holds its own lock in `/opt/eox/locks` (a run still in progress is skipped, not doubled) and is stopped after 50 minutes; log in `/opt/eox/logs/ingest.log` |
 | Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
@@ -34,7 +34,7 @@ GCP_ACCOUNT=you@example.com deploy/dev/deploy.sh
 ```
 
 Optional overrides: `GCP_PROJECT` (default `colosseum-eox`), `GCP_ZONE`
-(default `us-central1-a`), `GCP_INSTANCE` (default `eox-dev`). Always pass the
+(default `europe-west1-b`), `GCP_INSTANCE` (default `eox-dev`). Always pass the
 account explicitly: the active gcloud configuration may point at a different
 project.
 
@@ -45,8 +45,8 @@ Open a tunnel, then use `localhost:5434` with the password from the VM (add
 `-L 8791:localhost:8791` for the live app API):
 
 ```bash
-gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=us-central1-a -- -L 5434:localhost:5433 -N
-gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=us-central1-a --command "sudo cat /opt/eox/.env"
+gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b -- -L 5434:localhost:5433 -N
+gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b --command "sudo cat /opt/eox/.env"
 ```
 
 ## Private RPC for the live app API
@@ -56,7 +56,7 @@ exists. That file is never in the repo; it holds the private RPC URL (which
 contains the provider's API key) and overrides the unit's defaults:
 
 ```bash
-gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=us-central1-a --   'read -rs -p "RPC URL: " url && echo && sudo install -m 600 -o eox -g eox /dev/null /opt/eox/app-api-live.env    && printf "SOLANA_RPC_URL=%s
+gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b --   'read -rs -p "RPC URL: " url && echo && sudo install -m 600 -o eox -g eox /dev/null /opt/eox/app-api-live.env    && printf "SOLANA_RPC_URL=%s
 SOLANA_RPC_INTERVAL_MS=200
 " "$url" | sudo tee /opt/eox/app-api-live.env >/dev/null    && sudo systemctl restart eox-app-api-live'
 ```
@@ -97,7 +97,7 @@ gcloud iam service-accounts create eox-dev-vm --account=$GCP_ACCOUNT --project=c
 gcloud storage buckets add-iam-policy-binding gs://colosseum-eox-db-backups \
   --member=serviceAccount:eox-dev-vm@colosseum-eox.iam.gserviceaccount.com \
   --role=roles/storage.objectCreator --account=$GCP_ACCOUNT --project=colosseum-eox
-gcloud compute instances create eox-dev --zone=us-central1-a --machine-type=e2-small \
+gcloud compute instances create eox-dev --zone=europe-west1-b --machine-type=e2-small \
   --image-family=debian-12 --image-project=debian-cloud --boot-disk-size=20GB \
   --boot-disk-type=pd-balanced --labels=env=dev,app=eox \
   --service-account=eox-dev-vm@colosseum-eox.iam.gserviceaccount.com --scopes=cloud-platform \
