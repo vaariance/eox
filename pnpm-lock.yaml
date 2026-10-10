@@ -178,6 +178,9 @@ importers:
       '@eox/evidence-store':
         specifier: workspace:*
         version: link:../evidence-store
+      '@eox/price-feeds':
+        specifier: workspace:*
+        version: link:../price-feeds
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
