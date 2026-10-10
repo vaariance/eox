@@ -1,335 +1,379 @@
-# EOX system contract
+# COX system contract
 
-Version 1 · drafted 2026-10-08 by Joel (Claude Code) at Peter's request ·
-**status: proposed, awaiting sign-off.**
+Version 2 · 10 October 2026 · **status: proposed, awaiting sign-off.**
 
-This file pins the decisions every package must agree on: time frames, data
-types, storage, commitments, and what pre-commitment, challenge and
-post-commitment mean. It is derived from Paper 1 (RPM), Paper 3 (EOX), the
-oracle design plan, `docs/upstream-readiness.md` and the code at `80ac730`.
+Version 2 replaces the EOX contract (version 1, drafted 2026-10-08 by Joel) with
+the contract for COX, the Crypto Outlook Index. The product source is
+`docs/cox/cox-paper-3.md` (COX Paper 3, v0.1). The work assignments, and what
+each person preserves, carries over or deletes, are in `product.md`. Version 1
+is in git history; nothing in it binds COX work unless this file repeats it.
 
-Unlike `AGENTS.md`, this file is **versioned, not append-only**: change it only
-by bumping the version, getting sign-off from the owners named in the change,
-and appending an `AGENTS.md` entry that says what changed.
+This file pins the decisions every package must agree on: clocks, data types,
+storage, identities, the publication cycle, the reference and pool arithmetic
+boundaries, failure behaviour and operations.
 
-Every decision carries a status:
+It is **versioned, not append-only**: change it only by bumping the version,
+getting sign-off from the owners named in the change, and appending an
+`AGENTS.md` entry that says what changed.
 
 | Status | Meaning |
 |---|---|
-| **PINNED** | True in the code today and consistent with the papers. Changing it breaks another package. |
-| **PROPOSED** | Recommended default. Needs the named owner's sign-off before it is relied on. |
-| **OPEN** | Undecided. Named owner must decide; no package may assume an answer. |
+| **PINNED** | A COX Paper 3 product commitment, or infrastructure that exists today and is carried into COX unchanged. Changing it breaks another package or the product. |
+| **PROPOSED** | MVP choice made in this version. Needs the named owner's sign-off before it is relied on outside devnet. |
+| **OPEN** | Undecided. The named owner decides; no package may assume an answer. |
 
 ## 1. Owners
 
-| Area | Owner | Folders |
+| Area | Owner | Folders (target layout) |
 |---|---|---|
-| Data layer: sources, ingestion, evidence store, live evidence adapter, dev operations | Joel | `packages/ingestion`, `packages/evidence-store`, `deploy/`, `postman/` |
-| Methodology and continuous oracle | Peter | `packages/methodology`, `packages/oracle`, `apps/oracle-worker` |
-| Annual optimistic oracle (UMA, Wormhole, settlement program) | Godwin | `packages/optimistic-oracle` |
-| Market contracts and app | unassigned | `apps/` |
+| Price evidence: Hermes archiver, evidence store, evidence API, dev operations, signing service, app API and client | Joel | `packages/ingestion`, `packages/evidence-store`, `apps/evidence-api`, `apps/signer`, `packages/signing`, `apps/app-api`, `packages/app-api`, `deploy/` |
+| Methodology, mechanism specification, COX math, the `cox` Solana program, publisher | Peter | `packages/cox-methodology`, `packages/cox` (Rust workspace: `crates/math`, `crates/cli`, `programs/cox`), `apps/cox-publisher` |
+| Independent monitor and trading UI | Godwin | `apps/cox-monitor`, `apps/web` |
 
-Owners as practised since 2026-10-05. The root `README.md` still lists Peter for
-ingestion; confirm or correct it there.
+The EOX folders that `product.md` marks for deletion (`packages/oracle`,
+`packages/methodology`, `packages/optimistic-oracle`, `apps/oracle-worker`,
+`apps/uma-relay`) are not part of COX. Do not add COX code to them.
 
 ## 2. The system in one path
 
-Paper 3 §4 requires that evidence, methodology, market and settlement never
-collapse into one authority. The components map onto that pipeline as follows.
+COX Paper 3 §14 separates the external price world from two deterministic
+engines (reference and collateral) and a ledger. Each boundary must be
+independently reproducible.
 
 ```text
-sources (OECD, BIS, IMF PortWatch)
-  │ ingestion: fetch, store raw bytes, normalise            [Joel]
+Pyth price service (Hermes)                                   external
+  │ archiver: fetch the signed update for each minute cutoff,
+  │ store raw bytes, decode, check admissibility             [Joel]
   ▼
-evidence store (Postgres, append-only)                      [Joel]
-  │ live evidence adapter = EvidenceProvider port            [Joel, missing]
+evidence store (Postgres, append-only) → evidence API          [Joel]
+  │ publisher reads the archived update for the cutoff        [Peter]
   ▼
-oracle worker → eox-oracle program (Solana)                  [Peter]
-  continuous references: country state, WORLD, country/WORLD
-  per-evidence challenges inside each proposal window
-  │ annual snapshot at the cutoff                            [Peter + Godwin, missing]
+Pyth Solana Receiver: guardian-verified PriceUpdateV2 accounts  external
   ▼
-EoxAssertionAdapter (EVM) → UMA Optimistic Oracle V3         [Godwin]
-  │ Wormhole VAA
-  ▼
-eox_settlement_oracle (Solana): one final result per year    [Godwin]
-  ▼
-market contracts and app: trade continuously, settle per epoch  [unassigned]
+cox program (Solana)                                           [Peter]
+  1 close batch k at its cutoff
+  2 validate the price snapshot against the manifest
+  3 reference engine: CRYPTO level, asset references
+  4 collateral engine: revalue existing claim classes
+  5 execute batch k requests at the post-revaluation unit values
+  6 commit publication k (predecessor-linked, atomic to users)
+  │
+  ├──► cox-monitor: recompute every publication independently  [Godwin]
+  └──► app API: indexer, quotes, unsigned transactions          [Joel]
+          ▼
+       web app: wallet-signed requests, portfolio, status      [Godwin]
 ```
 
-Two Solana programs exist and must not be confused. `eox-oracle` (Peter)
-publishes continuous references. `eox_settlement_oracle` (Godwin) stores the
-one settled result per year.
+There is no UMA assertion, no challenge window, no EVM chain and no Wormhole
+relay of our own in this path (Paper 3 §2, §6, §16). Authentication comes from
+Pyth's guardian-verified updates; correctness comes from deterministic on-chain
+checks plus independent recomputation.
 
-## 3. Time: three clocks
+## 3. Time
 
-Paper 3 §10–11 and §22 and Paper 1 §13 describe three different clocks. The
-"one year versus minutes" disagreement is these clocks being mixed up. All
-three exist and each has exactly one meaning.
+COX has four clocks. Name which one a timing belongs to; never mix them.
 
-### 3.1 Data clock: when evidence arrives — PINNED
+### 3.1 Source clock — PINNED
 
-| Indicator | Source | Native period | Polled |
-|---|---|---|---|
-| `container_throughput` | IMF PortWatch | daily | daily |
-| `residential_property_price_real` | BIS WS_SPP | quarterly | daily |
-| `gdp_real_volume` | OECD MEI archive editions | quarterly (vintaged by monthly edition) | daily |
-| `cpi_core_yoy` | OECD | monthly (NZL quarterly) | daily |
-| `unemployment_rate` | OECD | monthly (NZL quarterly) | daily |
-| `policy_rate` | BIS WS_CBPOL | monthly | daily |
+Pyth publishes signed price updates continuously (sub-second). Each update
+carries its own `publish_time` (Unix seconds). COX never treats archive time,
+posting time or slot time as a price's observation time.
 
-- Ingestion runs once a day at 06:00 UTC (`deploy/dev/setup.sh`). A new row is
-  written only when a value or its coverage changes (`record-revisions.ts`).
-- Frequencies are never mixed within a series and never interpolated (Paper 3
-  §11; `packages/methodology/README.md`).
+### 3.2 Batch clock — PINNED cadence, PROPOSED offsets (Peter)
 
-### 3.2 Reference clock: when EOX references move — PINNED (devnet values)
+| Item | Value |
+|---|---|
+| Cadence | one minute (Paper 3 §7) |
+| Cutoff of batch `k` | `cutoff_k = origin + 60·k`, UTC minute boundary |
+| Request admission | a request belongs to the first batch whose cutoff is strictly after the on-chain `Clock::unix_timestamp` of its submission |
+| Cancellation | allowed only while its batch is open (before the cutoff); never after |
+| Observation window | each feed's accepted update has `cutoff_k ≤ publish_time ≤ cutoff_k + 5 s` |
+| Synchronisation | max − min `publish_time` across the snapshot ≤ 3 s |
 
-References move only when accepted evidence changes (Paper 3 §11). Between
-releases the market price may move; the reference must not.
+Requests bind before their execution prices exist; prices are observed only
+after the cutoff (Paper 3 §7–8). The selection rule inside the window is §6.3.
 
-| Step | Value | Where |
+### 3.3 Publication clock — PROPOSED (Peter)
+
+| Item | Value |
+|---|---|
+| Publication `k` | revaluation and execution for batch `k`, committed in program state |
+| Commit deadline | `cutoff_k + 45 s`; after it, batch `k` cannot publish and its requests roll to batch `k+1` unless expired |
+| Missed batch | no publication; the next valid publication spans the elapsed interval (Paper 3 §3) |
+| Delayed status | no publication for 3 consecutive cutoffs |
+| Halted status | no publication for 60 consecutive cutoffs (§9) |
+
+### 3.4 Methodology clock — PINNED
+
+Methodology versions activate prospectively at a declared future batch
+sequence. There is no epoch expiry, annual cutoff or terminal maturity for
+positions (Paper 3 §13, §15). The EOX settlement clock (31 July cutoff, 72 h
+liveness, 35-day void) does not exist in COX.
+
+## 4. Universe and benchmark
+
+### 4.1 MVP roster — PROPOSED (Peter, data check by Joel)
+
+| Asset id | Pyth feed | Status |
 |---|---|---|
-| Worker collects changes into one proposal | 5 s after the first pending change | `apps/oracle-worker/src/worker.ts` |
-| Refresh with no new evidence | every 60 s | same |
-| Challenge window after pre-commitment | 60 s | `eox-oracle` `lib.rs` |
-| Calculate and publish after post-commitment | within 3,600 s, else expired | same |
+| `BTC` | `Crypto.BTC/USD` | MVP |
+| `ETH` | `Crypto.ETH/USD` | MVP |
+| `SOL` | `Crypto.SOL/USD` | MVP |
+| `ZEC` | `Crypto.ZEC/USD` (`be9b59d1…25bb24`) | included only if Joel's feed check (§10) passes before the manifest is sealed |
+| `STARK` | — | excluded until its asset identity is resolved (Paper 3 §1) |
 
-**PROPOSED (Peter):** 60 s is a devnet value. The production challenge window
-must be long enough for a disputer to fetch the artifact and file through the
-dispute path in §6, and is set per epoch in the methodology configuration.
-Recommended starting point: 2 hours.
+An asset is identified by its asset id **and** its 32-byte Pyth feed id; a
+ticker alone is never an identity. Quote currency is USD. The benchmark roster
+equals the tradable roster (Paper 3 §4 boundary case); the pilot benchmark is
+labelled `CRYPTO (pilot, N assets)` everywhere it is shown.
 
-### 3.3 Settlement clock: when money settles — PINNED
+### 4.2 CRYPTO — PROPOSED (Peter)
 
-| Step | Value | Where |
-|---|---|---|
-| Epoch | one calendar year of economic performance, e.g. epoch 2026 | `EoxAssertionAdapter` |
-| Evidence cutoff | 31 July of the following year, 00:00 UTC | `cutoffTimestamp(year)`, both chains |
-| Assertion window | cutoff to cutoff + 21 days | adapter |
-| UMA liveness (dispute period) | 72 hours per assertion | adapter |
-| Void deadline if no result reaches Solana | cutoff + 35 days | `eox_settlement_oracle` |
+Equal weights `w = 1/N`, re-applied at every publication (constant equal
+weights). Chain-linked:
 
-Epoch 2026 therefore settles on what the official sources said about 2026, as
-known on 31 July 2027. Positions trade continuously during the epoch (Paper 3
-§22–23); only settlement is annual.
+```text
+B_k = B_{k-1} · Σ_i w · (P_i,k / P_i,k-1)          B_origin = 100
+```
 
-**PROPOSED (Peter, Godwin):** the continuous oracle's `epoch id` equals the
-settlement year, and one methodology configuration is sealed per year, so the
-continuous references and the annual result for year Y use the same rules.
-Methodology changes take effect only at a new epoch (Paper 3 §22).
+A missed publication is a **rebalance freeze**: the next publication links one
+step over the elapsed interval with the weights in force at the last
+publication. This is the predefined outage policy Paper 3 §4 requires; no
+intermediate prices are reconstructed or invented.
 
-## 4. The indicators going live — PROPOSED (Peter)
+### 4.3 COX reference — PINNED (Paper 3 §3)
 
-v1 goes live with exactly the six indicators in §3.1 for all 30 pilot
-countries. They are the only indicators with a tested, keyless source returning
-data for every pilot country, verified live on 2026-10-06 (Postman collection,
-30/30 each).
+```text
+A_i,k = P_i,k / P_i,origin      W_k = B_k / B_origin      Q_i,k = 100 · A_i,k / W_k
+```
 
-| # | Indicator | Why not in v1 |
-|---|---|---|
-| 1, 2, 4 | Nighttime lights, NO₂, NDVI | Global satellite catalogues work, but per-country extraction (authenticated downloads, raster processing, boundaries, QA masks) is untested |
-| 3 | Power grid load | Ember needs a key to confirm coverage and reports energy (TWh), not load (MW) |
-| 5 | Water inundation | Archive ends 2024; no verified current API |
-| 7 | Air freight | Historical carried freight only, latest 2023 |
-| 13 | Overnight rates | Mixed instruments; 3 countries unresolved |
-| 15 | Bankruptcy | 17 of 30 countries |
-| 20 | Job openings | 10 of 30 countries |
-| 25 | Fiscal deficit | Actual-versus-estimate status unresolved for 14 countries |
-| 9, 12, 16, 18, 19 | Fleet intent, bond spreads, PMI, retail search, mobility | Paid or application-only |
-| 8, 10, 11, 14 | Heavy vehicles, storage, interbank inflows, parallel FX | No verified source |
-
-Adding an indicator requires 30/30 live verification, an ingestion pipeline, a
-catalogue entry in `packages/methodology/src/catalogue.ts`, and a new epoch.
+Sensitivity is 1x. 100 is a display base. Ratio-relative change, never
+percentage-point subtraction. Prices are price return only: no staking, yield or
+airdrops.
 
 ## 5. Data types and storage
 
-### 5.1 Evidence store — PINNED
+### 5.1 Evidence store — PINNED machinery, PROPOSED COX schema (Joel)
 
-Postgres 16. `observations` and `source_payloads` are append-only, enforced by
-database triggers. Corrections are new rows linked by `supersedes_id`.
+Carried over unchanged from EOX: Postgres 16; `source_payloads` holds every
+response byte-for-byte with a database-checked SHA-256; append-only triggers;
+`recorded_at` stamped by the database; transaction-ID change feed (migration
+`007`); daily verified backups to `gs://colosseum-eox-db-backups`.
 
-| Column | Meaning |
+New COX tables (new migrations; EOX tables stay as a read-only archive with no
+writers):
+
+| Table | Key columns |
 |---|---|
-| `id` | local bigserial; never a portable identity |
-| `country_iso3`, `indicator_id`, `source_id` | catalogue identifiers, identical to `packages/methodology` |
-| `period_start`, `period_end` | calendar dates of the native period |
-| `value` | `NUMERIC(20,6)`, normalised; GDP in national-currency millions |
-| `raw_value` | the source's value string, byte-exact |
-| `raw_sha256` | SHA-256 of the stored HTTP response in `source_payloads` |
-| `vintage` | `oecd-edition-YYYYMM` for GDP, `retrieved-YYYY-MM-DD` otherwise |
-| `known_at` | source claim of when the value became known; GDP edition month; can be backdated |
-| `recorded_at` | stamped by the database on insert; callers cannot set it |
-| `published_at` | empty unless the source states a publication time; no current source does |
-| `coverage_reported`, `coverage_total` | both or neither; PortWatch ports reporting / ports returned |
+| `assets` | `asset_id`, `feed_id` (32-byte hex), `symbol`, `quote` |
+| `price_updates` | one row per archived Hermes response: `cutoff`, `raw_sha256` → `source_payloads`, `feed_ids`, `recorded_at` |
+| `price_observations` | `asset_id`, `feed_id`, `cutoff`, `price` (i64 as text), `conf` (u64 as text), `expo`, `publish_time`, `prev_publish_time`, `raw_sha256`, `recorded_at`, `admissible`, `rejection` |
+| `incidents` | `cutoff`, `kind`, `detail`, `raw_sha256` (nullable), `recorded_at` |
 
-### 5.2 Worker evidence record — PINNED shape, PROPOSED mapping (Joel, Peter)
+Rules: integers exactly as the source states them; no decimal conversion is
+stored as if it were the source value; a rejected observation is recorded with
+its reason, never replaced by a substitute (Paper 3 §6).
 
-The worker consumes `EvidenceRecord` (`apps/oracle-worker/src/types.ts`) through
-the `EvidenceProvider` port. The live adapter maps each observation as follows.
+### 5.2 Prices on chain — PROPOSED (Peter)
 
-| Field | Mapping | Status |
+The program reads Pyth `PriceUpdateV2` accounts owned by the Pyth Solana
+Receiver program, requires `VerificationLevel::Full`, and checks the feed id
+against the manifest. Prices are used as raw integers with the manifest-pinned
+exponent; a feed whose exponent differs from the manifest is inadmissible.
+Ratios are computed from the raw integers, so no price is rescaled.
+
+### 5.3 Arithmetic — PROPOSED (Peter)
+
+- Reference arithmetic: checked integer arithmetic in `i128`, reference values
+  stored at scale 10¹², nearest rounding with ties away from zero (carried over
+  from `eox-oracle-math`).
+- Claim arithmetic: collateral amounts in the collateral token's base units
+  (`u64`); units in `u128` at scale 10¹². Mint and redemption round **down**
+  for the user; every residual goes to a named `residual` ledger line owned by
+  the pool, never redistributed and never taken by the operator.
+- One Rust crate (`packages/cox/crates/math`) defines both. The program, the
+  CLI and the published vectors use it. The monitor reimplements it
+  independently in TypeScript and must match the vectors byte for byte.
+
+### 5.4 Durability — PINNED / PROPOSED
+
+- Evidence: Postgres on the dev VM, append-only, daily backups (PINNED).
+- Chain: the authoritative record of publications, requests, positions and the
+  ledger (PINNED).
+- Publisher: filesystem journal plus PID lock, one writer (carried over from
+  the oracle worker; PROPOSED for COX).
+
+## 6. Identities and the publication
+
+### 6.1 Identities — never substitute one for another
+
+| Identity | Definition | Status |
 |---|---|---|
-| `recordId` | `eox:observation:<id>`; unique per immutable row | PROPOSED |
-| `seriesId` | `seriesIdentity(country, indicator)` from `@eox/methodology` | PINNED |
-| `revisionId` | the row's `vintage` | PROPOSED |
-| `country` | ISO2 as configured on chain | PINNED |
-| `indicator`, `source`, `unit` | catalogue strings | PINNED |
-| `period` | `periodOrdinal(frequency, native period)` as an integer string | PINNED |
-| `value` | exact decimal per §5.3 | PROPOSED |
-| `publishedAt` | per §5.4 | OPEN |
-| `knownAt` | `known_at` in Unix seconds, or null | PROPOSED |
-| `recordedAt` | `recorded_at` in Unix seconds | PROPOSED |
-| `artifactDigest` | `raw_sha256` | PINNED |
-| `manifest` | confidence assertion manifest from `compileConfidence` | PINNED shape |
-| `confidenceBps` | eight factors in the oracle's fixed order | OPEN (Peter: rubric) |
-| `supersedes` | `eox:observation:<supersedes_id>` for corrections | PROPOSED |
-| `comparisonRecordId` | the record the rule's comparison period selects | PROPOSED |
+| Asset identity | `(asset_id, feed_id)` | PROPOSED |
+| Artifact digest | SHA-256 of the raw Hermes response | PINNED |
+| Price message digest | SHA-256 over domain `COX/PRICE/V1` of `(feed_id, price, conf, expo, publish_time)` | PROPOSED |
+| Snapshot digest | SHA-256 over domain `COX/SNAPSHOT/V1` of the ordered price message digests and the cutoff | PROPOSED |
+| Methodology manifest digest | SHA-256 of the canonical `COX/METHODOLOGY/V1` manifest | PROPOSED |
+| Publication identity | `(program, pool, sequence)`; links its predecessor's sequence and state digest | PROPOSED |
+| Request identity | request account address; carries owner, batch, operation, amounts, conditions | PROPOSED |
 
-All times in the worker and on chain are Unix **seconds**. All fixed-point
-values use scale 1,000,000, nearest rounding with ties away from zero.
+### 6.2 What a publication binds — PROPOSED (Peter)
 
-### 5.3 Precision — PROPOSED (Peter)
+Sequence, batch cutoff, predecessor, methodology manifest digest, snapshot
+digest, each asset's price and `publish_time`, CRYPTO level, each COX
+reference, each class's pre-flow and post-flow backing and units, executed and
+rejected request counts, and the resulting ledger totals. A publication cannot
+be replayed as a new interval; sequence and predecessor enforce it.
 
-The oracle rejects values with more than six significant fractional digits
-(`exactValue`). The evidence store keeps the exact source string in
-`raw_value`.
+### 6.3 Snapshot selection — PROPOSED (Peter, Joel)
 
-- BIS series, unemployment and GDP (after the declared ×10⁻⁶ unit conversion)
-  fit within six digits.
-- OECD core CPI sends up to nine fractional digits.
-- Container throughput has no single raw value: it is a sum over ports,
-  currently formatted with `toFixed(6)`, which is itself an unnamed rounding.
+The accepted update for each feed is the **first** Hermes update with
+`publish_time ≥ cutoff_k`. The archiver fetches it by timestamp and archives it
+before the publisher may use it; the publisher posts exactly the archived bytes.
+The program can check only the window and synchronisation bounds in §3.2, not
+"first". The monitor checks "first" against Hermes independently and raises an
+incident on mismatch. The residual favourable-selection risk inside the
+window is accepted for the devnet MVP and must be stated in the app (Paper 3 §6,
+§8).
 
-Recommended rule: the methodology declares, per series, "round half away from
-zero to 6 places" as a named, versioned conversion, applied by the adapter to
-`raw_value` (and, for container throughput, to an exact decimal sum of the
-port values in the stored payload) and recorded in the manifest. Silent
-rounding is forbidden.
+## 7. Collateral engine
 
-### 5.4 Publication time — OPEN (Peter decides, Joel implements)
+### 7.1 Claim classes — PROPOSED (Peter)
 
-The oracle requires `publishedAt` for freshness. None of the six sources
-returns a publication time, and `recorded_at` must not be copied into it.
+One class per listed asset plus one `CRYPTO` class. Unallocated collateral does
+not exist inside the pool: a deposit is pending (owned by its depositor) until
+it executes into a class.
 
-Recommended policy `PUBLICATION/OBSERVED-BY/V1`, stored in its own column:
-`publishedAt` is the earliest `recorded_at` of the first observation carrying
-that value and vintage, labelled as an upper bound ("published no later
-than"). Its error is at most one polling interval (24 h). The manifest names the
-policy so a later release-calendar policy can replace it in a new epoch without
-rewriting history.
+### 7.2 Transfer rule `COX/TRANSFER/MVP-0` — PROPOSED (Peter), test assets only
 
-### 5.5 Change feed — PROPOSED (Joel)
+```text
+h_i = (P_i,k / P_i,k-1) / (B_k / B_k-1)        h_CRYPTO = 1
+V_i' = C · V_i · h_i / Σ_j V_j · h_j
+```
 
-`readChanges(cursor)` must never skip a row that commits late. A plain
-`id > cursor` scan can skip rows from a transaction that started earlier but
-committed later.
+This is the illustrative rule of Paper 3 §10, with a CRYPTO class providing the
+benchmark-growth comparison side. Known property: the benchmark factor cancels,
+so asset classes compete on asset returns and CRYPTO-class holders on the
+benchmark return. **It is not the production mechanism.** Paper 3 leaves the
+transfer rule open; MVP-0 exists so the devnet product can run end to end on a
+test token. Real collateral is blocked until a rule is selected under §11.
 
-Design: record the inserting transaction ID (`xid8`) on each observation. A
-page returns rows ordered by `(xid, id)` whose transaction ID is below the
-oldest transaction still running (`pg_snapshot_xmin`). The cursor is the last
-`(xid, id)` returned. Change IDs are `eox:change:<id>`. Corrections appear as
-new changes; history is never rewritten, so a cursor stays valid forever.
+### 7.3 Units and flows — PINNED identities (Paper 3 §11), PROPOSED edge rules (Peter)
 
-### 5.6 Artifact retrieval — PROPOSED (Joel)
+```text
+p_i = V_i / U_i         minted = floor(d / p_i)        proceeds = floor(x · p_i)
+```
 
-`retrieveArtifact(digest)` returns `source_payloads.body` for that SHA-256. The
-database already rejects a body whose hash does not match. For challengers, the
-same bytes are served read-only over HTTP at `/artifacts/<sha256>`.
+Order inside a publication: revalue existing classes → fix every `p_i` → execute
+all batch requests at those fixed `p_i` → commit. Request processing order
+cannot change any outcome. A switch is a redemption and a deposit at the same
+fixed `p`. Edge rules: an empty class bootstraps at `p = 1` (scaled); a class
+with units and zero value accepts no deposits; zero or negative prices make the
+snapshot inadmissible (§9); fees are zero in the MVP.
 
-### 5.7 Durability — PINNED / OPEN
+### 7.4 Custody categories — PINNED (Paper 3 §9, §11)
 
-- Evidence: Postgres on the dev VM, append-only. **OPEN (Joel):** no backups
-  yet; add daily `pg_dump` to a GCS bucket with retention before testnet use.
-- Worker: filesystem journal plus a PID lock; one writer only.
-- Chain: the authoritative record of proposals, challenges and publications.
+The vault balance must always equal the sum of: active backing `C`, pending
+deposits, withdrawal payables and the residual line. No category funds another.
+The program asserts this equality at the end of every instruction that moves
+value.
 
-## 6. Commitments and challenges
+## 8. Requests
 
-### 6.1 Identities — PINNED; never substitute one for another
+PROPOSED (Peter):
 
-| Identity | Definition | Defined in |
+| Operation | Reserved at submission | Condition fixed in advance |
 |---|---|---|
-| Artifact digest | SHA-256 of the raw HTTP response | evidence store, oracle math |
-| Evidence digest | `EOX/ORACLE/V1` domain `evidence` over stable fields | `packages/oracle/crates/math` |
-| Metadata digest | domain `evidence-metadata` | same |
-| Methodology manifest digest | SHA-256 of the `EOX/METHODOLOGY/V1` manifest | `packages/methodology` |
-| Configuration digest | sealed rules for an on-chain epoch | `eox-oracle` |
-| Annual claim | evidence root, methodology image ID, output hash, resolution URI hash | `EoxAssertionAdapter` |
+| `deposit(class, amount)` | tokens move into the vault as a pending deposit | `min_units`, `expiry_batch` |
+| `switch(from, to, units)` | source units locked; stay exposed until revaluation | `min_units_out`, `expiry_batch` |
+| `redeem(class, units)` | units locked; stay exposed until revaluation | `min_proceeds`, `expiry_batch` |
+| `withdraw()` | — | pays the caller's withdrawal payable |
 
-### 6.2 What the three words mean
+A request whose condition fails is rejected at execution with its reservation
+returned (deposit back to pending refund, units unlocked). An expired request is
+rejected the same way. A new request from the same owner for the same source
+units is rejected while one is pending.
 
-Both oracle layers follow the same three steps from the oracle design plan,
-at different scopes.
+## 9. Failure, incidents and governance
 
-| Step | Continuous oracle (per proposal) | Annual oracle (per year) |
+PROPOSED (Peter):
+
+- **Inadmissible snapshot** (missing feed, outside window, unsynchronised,
+  partial verification, exponent change, price ≤ 0, `conf/price` above the
+  manifest bound): no publication for that batch; Joel records an incident;
+  requests roll forward until expiry. The last accepted reference stays readable
+  with its age and is never executed against (Paper 3 §15).
+- **Delayed** (3 missed cutoffs): the app shows delayed; nothing changes on chain.
+- **Halted** (60 missed cutoffs): the program accepts only cancellation of
+  pending requests and refund of pending deposits. Positions stay frozen; no
+  redemption at a stale value. Resumption is the next valid publication over the
+  elapsed interval.
+- **Monitor mismatch:** the monitor reports; a human with the admin authority
+  pauses. The monitor holds no key.
+- **Admin authority:** pause, activate a future methodology version, rotate the
+  runtime publisher key. It cannot set prices, references, class values or
+  balances, and cannot rewrite a committed publication or withdrawal.
+
+## 10. Operations
+
+| Component | Runs | Owner |
 |---|---|---|
-| **Pre-commitment** | Freeze the evidence pages and set the challenge deadline; binds evidence digest, deadline and adapter | `assertResult`: post the claim and bond to UMA |
-| **Challenge** | Dispute one exact evidence record inside the window; registered through the configured adapter key | Dispute the assertion on UMA within 72 h; UMA's vote decides |
-| **Post-commitment** | Original commitment + evidence digest + ordered challenge-event digest + global challenge history + evaluation time; only after every challenge resolves and closure is attested | The settled claim, relayed over Wormhole and stored once per epoch |
+| Postgres, backups | dev VM `eox-dev`, GCP `colosseum-eox` (PINNED) | Joel |
+| Hermes archiver | same VM, systemd, continuous per-minute loop (PROPOSED) | Joel |
+| Evidence API | same VM, `127.0.0.1:8787` (PINNED host, new COX routes) | Joel |
+| Signing service | Cloud Run `eox-signer`, KMS `eox-signing-dev` (PINNED) | Joel |
+| `cox` program | Solana devnet (PROPOSED) | Peter |
+| Publisher | same VM, systemd, journal on persistent disk (PROPOSED) | Peter |
+| Monitor | same VM, systemd (PROPOSED) | Godwin |
+| App API | same VM; fixture and live origins (PINNED pattern) | Joel |
+| Web app | static hosting (OPEN, Godwin) | Godwin |
 
-Data is never modified at any step. A successful challenge rejects the
-proposal; the corrected evidence enters as a new record in a later proposal.
+Testnet: Solana devnet only. Collateral: a devnet SPL test token minted by the
+deployment; real USDC is out of scope (§11).
 
-### 6.3 Who authenticates continuous challenges — OPEN (Peter, Godwin)
+Known external blocker (2026-10-10): Hermes `GET /v2/updates/price/latest` and
+`/v2/updates/price/{publish_time}` return `unauthorized` without an API key;
+only feed metadata is public. Joel obtains a Hermes key or an alternative
+authenticated endpoint before the archiver runs live.
 
-Today `eox-oracle` trusts one configured adapter key that simulates UMA. Peter
-asked not to build the optimistic challenge pipeline from scratch, and the
-annual path already uses UMA through `EoxAssertionAdapter`. Recommended: carry
-per-record challenges through UMA too, as assertions about a single evidence
-digest, relayed over the same Wormhole route, with the program verifying the
-VAA instead of a test key. Until decided, the continuous oracle is devnet-only.
+## 11. Rules for every agent
 
-### 6.4 From continuous references to the annual claim — OPEN (Peter, Godwin)
+1. Read this file, `product.md`, `AGENTS.md` and COX Paper 3 before working.
+2. Never invent a price, timestamp or substitute observation. Rejected inputs
+   are recorded incidents.
+3. Never execute a request at a valuation that existed before its batch's
+   cutoff, and never let processing order change an outcome.
+4. Never mix the clocks in §3 or substitute one identity in §6.1 for another.
+5. Never let confidence, quality or price uncertainty scale a return; quality
+   only admits or rejects (Paper 3 §6).
+6. Never present MVP-0 as the production mechanism, a reference as a payout,
+   or the pilot CRYPTO as the whole crypto market.
+7. Never rewrite evidence or committed publications. Corrections are new
+   records.
+8. Fetch and rebase before pushing; `main` is shared.
+9. A PROPOSED or OPEN item is not a decision outside devnet.
 
-The annual claim covers "the official observations for year Y known at the
-cutoff", but the continuous oracle publishes the latest observation per slot.
-These select different records. Recommended:
+## 12. Open before real collateral
 
-1. The methodology defines an annual selection rule: for each series, the
-   latest vintage known at the cutoff of every period inside year Y.
-2. The evidence root is the Merkle root, in the engine's canonical encoding,
-   of exactly those evidence digests.
-3. `methodologyImageId` is the configuration digest of epoch Y on `eox-oracle`;
-   `outputHash` hashes the final country and WORLD states computed from that
-   selection.
-4. The snapshot and its artifacts are published at the resolution URI before
-   assertion, so a UMA voter can re-run it.
+| Item | Owner |
+|---|---|
+| Production transfer rule replacing MVP-0, with the Paper 3 §17 simulations | Peter |
+| Benchmark weight schedule, eligibility and concentration policy | Peter |
+| Fees, residual ownership and operational reserves | Peter |
+| Snapshot selection without the residual window risk | Peter, Joel |
+| Collateral asset, custody and legal structure | Peter |
+| Source licensing and archival rights for Hermes data | Joel |
 
-## 7. Operations — PINNED / PROPOSED
-
-| Component | Runs today | Proposed (owner) |
-|---|---|---|
-| Postgres + six ingests | dev VM `eox-dev`, GCP `colosseum-eox` | unchanged (Joel) |
-| Evidence adapter and artifact server | — | same VM, systemd service (Joel) |
-| Oracle worker | local fixture only | same VM, systemd service, journal on persistent disk (Peter, Joel) |
-| Annual adapter | Sepolia, deployed 2026-10-08 | relay bot for `publishResult` and the VAA post (Godwin) |
-| Continuous program | devnet tests | deploy to Solana devnet (Peter) |
-| App backend | — | after §5 and §6 are closed |
-
-Testnets: EVM Sepolia and Solana devnet. The adapter README targets Base for
-mainnet.
-
-## 8. Rules for every agent
-
-1. Read this file and `AGENTS.md` before working.
-2. Never invent a publication time, a value or a precision. Use `raw_value` and
-   a named conversion.
-3. Never mix the three clocks in §3. Name which one a timing belongs to.
-4. Never substitute one identity in §6.1 for another.
-5. Never rewrite evidence. Corrections are new records.
-6. Fetch and rebase before pushing; `main` is shared.
-7. A PROPOSED or OPEN item is not a decision. Do not build on it as if it were.
-
-## 9. Sign-off
+## 13. Sign-off
 
 | Section | Needs | Signed |
 |---|---|---|
-| §3.2 production challenge window | Peter | |
-| §3.3 epoch id = settlement year | Peter, Godwin | |
-| §4 six live indicators | Peter | |
-| §5.2–5.6 adapter mapping, change feed, artifacts | Peter, Joel | |
-| §5.3 precision rule | Peter | |
-| §5.4 publication-time policy | Peter | |
-| §6.3 continuous challenge authentication | Peter, Godwin | |
-| §6.4 annual claim mapping | Peter, Godwin | |
+| §3.2–3.3 batch and publication timing | Peter | |
+| §4.1 MVP roster | Peter, Joel | |
+| §4.2 CRYPTO construction | Peter | |
+| §5.1 COX evidence schema | Joel | |
+| §5.2–5.3 on-chain prices and arithmetic | Peter, Godwin (monitor) | |
+| §6.3 snapshot selection | Peter, Joel, Godwin | |
+| §7 transfer rule MVP-0 and units | Peter | |
+| §8 requests | Peter, Joel (builders), Godwin (UI) | |
+| §9 failure and governance | Peter | |

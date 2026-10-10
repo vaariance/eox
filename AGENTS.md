@@ -297,3 +297,11 @@ another agent needs to know.
 - **Rules for agents:** This is a review draft, not a deployed mechanism or an amendment to EOX `SYSTEM.md`. Do not introduce fundamentals, market-cap growth, volume scoring, mandatory terminal epochs or a signal multiplier. Preserve the distinction between COX reference and redeemable value; the illustrative normalized transfer formula is not selected and its common benchmark cancels.
 - **Open:** Benchmark policy, final transfer rule, holdable CRYPTO rights, source/cutoff rules, exceptional states and production proofs.
 - **Refs:** `docs/cox/cox-paper-3.md`, `docs/cox/build_pdf.py`, `docs/cox/verification.json`; EOX Paper 3 and RPM Paper 1 in `docs/papers`.
+
+### 2026-10-10 · Peter (Claude Code) · Pivot from EOX to COX: SYSTEM.md v2 and product.md v9
+
+- **Area:** `SYSTEM.md` (version 2), `product.md` (version 9); no code changed.
+- **What:** At Peter's request, rewrote both documents for COX (`docs/cox/cox-paper-3.md`). `SYSTEM.md` v2 is the COX engineering contract: Pyth prices via an archived Hermes update per one-minute cutoff, one `cox` Solana program (CRYPTO, references, closed-pool revaluation, batch execution), test collateral, no UMA/EVM/Wormhole relay of our own, independent monitor. `product.md` v9 assigns every existing EOX component to one owner as preserve, carry over or delete, lists new tasks J1–J5, P0–P5, G1–G4, and gives the execution order to the devnet MVP.
+- **Rules for agents:** Supersedes every earlier entry's rules about UMA assertions, Wormhole relay, the continuous and annual adapters, economic indicators, publication-time policies, confidence assessments and the exchange equations; those components are being deleted. Do not delete code until Peter has pushed the `eox-archive` tag. `COX/TRANSFER/MVP-0` is a test mechanism, not the production transfer rule. SYSTEM.md v2 items are PROPOSED until its §13 sign-off.
+- **Open:** All §13 sign-offs. Hermes update endpoints returned `unauthorized` without an API key on 2026-10-10 (Joel). ZEC admission depends on Joel's feed check.
+- **Refs:** `SYSTEM.md`, `product.md`, `docs/cox/cox-paper-3.md`; EOX versions in git history.
