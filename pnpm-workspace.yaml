@@ -1,7 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
-  - "packages/optimistic-oracle/sdk"
 allowBuilds:
   bufferutil: false
   esbuild: true
