@@ -48,6 +48,13 @@ describe("reference", () => {
   });
 });
 
+describe("reference rejection", () => {
+  it("refuses a benchmark growth that rounds to zero", () => {
+    const collapse = { previousPrices: [10n ** 18n, 10n ** 18n], currentPrices: [1n, 1n], originPrices: [10n ** 18n, 10n ** 18n], previousBenchmark: 100n * SCALE };
+    expect(code(() => computeReference(collapse))).toBe("InvalidBenchmark");
+  });
+});
+
 describe("revaluation", () => {
   it("never creates collateral and leaves less than one base unit per class in the residual", () => {
     const next = generator(11);
