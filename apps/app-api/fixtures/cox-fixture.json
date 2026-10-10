@@ -1,0 +1,674 @@
+{
+  "schema": "cox.app-api/fixture/v1",
+  "source": {
+    "oracle": "packages/cox-methodology/src/vectors.ts",
+    "oracleSha256": "ea87c0886d255a5851bbf8bbb76e5c0b0ee18e68e2215a0db4aec95e11eccc4e",
+    "note": "Two synthetic assets and CRYPTO computed with Peter's P1 oracle (reference, revalue, batch). Synthetic prices and wallets; not market data."
+  },
+  "methodology": {
+    "digest": null,
+    "label": "CRYPTO (fixture, 2 synthetic assets)",
+    "status": "draft",
+    "assetCount": 2
+  },
+  "assets": [
+    {
+      "assetId": "SYNA",
+      "name": "Synthetic asset A",
+      "classIndex": 0
+    },
+    {
+      "assetId": "SYNB",
+      "name": "Synthetic asset B",
+      "classIndex": 1
+    }
+  ],
+  "classIds": [
+    "SYNA",
+    "SYNB",
+    "CRYPTO"
+  ],
+  "publications": [
+    {
+      "sequence": 0,
+      "batch": 0,
+      "predecessorSequence": null,
+      "predecessorBatch": null,
+      "missedBatches": [],
+      "prices": [
+        {
+          "assetId": "SYNA",
+          "priceE8": "10000000000"
+        },
+        {
+          "assetId": "SYNB",
+          "priceE8": "10000000000"
+        }
+      ],
+      "benchmarkGross": null,
+      "benchmark": "100000000000000",
+      "references": [
+        {
+          "assetId": "SYNA",
+          "gross": null,
+          "reference": "100000000000000"
+        },
+        {
+          "assetId": "SYNB",
+          "gross": null,
+          "reference": "100000000000000"
+        }
+      ],
+      "classes": [
+        {
+          "classId": "SYNA",
+          "classIndex": 0,
+          "transferFactor": null,
+          "preRevaluation": {
+            "backing": "0",
+            "units": "0"
+          },
+          "fixed": {
+            "backing": "0",
+            "units": "0"
+          },
+          "final": {
+            "backing": "0",
+            "units": "0"
+          }
+        },
+        {
+          "classId": "SYNB",
+          "classIndex": 1,
+          "transferFactor": null,
+          "preRevaluation": {
+            "backing": "0",
+            "units": "0"
+          },
+          "fixed": {
+            "backing": "0",
+            "units": "0"
+          },
+          "final": {
+            "backing": "0",
+            "units": "0"
+          }
+        },
+        {
+          "classId": "CRYPTO",
+          "classIndex": 2,
+          "transferFactor": null,
+          "preRevaluation": {
+            "backing": "0",
+            "units": "0"
+          },
+          "fixed": {
+            "backing": "0",
+            "units": "0"
+          },
+          "final": {
+            "backing": "0",
+            "units": "0"
+          }
+        }
+      ],
+      "flows": {
+        "acceptedDeposits": "0",
+        "newPayable": "0",
+        "transferResidual": "0",
+        "flowResidual": "0",
+        "executed": 0,
+        "rejected": 0
+      },
+      "ledger": {
+        "active": "0",
+        "pending": "0",
+        "refundable": "0",
+        "payable": "0",
+        "residual": "0",
+        "vault": "0"
+      }
+    },
+    {
+      "sequence": 1,
+      "batch": 1,
+      "predecessorSequence": 0,
+      "predecessorBatch": 0,
+      "missedBatches": [],
+      "prices": [
+        {
+          "assetId": "SYNA",
+          "priceE8": "10000000000"
+        },
+        {
+          "assetId": "SYNB",
+          "priceE8": "10000000000"
+        }
+      ],
+      "benchmarkGross": "1000000000000",
+      "benchmark": "100000000000000",
+      "references": [
+        {
+          "assetId": "SYNA",
+          "gross": "1000000000000",
+          "reference": "100000000000000"
+        },
+        {
+          "assetId": "SYNB",
+          "gross": "1000000000000",
+          "reference": "100000000000000"
+        }
+      ],
+      "classes": [
+        {
+          "classId": "SYNA",
+          "classIndex": 0,
+          "transferFactor": "1000000000000",
+          "preRevaluation": {
+            "backing": "0",
+            "units": "0"
+          },
+          "fixed": {
+            "backing": "0",
+            "units": "0"
+          },
+          "final": {
+            "backing": "100",
+            "units": "100000000000000"
+          }
+        },
+        {
+          "classId": "SYNB",
+          "classIndex": 1,
+          "transferFactor": "1000000000000",
+          "preRevaluation": {
+            "backing": "0",
+            "units": "0"
+          },
+          "fixed": {
+            "backing": "0",
+            "units": "0"
+          },
+          "final": {
+            "backing": "50",
+            "units": "50000000000000"
+          }
+        },
+        {
+          "classId": "CRYPTO",
+          "classIndex": 2,
+          "transferFactor": "1000000000000",
+          "preRevaluation": {
+            "backing": "0",
+            "units": "0"
+          },
+          "fixed": {
+            "backing": "0",
+            "units": "0"
+          },
+          "final": {
+            "backing": "20",
+            "units": "20000000000000"
+          }
+        }
+      ],
+      "flows": {
+        "acceptedDeposits": "170",
+        "newPayable": "0",
+        "transferResidual": "0",
+        "flowResidual": "0",
+        "executed": 3,
+        "rejected": 0
+      },
+      "ledger": {
+        "active": "170",
+        "pending": "0",
+        "refundable": "0",
+        "payable": "0",
+        "residual": "0",
+        "vault": "170"
+      }
+    },
+    {
+      "sequence": 2,
+      "batch": 2,
+      "predecessorSequence": 1,
+      "predecessorBatch": 1,
+      "missedBatches": [],
+      "prices": [
+        {
+          "assetId": "SYNA",
+          "priceE8": "12000000000"
+        },
+        {
+          "assetId": "SYNB",
+          "priceE8": "8000000000"
+        }
+      ],
+      "benchmarkGross": "1000000000000",
+      "benchmark": "100000000000000",
+      "references": [
+        {
+          "assetId": "SYNA",
+          "gross": "1200000000000",
+          "reference": "120000000000000"
+        },
+        {
+          "assetId": "SYNB",
+          "gross": "800000000000",
+          "reference": "80000000000000"
+        }
+      ],
+      "classes": [
+        {
+          "classId": "SYNA",
+          "classIndex": 0,
+          "transferFactor": "1200000000000",
+          "preRevaluation": {
+            "backing": "100",
+            "units": "100000000000000"
+          },
+          "fixed": {
+            "backing": "113",
+            "units": "100000000000000"
+          },
+          "final": {
+            "backing": "108",
+            "units": "96194690265486"
+          }
+        },
+        {
+          "classId": "SYNB",
+          "classIndex": 1,
+          "transferFactor": "800000000000",
+          "preRevaluation": {
+            "backing": "50",
+            "units": "50000000000000"
+          },
+          "fixed": {
+            "backing": "37",
+            "units": "50000000000000"
+          },
+          "final": {
+            "backing": "29",
+            "units": "40000000000000"
+          }
+        },
+        {
+          "classId": "CRYPTO",
+          "classIndex": 2,
+          "transferFactor": "1000000000000",
+          "preRevaluation": {
+            "backing": "20",
+            "units": "20000000000000"
+          },
+          "fixed": {
+            "backing": "18",
+            "units": "20000000000000"
+          },
+          "final": {
+            "backing": "18",
+            "units": "20000000000000"
+          }
+        }
+      ],
+      "flows": {
+        "acceptedDeposits": "0",
+        "newPayable": "11",
+        "transferResidual": "2",
+        "flowResidual": "2",
+        "executed": 2,
+        "rejected": 1
+      },
+      "ledger": {
+        "active": "155",
+        "pending": "30",
+        "refundable": "30",
+        "payable": "11",
+        "residual": "4",
+        "vault": "200"
+      }
+    },
+    {
+      "sequence": 3,
+      "batch": 4,
+      "predecessorSequence": 2,
+      "predecessorBatch": 2,
+      "missedBatches": [
+        3
+      ],
+      "prices": [
+        {
+          "assetId": "SYNA",
+          "priceE8": "13000000000"
+        },
+        {
+          "assetId": "SYNB",
+          "priceE8": "7000000000"
+        }
+      ],
+      "benchmarkGross": "979166666667",
+      "benchmark": "97916666666700",
+      "references": [
+        {
+          "assetId": "SYNA",
+          "gross": "1083333333333",
+          "reference": "132765957446763"
+        },
+        {
+          "assetId": "SYNB",
+          "gross": "875000000000",
+          "reference": "71489361702103"
+        }
+      ],
+      "classes": [
+        {
+          "classId": "SYNA",
+          "classIndex": 0,
+          "transferFactor": "1106382978723",
+          "preRevaluation": {
+            "backing": "108",
+            "units": "96194690265486"
+          },
+          "fixed": {
+            "backing": "113",
+            "units": "96194690265486"
+          },
+          "final": {
+            "backing": "113",
+            "units": "96194690265486"
+          }
+        },
+        {
+          "classId": "SYNB",
+          "classIndex": 1,
+          "transferFactor": "893617021276",
+          "preRevaluation": {
+            "backing": "29",
+            "units": "40000000000000"
+          },
+          "fixed": {
+            "backing": "24",
+            "units": "40000000000000"
+          },
+          "final": {
+            "backing": "24",
+            "units": "40000000000000"
+          }
+        },
+        {
+          "classId": "CRYPTO",
+          "classIndex": 2,
+          "transferFactor": "1000000000000",
+          "preRevaluation": {
+            "backing": "18",
+            "units": "20000000000000"
+          },
+          "fixed": {
+            "backing": "17",
+            "units": "20000000000000"
+          },
+          "final": {
+            "backing": "17",
+            "units": "20000000000000"
+          }
+        }
+      ],
+      "flows": {
+        "acceptedDeposits": "0",
+        "newPayable": "0",
+        "transferResidual": "1",
+        "flowResidual": "0",
+        "executed": 0,
+        "rejected": 1
+      },
+      "ledger": {
+        "active": "154",
+        "pending": "70",
+        "refundable": "70",
+        "payable": "11",
+        "residual": "5",
+        "vault": "240"
+      }
+    }
+  ],
+  "wallets": [
+    {
+      "owner": "HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU",
+      "positions": [
+        {
+          "classId": "SYNA",
+          "units": "90000000000000",
+          "locked": "0"
+        }
+      ],
+      "payable": "11",
+      "refundable": "0",
+      "pending": "25",
+      "requests": [
+        {
+          "requestId": "alice-1",
+          "owner": "HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU",
+          "operation": "deposit",
+          "fromClass": null,
+          "toClass": "SYNA",
+          "amount": "100",
+          "units": null,
+          "minimumUnits": "0",
+          "minimumProceeds": null,
+          "targetBatch": 1,
+          "expiryBatch": 3,
+          "state": "filled",
+          "receipt": {
+            "requestId": "alice-1",
+            "sequence": 1,
+            "batch": 1,
+            "status": "filled",
+            "minted": "100000000000000",
+            "proceeds": "0"
+          }
+        },
+        {
+          "requestId": "alice-2",
+          "owner": "HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU",
+          "operation": "redeem",
+          "fromClass": "SYNA",
+          "toClass": null,
+          "amount": null,
+          "units": "10000000000000",
+          "minimumUnits": null,
+          "minimumProceeds": "0",
+          "targetBatch": 2,
+          "expiryBatch": 4,
+          "state": "filled",
+          "receipt": {
+            "requestId": "alice-2",
+            "sequence": 2,
+            "batch": 2,
+            "status": "filled",
+            "minted": "0",
+            "proceeds": "11"
+          }
+        },
+        {
+          "requestId": "alice-3",
+          "owner": "HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU",
+          "operation": "deposit",
+          "fromClass": null,
+          "toClass": "CRYPTO",
+          "amount": "25",
+          "units": null,
+          "minimumUnits": "0",
+          "minimumProceeds": null,
+          "targetBatch": 5,
+          "expiryBatch": 7,
+          "state": "queued",
+          "receipt": null
+        }
+      ]
+    },
+    {
+      "owner": "7TKNJWWpjcVWsnwo9TJvJyBMFLDwvgpKdDxPqmfw87cp",
+      "positions": [
+        {
+          "classId": "SYNA",
+          "units": "6194690265486",
+          "locked": "0"
+        },
+        {
+          "classId": "SYNB",
+          "units": "40000000000000",
+          "locked": "0"
+        }
+      ],
+      "payable": "0",
+      "refundable": "0",
+      "pending": "0",
+      "requests": [
+        {
+          "requestId": "bob-1",
+          "owner": "7TKNJWWpjcVWsnwo9TJvJyBMFLDwvgpKdDxPqmfw87cp",
+          "operation": "deposit",
+          "fromClass": null,
+          "toClass": "SYNB",
+          "amount": "50",
+          "units": null,
+          "minimumUnits": "0",
+          "minimumProceeds": null,
+          "targetBatch": 1,
+          "expiryBatch": 3,
+          "state": "filled",
+          "receipt": {
+            "requestId": "bob-1",
+            "sequence": 1,
+            "batch": 1,
+            "status": "filled",
+            "minted": "50000000000000",
+            "proceeds": "0"
+          }
+        },
+        {
+          "requestId": "bob-2",
+          "owner": "7TKNJWWpjcVWsnwo9TJvJyBMFLDwvgpKdDxPqmfw87cp",
+          "operation": "switch",
+          "fromClass": "SYNB",
+          "toClass": "SYNA",
+          "amount": null,
+          "units": "10000000000000",
+          "minimumUnits": "0",
+          "minimumProceeds": null,
+          "targetBatch": 2,
+          "expiryBatch": 4,
+          "state": "filled",
+          "receipt": {
+            "requestId": "bob-2",
+            "sequence": 2,
+            "batch": 2,
+            "status": "filled",
+            "minted": "6194690265486",
+            "proceeds": "7"
+          }
+        }
+      ]
+    },
+    {
+      "owner": "GBZafz1m5qSDc3br2zEa2YG4hvQqj5DESk694byEwcNa",
+      "positions": [
+        {
+          "classId": "CRYPTO",
+          "units": "20000000000000",
+          "locked": "0"
+        }
+      ],
+      "payable": "0",
+      "refundable": "0",
+      "pending": "0",
+      "requests": [
+        {
+          "requestId": "carol-1",
+          "owner": "GBZafz1m5qSDc3br2zEa2YG4hvQqj5DESk694byEwcNa",
+          "operation": "deposit",
+          "fromClass": null,
+          "toClass": "CRYPTO",
+          "amount": "20",
+          "units": null,
+          "minimumUnits": "0",
+          "minimumProceeds": null,
+          "targetBatch": 1,
+          "expiryBatch": 3,
+          "state": "filled",
+          "receipt": {
+            "requestId": "carol-1",
+            "sequence": 1,
+            "batch": 1,
+            "status": "filled",
+            "minted": "20000000000000",
+            "proceeds": "0"
+          }
+        }
+      ]
+    },
+    {
+      "owner": "3vdUxQYrGNUPyK1QNDkeyXDDfHvgTE3JQZjKZ6pUr4rX",
+      "positions": [],
+      "payable": "0",
+      "refundable": "30",
+      "pending": "30",
+      "requests": [
+        {
+          "requestId": "dave-1",
+          "owner": "3vdUxQYrGNUPyK1QNDkeyXDDfHvgTE3JQZjKZ6pUr4rX",
+          "operation": "deposit",
+          "fromClass": null,
+          "toClass": "SYNB",
+          "amount": "30",
+          "units": null,
+          "minimumUnits": "1000000000000000",
+          "minimumProceeds": null,
+          "targetBatch": 2,
+          "expiryBatch": 4,
+          "state": "condition-failed",
+          "receipt": {
+            "requestId": "dave-1",
+            "sequence": 2,
+            "batch": 2,
+            "status": "condition-failed",
+            "minted": "0",
+            "proceeds": "0"
+          }
+        }
+      ]
+    },
+    {
+      "owner": "HEkyBsK77wJPKjd4WS3d2auyJZqdwmVJt9w1SE2Uq9jZ",
+      "positions": [],
+      "payable": "0",
+      "refundable": "40",
+      "pending": "40",
+      "requests": [
+        {
+          "requestId": "erin-1",
+          "owner": "HEkyBsK77wJPKjd4WS3d2auyJZqdwmVJt9w1SE2Uq9jZ",
+          "operation": "deposit",
+          "fromClass": null,
+          "toClass": "SYNA",
+          "amount": "40",
+          "units": null,
+          "minimumUnits": "0",
+          "minimumProceeds": null,
+          "targetBatch": 3,
+          "expiryBatch": 3,
+          "state": "expired",
+          "receipt": {
+            "requestId": "erin-1",
+            "sequence": 3,
+            "batch": 4,
+            "status": "expired",
+            "minted": "0",
+            "proceeds": "0"
+          }
+        }
+      ]
+    }
+  ]
+}
