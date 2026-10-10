@@ -407,3 +407,11 @@ another agent needs to know.
 - **Rules for agents:** Compare only snapshots with `digestEncoding: "COX/WIRE/V1"`. Snapshots up to cutoff `1791668100` carry an unlabelled provisional digest; the monitor must skip or flag them, never report them as mismatches of the wire format.
 - **Open:** Peter: the draft manifest disables Bybit, but the archiver uses it (the dev VM now runs in `europe-west1-b`, where Bybit returns 200; the team is not in a restricted jurisdiction). Under that manifest a Bybit step-3 price would be invalid, so decide Bybit on or off before sealing. `dev` is not merged into `main` yet.
 - **Refs:** `packages/ingestion/test/cox-digest.test.ts`, commits `6c710e7`..`3559f2e`.
+
+### 2026-10-10 · Joel (Claude Code) · dev merged into main
+
+- **Area:** whole repository; `apps/web/package.json`, `pnpm-lock.yaml`.
+- **What:** On the team's go-ahead, merged `origin/dev` (P1 spec and vectors, `@cox/methodology`, `apps/cox-monitor` maths, `apps/web`, the EVM/UMA removal) into `main` at `3012698` and deployed `b42e455` to the dev VM; all services and the archiver run normally. `lucide-react@1.55.0` (published 2026-10-10) failed pnpm's minimum release age, so `apps/web` now uses `^1.54.0`, locked at 1.54.0 with its registry integrity (`b42e455`). On `main` every evidence, ingestion, price-feeds, app-api, methodology, monitor, signer and signing test passes and every package builds; the EOX `oracle-worker` journal tests still fail only on Windows (`EPERM` on directory fsync), as recorded on 2026-10-08.
+- **Rules for agents:** Work from `main`; `dev` is now behind it. Never bypass the release-age policy: pin to the previous release instead.
+- **Open:** Peter: Bybit on or off in the manifest; whether `dev` is kept or retired.
+- **Refs:** commits `3012698`, `b42e455`.
