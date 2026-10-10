@@ -1,0 +1,39 @@
+{
+  "schema": "COX/P2-VERIFICATION/V1",
+  "status": "passed",
+  "rustVersion": "1.90.0",
+  "rustImage": "rust@sha256:e227f20ec42af3ea9a3c9c1dd1b2012aa15f12279b5e9d5fb890ca1c2bb5726c",
+  "sourceDigest": "9fa6fd7b40c4a2359378ae918160f4ec91b5afa4fdd4589a65f2845c7bd7b8ff",
+  "sourceDigestRule": "SHA256 of sorted Cargo workspace/lock/manifests and crate .rs files: relative UTF8 path + NUL + contents + NUL",
+  "p1Commit": "7810e09",
+  "rustTests": 19,
+  "methodologyTests": 13,
+  "clippy": "passed with -D warnings",
+  "format": "passed",
+  "vectorParity": {
+    "arithmetic": 9,
+    "priceBytesAndHashes": 2,
+    "snapshotBytesAndHash": 1
+  },
+  "simulationCoverage": {
+    "seededPublications": 2880,
+    "priceSeries": 30,
+    "claimClasses": 31,
+    "roundTrips": 6200,
+    "massExitRequests": 3100,
+    "splitComparisons": 1410
+  },
+  "bounds": [
+    "input and resulting class units*backing checked in i128",
+    "total_active^2*1e12 checked in i128",
+    "zero and excess stored amounts rejected",
+    "arithmetic failures return no partial output"
+  ],
+  "limitations": [
+    "synthetic finite scenarios, not production economic/security proof",
+    "rounding can move existing backing into non-distributable residual",
+    "P3 must enforce per-owner reservation, lifecycle, supported capacity/admission and atomicity",
+    "no venue authentication, Solana deployment or throughput result"
+  ],
+  "deletions": "none: Peter candidates scheduled after P3 and still have shared callers"
+}

@@ -352,6 +352,14 @@ another agent needs to know.
 - **Open:** P2 parity and P3 runtime/capacity verification; Joel's separately assigned feed check. No deployment or commit performed.
 - **Refs:** `packages/cox/SPEC.md` sections 1 and 7, `SYSTEM.md` section 3.3, `product.md` section 4.
 
+### 2026-10-10 · Peter (Codex) · P2 COX math, CLI and simulations
+
+- **Area:** `packages/cox` Rust workspace, fixtures, research and results.
+- **What:** Implemented independent checked Rust reference/MVP-0/fixed-value flow arithmetic, pure custody ledger transitions, strict JSON CLI and price/snapshot encoders. All nine P1 arithmetic and three wire vectors match. Nineteen Rust tests, thirteen methodology tests, strict Clippy and formatting pass; simulations cover 2,880 thirty-asset publications, 6,200 round trips, 1,410 split comparisons and a 3,100-request full exit.
+- **Rules for agents:** Use `cox-math` for P3 calculations. Preserve bound publication values across slow execution; no fill deadline. Enforce supported-state products before accepting resulting balances: storage widths alone do not guarantee arithmetic safety. Residual remains outside active backing; tiny operations can erode backing into residual despite no tested user extraction. These are finite synthetic devnet-mechanism checks, not production approval.
+- **Open:** P3 ownership/lifecycle, atomic execution, conservative admission and runtime capacity. Product step 10 schedules Peter's EOX deletions after P3; current Joel/Godwin callers still import them, so no premature deletions were made. P1's referenced SPEC.md is absent from commit 7810e09; P2 documents exact implemented rules in its README. An unrelated root `spec.md` appeared during work and was left untouched.
+- **Refs:** `packages/cox/README.md`, `packages/cox/results/verification.json`, `packages/cox/research/deletion-audit.md`, `packages/cox/research/simulation-methods.md`.
+
 ### 2026-10-10 · Godwin (Claude Code) · G1 done: EVM/UMA stack removed
 
 - **Area:** `packages/optimistic-oracle` (deleted), `apps/uma-relay` (deleted), new `apps/cox-monitor`.
