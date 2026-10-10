@@ -18,14 +18,19 @@ export interface SnapshotIdentity {
   snapshotId: string;
   sequence: number;
   epoch: string;
-  methodology: string;
+  epochAddress: string | null;
+  configurationDigest: string;
   baselineId: string;
   predecessor: string | null;
   cutoff: UnixSeconds;
   postcommittedAt: UnixSeconds;
   publishedAt: UnixSeconds;
-  evidenceCommitment: string;
-  finalization: { transaction: string | null; finalized: true };
+  evidenceDigest: string;
+  precommitment: string;
+  postcommitment: string;
+  challengeEventDigest: string;
+  challengeEventCount: number;
+  finalization: { transaction: string | null; slot: number | null; finalized: true };
 }
 
 export interface CountryState {
@@ -137,6 +142,7 @@ export interface Status {
   referenceAgeSeconds: number | null;
   staleAfterSeconds: number;
   stale: boolean;
+  paused: boolean;
   eligibleForExecution: boolean;
 }
 
