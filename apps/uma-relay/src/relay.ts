@@ -19,9 +19,14 @@ export interface Transaction {
   value?: bigint;
 }
 
+export interface Operation {
+  id: string;
+  kind: "settle" | "close" | "publish";
+}
+
 export interface Sender {
   readonly address: Address;
-  send(transaction: Transaction): Promise<Hash>;
+  send(transaction: Transaction, operation: Operation): Promise<Hash>;
 }
 
 export interface ProposalState {
@@ -130,7 +135,7 @@ export class Relay {
       }
       if (record.deadline > now) continue;
       const data = encodeFunctionData({ abi: oracleAbi, functionName: "settleAssertion", args: [assertionId as Hex] });
-      if (await this.attempt(`settle:${assertionId}`, { to: oracle, data })) {
+      if (await this.attempt({ id: `settle:${assertionId}`, kind: "settle" }, { to: oracle, data })) {
         assertion.resolved = true;
         settled += 1;
       }
@@ -143,7 +148,7 @@ export class Relay {
     for (const [proposalId, proposal] of Object.entries(this.state.proposals)) {
       if (proposal.closed || proposal.evidence === null) continue;
       const data = encodeFunctionData({ abi: adapterAbi, functionName: "close", args: [proposalId as Hex, proposal.evidence] });
-      if (await this.attempt(`close:${proposalId}`, { to: this.options.adapter, data })) {
+      if (await this.attempt({ id: `close:${proposalId}`, kind: "close" }, { to: this.options.adapter, data })) {
         proposal.closed = true;
         closed += 1;
       }
@@ -168,7 +173,8 @@ export class Relay {
           functionName: "publish",
           args: [proposalId as Hex, BigInt(eventNumber), proposal.messages[eventNumber]!],
         });
-        if (await this.attempt(`publish:${proposalId}:${eventNumber}`, { to: this.options.adapter, data, value: fee })) {
+        const operation: Operation = { id: `publish:${proposalId}:${eventNumber}`, kind: "publish" };
+        if (await this.attempt(operation, { to: this.options.adapter, data, value: fee })) {
           this.markPublished(proposal, eventNumber);
           published += 1;
         }
@@ -177,8 +183,9 @@ export class Relay {
     return published;
   }
 
-  private async attempt(key: string, transaction: Transaction): Promise<boolean> {
+  private async attempt(operation: Operation, transaction: Transaction): Promise<boolean> {
     const { client, sender } = this.options;
+    const key = operation.id;
     const earlier = this.state.inFlight[key];
     if (earlier) {
       const outcome = await this.outcome(earlier);
@@ -192,7 +199,7 @@ export class Relay {
       this.options.log?.(`${key} not sent: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
       return false;
     }
-    const hash = await sender.send(transaction);
+    const hash = await sender.send(transaction, operation);
     this.state.inFlight[key] = hash;
     await this.options.save(this.state);
     try {
