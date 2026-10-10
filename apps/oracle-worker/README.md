@@ -6,13 +6,20 @@ Godwin: use the [continuous claim and relay contract](../../packages/oracle/PROT
 and its shared exact-byte/hash vectors. Joel: use the [account layouts and reference
 readers](REFERENCE-READERS.md) and [minimal example](examples/read-reference.ts).
 The existing package exports `./protocol` and `./references` for TypeScript consumers.
-Authenticated relay acceptance remains task #2; this handoff adds no signer or API.
+For the authenticated receiver helpers and their explicit integration boundary, see
+[Authenticated receiver](AUTHENTICATED-RECEIVER.md). They add no signer or API.
 
 This package consumes an oracle-owned `EvidenceProvider`. It does not import ingestion or access the evidence-store database. The fixture provider is the only shipped provider.
 
 `SolanaTransport` sends real Anchor transactions and reads finalized accounts. It never falls back to a fake chain. Worker tests use an explicitly named simulated transport; those tests are not evidence of Solana execution.
 
 ## Local fixture and preview
+
+`EOX/PUBLICATION/V2` admits OECD/BIS records with missing source publication time
+using their immutable `recordedAt`. PortWatch source milliseconds are floored to
+whole seconds. `admitPublicationTime` is exported at `./publication`; readiness and
+Rust input encoding both use it. The conversion basis is committed in metadata.
+This does not change economic-value precision or implement the live HTTP provider.
 
 From the repository root, after installing workspace dependencies and building the Rust preview binary:
 

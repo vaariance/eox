@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { ChangePage, EvidenceProvider, EvidenceRecord } from "./types.js";
+import { admitPublicationTime } from "./publication.js";
 
 export function sha256(bytes: Uint8Array | string): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -17,8 +18,7 @@ export function exactValue(value: string): bigint {
 }
 
 export function assertReady(record: EvidenceRecord, now: number): void {
-  if (record.publishedAt === null) throw new Error(`MissingPublicationTime:${record.recordId}`);
-  if (!Number.isSafeInteger(record.publishedAt) || record.publishedAt > now || record.publishedAt < 0) throw new Error(`InvalidPublicationTime:${record.recordId}`);
+  admitPublicationTime(record, now);
   exactValue(record.value);
   if (!Array.isArray(record.confidenceBps) || record.confidenceBps.length !== 8 || record.confidenceBps.some(x => !Number.isInteger(x) || x < 0 || x > 10_000)) throw new Error(`InvalidConfidence:${record.recordId}`);
   if (!/^[a-f0-9]{64}$/.test(record.artifactDigest)) throw new Error(`InvalidArtifactDigest:${record.recordId}`);

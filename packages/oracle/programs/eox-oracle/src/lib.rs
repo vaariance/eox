@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 use eox_oracle_math as math;
+mod authenticated;
+pub use authenticated::*;
 
 declare_id!("D1HhP4kVA73bj6c4MfX5yzMZDvQRx5DTRP3xpC2YCe85");
 const EMPTY: Pubkey = Pubkey::new_from_array([0; 32]);
@@ -63,6 +65,18 @@ fn country_result(x: &CountryOutput) -> math::CountryResult {
 #[program]
 pub mod eox_oracle {
     use super::*;
+    pub fn create_receiver(ctx: Context<CreateReceiver>, id: u64, settings: ReceiverSettings) -> Result<()> { authenticated::create_receiver(ctx, id, settings) }
+    pub fn pin_receiver(ctx: Context<PinReceiver>) -> Result<()> { authenticated::pin_receiver(ctx) }
+    pub fn upload_claim(ctx: Context<UploadClaim>, digest: [u8;32], offset: u32, bytes: Vec<u8>) -> Result<()> { authenticated::upload_claim(ctx,digest,offset,bytes) }
+    pub fn seal_claim(ctx: Context<SealClaim>) -> Result<()> { authenticated::seal_claim(ctx) }
+    pub fn precommit_authenticated(ctx: Context<AuthOperation>) -> Result<()> { authenticated::precommit_authenticated(ctx) }
+    pub fn begin_snapshot_claim(ctx: Context<AuthOperation>) -> Result<()> { authenticated::begin_snapshot_claim(ctx) }
+    pub fn bind_claim(ctx: Context<BindClaim>, country: u8, indicator: u8, comparison: bool) -> Result<()> { authenticated::bind_claim(ctx,country,indicator,comparison) }
+    pub fn append_assertion(ctx: Context<MembershipOperation>) -> Result<()> { authenticated::append_assertion(ctx) }
+    pub fn seal_snapshot_claim(ctx: Context<AuthOperation>) -> Result<()> { authenticated::seal_snapshot_claim(ctx) }
+    pub fn audit_assertion(ctx: Context<MembershipOperation>) -> Result<()> { authenticated::audit_assertion(ctx) }
+    pub fn receive_relay(ctx: Context<ReceiveRelay>, event_number: u64) -> Result<()> { authenticated::receive_relay(ctx,event_number) }
+    pub fn apply_relay(ctx: Context<ApplyRelay>) -> Result<()> { authenticated::apply_relay(ctx) }
     pub fn initialize(ctx: Context<Initialize>, adapter: Pubkey) -> Result<()> {
         require!(
             adapter != ctx.accounts.authority.key() && adapter != EMPTY,
@@ -74,6 +88,7 @@ pub mod eox_oracle {
         Ok(())
     }
     pub fn set_pause(ctx: Context<Admin>, paused: bool) -> Result<()> {
+        require!(paused || ctx.accounts.registry.adapter != EMPTY, OracleError::Paused);
         ctx.accounts.registry.paused = paused;
         Ok(())
     }
@@ -275,6 +290,7 @@ pub mod eox_oracle {
         Ok(())
     }
     pub fn precommit(ctx: Context<SnapshotOperation>) -> Result<()> {
+        require!(ctx.accounts.snapshot.adapter != Pubkey::find_program_address(&[b"authenticated",ctx.accounts.snapshot.key().as_ref()], &crate::ID).0, OracleError::Authority);
         let s = &mut ctx.accounts.snapshot;
         active(&ctx.accounts.registry, s, s.key())?;
         if s.status == PRE {
@@ -529,6 +545,7 @@ pub mod eox_oracle {
             s.predecessor,
             OracleError::Predecessor
         );
+        require!(s.postcommitment == hash("postcommit", &(s.precommitment, s.evidence_digest, s.event_digest, ctx.accounts.registry.history_digest, s.evaluation_time))?, OracleError::Disputed);
         let e = &mut ctx.accounts.epoch;
         let countries: Vec<_> = s.countries.iter().map(country_result).collect();
         let world = m(math::world(&countries))?;

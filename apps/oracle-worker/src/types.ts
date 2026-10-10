@@ -12,6 +12,7 @@ export interface EvidenceRecord {
   publishedAt: number | null;
   knownAt: number | null;
   recordedAt: number;
+  publication?: { release: { releasedAtMs: number } } | null;
   artifactDigest: string;
   manifest: string;
   confidenceBps: [number, number, number, number, number, number, number, number];

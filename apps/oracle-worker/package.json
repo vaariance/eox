@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./authenticated": "./src/authenticated.ts",
+    "./publication": "./src/publication.ts",
     "./protocol": "./src/protocol.ts",
     "./references": "./src/references.ts"
   },

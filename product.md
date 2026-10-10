@@ -1,6 +1,6 @@
 # EOX product direction
 
-Version 7 · 9 October 2026 · Signing, trading app and ordered execution plan
+Version 8 · 10 October 2026 · Approved publication-time admission
 
 This document explains what EOX should do for its users and how the three
 developers' work must connect. It records Peter's product direction and pins the implementation rules in
@@ -154,10 +154,10 @@ record is ready for the oracle. Geffy's research informs
 source suitability; its infrastructure ratings are not economic weights or
 automatic confidence scores.
 
-Unknown publication time stays unknown. When EOX first observed a record is a
-different fact from when the source published it. V1 rejects records with unknown publication time for reference publication,
-as specified in section 8. Conversions must be explicit and reproducible;
-v1 does not admit rounded source values.
+For OECD and BIS, use the time EOX first observed the record when the source
+does not provide a publication time. For PortWatch, drop milliseconds by rounding
+down to whole seconds. Section 8 defines this approved admission rule. This time
+conversion does not permit rounding economic source values.
 
 ## 6. Ownership
 
@@ -352,31 +352,31 @@ Postgres directly or infer ordering from numeric IDs. Map countries through the
 methodology catalogue, use `seriesIdentity` and native `periodOrdinal`, select
 comparison records and compile confidence assertions on the methodology side.
 
-### 8.7 Resolve publication time without relabelling retrieval time
+### 8.7 Admit OECD/BIS first-observed times and whole-second port times
 
-**Mismatch — SYSTEM §5.4:** the proposed fallback calls first observation time
-“publication time” and assumes its error is bounded by one polling interval.
-Backfills and outages invalidate that assumption.
+**Decision — Peter:** yes to first-observed time for OECD and BIS when source
+publication time is missing. Yes to dropping PortWatch milliseconds. These rules
+replace the previous strict publication-time requirements in this section.
 
-**Joel:** keep `published_at`, `known_at` and database-stamped `recorded_at`
-separate. Archive an official release notice or actual-release metadata when
-it identifies the source edition containing the observation. Link that evidence
-to the record. Preserve null publication time where no such evidence exists.
-Do not copy first retrieval time into publication time or claim a one-hour or
-24-hour error bound. Planned release calendars alone do not prove actual release.
+**Joel:** supply the immutable database `recorded_at` for each OECD/BIS record.
+When the source has no publication time, that first-observed time is sufficient
+for oracle admission. Never replace it with the time of a later poll or API read.
+For PortWatch, convert source release milliseconds to seconds with
+`floor(milliseconds / 1000)`.
 
-**Peter:** admit only source-supported publication timestamps under v1. Convert
-an explicitly stated timezone to UTC Unix seconds. Reject missing timezone,
-date-only timestamps, future times, timestamps not exactly representable in
-whole seconds, and records published or recorded after the cutoff. Return
-`MISSING_PUBLICATION_TIME` or `INVALID_PUBLICATION_TIME` with the record identity.
-Keep the last accepted observation when a replacement fails; prevent baseline
-publication if a required initial observation fails. Known time cannot override
-recorded time.
+**Peter:** implement `EOX/PUBLICATION/V2`: prefer a supplied source timestamp;
+otherwise use `recordedAt` for sources `oecd` and `bis`. For `imf-portwatch`, floor
+the release milliseconds to whole seconds. Use the resulting timestamp for
+freshness and cutoff checks in the existing oracle math. Include the time basis
+and policy in committed evidence metadata. Do not reset the timestamp when
+carrying a record forward or retrying a proposal. Reject invalid/future times and
+records first observed after the cutoff. Other sources still require their source
+time. No source-value precision rule changes.
 
-**Joel:** supply publication provenance through new immutable records or linked
-immutable supporting artifacts; never update old evidence in place. An ingestion
-correction must not invent a new source-release timestamp.
+**Godwin:** check assertions using the same policy. Missing source publication
+time alone does not invalidate an OECD/BIS record with a valid first-observed
+time. First-observed time is the approved freshness origin; it is not a claim
+that the source released the record within the preceding hour.
 
 ### 8.8 Resolve raw precision versus rounded stored values
 
@@ -714,8 +714,8 @@ Joel can build step 9 against recorded events while the pipeline is being connec
 
 ### Blockers that must stay visible
 
-- **Joel — source readiness:** absent source-supported publication timestamps,
-  unusable revision provenance or incomplete constituents block those records.
+- **Joel — source readiness:** absent times admitted by §8.7, unusable revision
+  provenance or incomplete constituents block those records.
   They do not block UI work or fixture integration. Report the affected slots.
 - **Peter — methodology readiness:** unpopulated calibration parameters or missing
   confidence assessments block the live baseline. Do not mark a fixture run as a

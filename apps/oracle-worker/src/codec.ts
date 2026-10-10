@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { EvidenceRecord } from "./types.js";
 import { exactValue } from "./provider.js";
+import { admitPublicationTime, PUBLICATION_POLICY } from "./publication.js";
 
 export type Integer = number | string;
 export interface Rule {
@@ -59,16 +60,24 @@ export function encodedEvidenceLength(encoded: Buffer): number {
   return afterPublication + 1 + (encoded[afterPublication] === 1 ? 8 : 0) + 8 + 8 + 16;
 }
 const hashIdentity = (value: string): number[] => [...(/^[a-f0-9]{64}$/.test(value) ? Buffer.from(value, "hex") : createHash("sha256").update(value).digest())];
+export function evidenceMetadata(record: EvidenceRecord) {
+  const publication = admitPublicationTime(record);
+  const converted = publication.basis === "first-observed" || record.source === "imf-portwatch";
+  const manifest = converted ? JSON.stringify({ manifest: record.manifest, publication: { policy: PUBLICATION_POLICY, basis: publication.basis, timestamp: publication.timestamp } }) : record.manifest;
+  return { country: record.country, indicator: record.indicator, revision_id: record.revisionId, manifest,
+    supersedes: record.supersedes, comparison_record_id: record.comparisonRecordId };
+}
 export function metadataDigest(record: EvidenceRecord): Buffer {
   const string = (value: string) => { const text = Buffer.from(value); const size = Buffer.alloc(4); size.writeUInt32LE(text.length); return Buffer.concat([size, text]); };
   const optional = (value: string | undefined) => value === undefined ? Buffer.from([0]) : Buffer.concat([Buffer.from([1]), string(value)]);
-  const metadata = Buffer.concat([string(record.country), string(record.indicator), string(record.revisionId), string(record.manifest), optional(record.supersedes), optional(record.comparisonRecordId)]);
+  const value = evidenceMetadata(record);
+  const metadata = Buffer.concat([string(value.country), string(value.indicator), string(value.revision_id), string(value.manifest), optional(value.supersedes), optional(value.comparison_record_id)]);
   const domain = "evidence-metadata";
   return createHash("sha256").update(Buffer.concat([Buffer.from("EOX/ORACLE/V1\0"), string(domain), metadata])).digest();
 }
 export function adaptEvidence(record: EvidenceRecord): MathEvidence {
   const value = exactValue(record.value);
-  return { record_id: hashIdentity(record.recordId), series_id: hashIdentity(record.seriesId), artifact_digest: hashIdentity(record.artifactDigest), metadata_digest: [...metadataDigest(record)], unit: hashIdentity(record.unit), source: hashIdentity(record.source), value: value.toString(), published_at: record.publishedAt, known_at: record.knownAt, recorded_at: record.recordedAt, period: record.period, quality: record.confidenceBps };
+  return { record_id: hashIdentity(record.recordId), series_id: hashIdentity(record.seriesId), artifact_digest: hashIdentity(record.artifactDigest), metadata_digest: [...metadataDigest(record)], unit: hashIdentity(record.unit), source: hashIdentity(record.source), value: value.toString(), published_at: admitPublicationTime(record).timestamp, known_at: record.knownAt, recorded_at: record.recordedAt, period: record.period, quality: record.confidenceBps };
 }
 export function buildSlots(config: Configuration, records: EvidenceRecord[]): Slot[][] {
   return config.countries.map(country => country.indicators.map(indicator => {

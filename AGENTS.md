@@ -272,3 +272,28 @@ another agent needs to know.
 - **Rules for agents:** A claim the challenger reports as supported has only had its record and artifacts checked; that is not a check of the claim's evidence digest, metadata digest or assessment. Snapshot claims are not checked at all. Do not describe either as verified by the challenger. Give the relay and the challenger different state files. Peter's independent checker uses the separate `oracle-checker` key, not `uma-challenger`.
 - **Open:** Peter: where a challenger can fetch the confidence assessment manifest behind a claim's `assessment_digest`, and whether that digest is `compileConfidence`'s `manifestDigest`; the digest check needs the eight ratings and no assessments exist yet. Joel: a caller entry for the challenger's service account with `uma-challenger` (UMA `disputeAssertion`, bond-token `approve`). Still not built: delivering the signed Wormhole message to the Solana receiver.
 - **Refs:** `apps/uma-relay/README.md` (Challenging), commits `b2396e9`..`137c868`.
+
+### 2026-10-09 · Peter (Codex) · Authenticated receiver foundations in progress
+
+- **Area:** `packages/oracle/crates/math`, CLI verification tests.
+- **What:** Added bounded streaming commitment hashing and strict continuous posted-VAA decoding/identity checks. Rust tests cover shared vectors, malformed proofs, restart/padding boundaries and maximum-roster claim streaming. These are unwired library helpers; the Solana acceptance path is unchanged.
+- **Rules for agents:** This work belongs to product step 6, correcting the informal "task 2" receiver label in the earlier Task 1 entry. Do not describe it as a completed authenticated receiver. The instruction must derive proof ownership from AccountInfo and settings from pinned program-owned accounts, never caller-supplied claims. Injected proof tests are not guardian-verification evidence. No live publication-time policy was changed.
+- **Open:** Companion accounts, staged binding validation, assertion/receipt lifecycle, closure gate, worker recovery, IDL and compiled-program verification remain. Parallel implementation agents hit the service usage limit before making changes.
+- **Refs:** `packages/oracle/RECEIVER.md`.
+
+### 2026-10-10 · Peter (Codex) · Publication-time admission approved
+
+- **Area:** `product.md` version 8, oracle-worker admission and evidence encoding.
+- **What:** Peter explicitly approved OECD/BIS first-observed time when source publication time is missing, and dropping PortWatch milliseconds with floor-to-seconds conversion. `EOX/PUBLICATION/V2` now applies in worker readiness and Rust input adaptation; time basis is committed in metadata. Source-value precision remains unchanged.
+- **Rules for agents:** Joel supplies immutable database `recordedAt` for OECD/BIS; later polls must not reset it. PortWatch uses `floor(releasedAtMs / 1000)`; retaining the milliseconds is not an additional admission requirement. Godwin validates the same policy. These decisions supersede the strict timestamp-admission requirements in the 2026-10-09 Explicit assertion relay and admission contract entry and resolve the time-specific blockers in Joel's 2026-10-09 Step 5 entry. Do not keep asking Peter to reconfirm these decisions.
+- **Open:** Live adapter, confidence assessments and economic calibration remain separate deliverables; this change does not claim all source slots are live.
+- **Refs:** `product.md` §8.7, `apps/oracle-worker/src/publication.ts`, `apps/oracle-worker/test/publication.test.ts`.
+
+
+### 2026-10-10 · Peter (Codex) · COX Paper 3 draft
+
+- **Area:** `docs/cox`, `output/pdf/cox_paper_3.pdf`.
+- **What:** Produced a standalone 22-page Crypto Outlook Index product/system draft from Peter's price-only direction: shared CRYPTO reference, one-minute publications, next-publication execution and continuous closed-collateral participation. Includes equations, diagrams, worked accounting and source references. Arithmetic, links and rendered layout checked; two independent reviews completed.
+- **Rules for agents:** This is a review draft, not a deployed mechanism or an amendment to EOX `SYSTEM.md`. Do not introduce fundamentals, market-cap growth, volume scoring, mandatory terminal epochs or a signal multiplier. Preserve the distinction between COX reference and redeemable value; the illustrative normalized transfer formula is not selected and its common benchmark cancels.
+- **Open:** Benchmark policy, final transfer rule, holdable CRYPTO rights, source/cutoff rules, exceptional states and production proofs.
+- **Refs:** `docs/cox/cox-paper-3.md`, `docs/cox/build_pdf.py`, `docs/cox/verification.json`; EOX Paper 3 and RPM Paper 1 in `docs/papers`.
