@@ -10,7 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@eox/app-api": "workspace:*"
+    "@coral-xyz/anchor": "0.31.1",
+    "@eox/app-api": "workspace:*",
+    "@eox/methodology": "workspace:*",
+    "@eox/oracle-worker": "workspace:*",
+    "@solana/web3.js": "^1.98.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
