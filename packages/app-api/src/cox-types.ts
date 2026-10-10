@@ -1,4 +1,4 @@
-import type { UnixSeconds } from "./types.js";
+export type UnixSeconds = number;
 
 export const COX_APP_API_SCHEMA_VERSION = "cox.app-api/v1";
 export const COX_PRICE_SCALE = "100000000";
