@@ -96,3 +96,74 @@ export interface SourceRelease extends Omit<NewSourceRelease, "releasedAt"> {
   recordedAt: Date;
 }
 
+
+export interface Asset {
+  assetId: string;
+  feedId: string;
+  symbol: string;
+  quote: string;
+  recordedAt: Date;
+}
+
+export type PriceRejection =
+  | "outside_window"
+  | "unsynchronised"
+  | "exponent_mismatch"
+  | "non_positive_price"
+  | "confidence_bound";
+
+export type IncidentKind = "fetch_failed" | "decode_failed" | "missing_feed" | "unexpected_feed" | "inadmissible_snapshot";
+
+export interface NewPriceObservation {
+  assetId: string;
+  feedId: string;
+  price: string;
+  conf: string;
+  expo: number;
+  publishTime: number;
+  prevPublishTime: number;
+  rejection: PriceRejection | null;
+}
+
+export interface PriceObservation extends Omit<NewPriceObservation, "rejection"> {
+  id: string;
+  priceUpdateId: string;
+  cutoff: number;
+  rawSha256: string;
+  recordedAt: Date;
+  admissible: boolean;
+  rejection: PriceRejection | null;
+}
+
+export interface NewPriceUpdate {
+  cutoff: number;
+  rawSha256: string;
+  feedIds: string[];
+  observations: NewPriceObservation[];
+}
+
+export interface PriceUpdate {
+  id: string;
+  cutoff: number;
+  rawSha256: string;
+  feedIds: string[];
+  recordedAt: Date;
+  observations: PriceObservation[];
+}
+
+export interface NewIncident {
+  cutoff: number;
+  kind: IncidentKind;
+  detail: string;
+  rawSha256: string | null;
+}
+
+export interface Incident extends NewIncident {
+  id: string;
+  recordedAt: Date;
+}
+
+export interface PriceChangePage {
+  observations: PriceObservation[];
+  cursor: ChangeCursor | null;
+}
