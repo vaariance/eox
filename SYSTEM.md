@@ -1,6 +1,14 @@
 # COX system contract
 
-Version 2.3 · 10 October 2026 · **status: proposed, awaiting sign-off.**
+Version 2.4 · 10 October 2026 · **status: proposed, awaiting sign-off.**
+
+Version 2.4 records Peter's revised execution rule: requests become eligible
+from the next valid publication, never when created. Filling has no hard
+one-minute deadline. Finishing the eligible workload within a minute is an
+operating capacity target; slower execution continues at the same fixed
+publication values and blocks the next publication. The +55 s bound applies
+to accepting a new price snapshot, not to completing its trades. The affected
+implementation handoffs remain proposed pending the section 13 sign-offs.
 
 Version 2.3 adds Coinbase and Bybit as fallback venues used only when Kraken's
 cutoff minute is empty (§3.2), moves all venue access into a separate
@@ -67,7 +75,7 @@ cox program (Solana devnet)                                    [Peter]
   3 reference engine: CRYPTO level, asset references
   4 collateral engine: revalue existing claim classes
   5 execute batch k requests at the post-revaluation unit values
-  6 commit publication k (predecessor-linked, atomic to users)
+  6 complete publication k after execution (predecessor-linked, atomic to users)
   │
   ├──► cox-monitor: re-fetch venues, recompute every publication [Godwin]
   └──► app API: indexer, quotes, unsigned transactions          [Joel]
@@ -154,9 +162,12 @@ is not smoothed or corrected; the app shows the venue next to each price.
 
 | Item | Value |
 |---|---|
-| Publication `k` | revaluation and execution for batch `k`, committed in program state |
-| Commit deadline | `cutoff_k + 55 s`; after it, batch `k` cannot publish and its requests roll to batch `k+1` unless expired |
-| Missed batch | no publication; the next valid publication spans the elapsed interval (Paper 3 §3) |
+| Publication `k` | accepts the batch snapshot and fixes revaluation/unit values; eligible requests execute afterward, and final accounting commits on completion |
+| Snapshot acceptance deadline | `cutoff_k + 55 s`; if no snapshot is accepted by then, batch `k` is missed and requests roll forward unless expired |
+| Fill deadline | none; a request never executes when created and becomes eligible from the next valid publication |
+| Execution capacity target | provision and load-test servers and workers to finish all eligible requests within one minute under the declared supported load |
+| Execution overrun | continue the accepted batch at its fixed values; do not cancel, roll or reprice it because a minute elapsed; block the next publication until complete |
+| Missed batch | no new snapshot accepted; the next valid publication spans the elapsed interval (Paper 3 §3); this does not undo an executing batch |
 | Delayed status | no publication for 3 consecutive cutoffs |
 | Halted status | no publication for 60 consecutive cutoffs (§9) |
 
@@ -416,7 +427,7 @@ p_i = V_i / U_i         minted = floor(d / p_i)        proceeds = floor(x · p_i
 ```
 
 Order inside a publication: revalue existing classes → fix every `p_i` → execute
-all batch requests at those fixed `p_i` → commit. Request processing order
+all batch requests at those fixed `p_i` → commit on completion, with no fill deadline. Request processing order
 cannot change any outcome. A switch is a redemption and a deposit at the same
 fixed `p`. Edge rules: an empty class bootstraps at `p = 1` (scaled); a class
 with units and zero value accepts no deposits; zero or negative prices make the
@@ -440,6 +451,10 @@ PROPOSED (Peter):
 | `redeem(class, units)` | units locked; stay exposed until revaluation | `min_proceeds`, `expiry_batch` |
 | `withdraw()` | — | pays the caller's withdrawal payable |
 
+Expiry is checked against the batch of the accepted publication, not the later
+wall-clock fill time. New requests submitted after that cutoff wait for a later
+publication; they never join an already accepted batch.
+
 A request whose condition fails is rejected at execution with its reservation
 returned (deposit back to pending refund, units unlocked). An expired request is
 rejected the same way. A new request from the same owner for the same source
@@ -455,6 +470,11 @@ PROPOSED (Peter):
   Joel records an incident; requests roll forward until expiry. The last
   accepted reference stays readable with its age and is never executed against
   (Paper 3 §15).
+An accepted batch that is still executing continues even if subsequent cutoffs
+are missed. Missed-cutoff status is not permission to cancel its binding requests
+or execute them again at a different price. Halt rules below apply to unbound
+pending requests; they do not discard accepted execution.
+
 - **Delayed** (3 missed cutoffs): the app shows delayed; nothing changes on chain.
 - **Halted** (60 missed cutoffs): the program accepts only cancellation of
   pending requests and refund of pending deposits. Positions stay frozen; no

@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "nodeTests": 13,
+  "independentPythonChecks": 12,
+  "checks": [
+    "Borsh price/snapshot bytes and SHA-256",
+    "integer reference operation order",
+    "MVP-0 allocation conservation",
+    "flow ledger conservation and rational final backing"
+  ],
+  "limitations": [
+    "P2 Rust parity pending",
+    "P3 asynchronous execution and capacity verification pending",
+    "no Solana deployment or live feed verification"
+  ]
+}

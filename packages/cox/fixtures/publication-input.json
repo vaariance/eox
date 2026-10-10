@@ -1,0 +1,19 @@
+{
+  "reference": {
+    "previous": ["10000000000", "10000000000"],
+    "current": ["12000000000", "8000000000"],
+    "origin": ["10000000000", "10000000000"],
+    "previousBenchmark": "100000000000000"
+  },
+  "classes": [
+    { "backing": "100", "units": "100000000000000" },
+    { "backing": "50", "units": "50000000000000" },
+    { "backing": "0", "units": "0" }
+  ],
+  "requests": [
+    { "id": "entry", "kind": "deposit", "to": 0, "amount": "30", "minimum": "0", "expiry": 1 },
+    { "id": "exit", "kind": "redeem", "from": 1, "units": "10000000000000", "minimum": "0", "expiry": 1 }
+  ],
+  "publicationBatch": 1,
+  "ledger": { "vault": "180", "active": "150", "pending": "30", "payable": "0", "residual": "0" }
+}

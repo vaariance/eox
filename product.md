@@ -1,6 +1,11 @@
 # COX product direction and work plan
 
-Version 11 · 10 October 2026 · Exchange fallback and the price-feeds package
+Version 12 · 10 October 2026 · Next-publication eligibility and asynchronous fills
+
+Version 12 records Peter's rule: trades become eligible from the next valid
+publication and never execute when created. Fill time is not guaranteed;
+processing the eligible workload within a minute is an operating capacity
+target, not a cancellation deadline. SYSTEM.md v2.4 records this change.
 
 Version 11 adds Coinbase and Bybit as fallbacks when Kraken's cutoff minute is
 empty, and gives Joel a separate rate-limited `packages/price-feeds` package
@@ -14,7 +19,7 @@ Index, described in `docs/cox/cox-paper-3.md` (COX Paper 3). It assigns every
 existing piece of work to one developer as **preserve**, **carry over** or
 **delete**, and lists the new work needed to reach the COX MVP.
 
-`SYSTEM.md` version 2.3 is the engineering contract for COX. Where this brief and
+`SYSTEM.md` version 2.4 is the engineering contract for COX. Where this brief and
 `SYSTEM.md` disagree, `SYSTEM.md` wins after sign-off; until then, raise the
 conflict rather than choosing. These are requirements, not claims of deployed
 behaviour.
@@ -85,14 +90,24 @@ test mechanism in the app, the API and every document (`SYSTEM.md` §7.2).
       admissibility, records incidents
 after :00, by :55  Peter's publisher submits that snapshot, signed by oracle-operator;
       the cox program checks it → computes CRYPTO and references → revalues
-      classes → executes batch k at fixed unit values → commits publication k
+      classes → fixes batch k unit values
+then  process batch k requests at those fixed values → commit completed accounting
+      (no hard fill deadline; next publication waits for this execution to finish)
 after  Godwin's monitor re-fetches the venues and recomputes publication k;
       Joel's app API indexes it; the web app shows fills and new values
 ```
 
-If the snapshot is inadmissible or the publication misses its deadline, batch
-k does not publish, its requests roll forward until they expire, and the next
-valid publication covers the whole elapsed interval.
+If no admissible snapshot is accepted by :55, batch k is missed and its requests
+roll forward until expiry. Once a snapshot is accepted, its trades continue at
+those fixed values even if execution takes longer than a minute. They are not
+cancelled or repriced because processing is slow. Expiry is evaluated against
+the accepted batch, not the eventual fill time. New requests wait for a later
+publication and cannot execute when submitted.
+
+Joel and Peter must provision and load-test the servers, workers and chain
+submission path to process the supported workload within a minute, and monitor
+queue age and throughput. This is an operating target, not a promised fill time;
+server capacity alone cannot guarantee network or chain confirmation timing.
 
 ## 5. Ownership
 
@@ -267,7 +282,7 @@ deletes code. First task; unblocks every deletion.
 **P1 — Mechanism and methodology specification.** `packages/cox/SPEC.md` plus
 `packages/cox-methodology`: the `COX/METHODOLOGY/V1` manifest (assets in
 canonical order, venue symbols, price scale (USD × 10⁸), weights, origin rule,
-candle and fallback rule (`COX/PRICE-FALLBACK/V1`), USDT/USD conversion, maximum trade age, cadence, archive and commit deadlines, runtime
+candle and fallback rule (`COX/PRICE-FALLBACK/V1`), USDT/USD conversion, maximum trade age, cadence, archive and snapshot-acceptance deadlines, asynchronous execution, runtime
 authority, transfer rule id, arithmetic scales and rounding); exact formulas for CRYPTO, references, MVP-0 and unit
 accounting; request and publication state machine; account, instruction,
 event and error definitions; and `packages/cox/fixtures/vectors.json` with
@@ -286,7 +301,7 @@ drain stay backed, vault equality holds after every step. Commit the results.
 authorities, test collateral mint and vault, classes, request accounts,
 `publish` (operator-signed snapshot of 30 prices and trade ages → checks in
 `SYSTEM.md` §5.2 → reference → revalue 31 classes → fix unit values → commit), `execute` (crank batch requests at the fixed values; the next
-publication cannot start until the batch is fully executed), `cancel`,
+publication cannot start until the batch is fully executed; no hard fill deadline), `cancel`,
 `withdraw`, halted-mode refunds, read-only simulated readers. Vault equality
 asserted in every value-moving instruction. Publish program ID, IDL and the
 permitted runtime instruction list to Joel.

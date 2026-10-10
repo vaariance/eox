@@ -289,7 +289,6 @@ another agent needs to know.
 - **Open:** Live adapter, confidence assessments and economic calibration remain separate deliverables; this change does not claim all source slots are live.
 - **Refs:** `product.md` §8.7, `apps/oracle-worker/src/publication.ts`, `apps/oracle-worker/test/publication.test.ts`.
 
-
 ### 2026-10-10 · Peter (Codex) · COX Paper 3 draft
 
 - **Area:** `docs/cox`, `output/pdf/cox_paper_3.pdf`.
@@ -330,6 +329,45 @@ another agent needs to know.
 - **Open:** Joel confirms Bybit is reachable from the US-region dev VM and permitted by its terms; without it TRX and JUP have no fallback. Venue data terms before any public launch.
 - **Refs:** `SYSTEM.md` §3.2 and §10.1; `product.md` J0, J1, G2.
 
+### 2026-10-10 · Peter (Codex) · P0 EOX archive tag pushed
+
+- **Area:** Git archive boundary for the COX pivot.
+- **What:** At Peter's request, created and pushed annotated tag `eox-archive` at verified `origin/main` commit `2c0a3aaca7ee4dece134a9fb1c06634a8aa21fcf`. Verified the remote tag resolves to that commit.
+- **Rules for agents:** P0 is complete; the archive prerequisite for the individually assigned COX deletions is satisfied. Preserve this tag.
+- **Refs:** `eox-archive`, `product.md` P0 and section 8 step 0.
+
+### 2026-10-10 · Peter (Codex) · P1 COX specification and provisional vectors
+
+- **Area:** `packages/cox/SPEC.md`, `packages/cox/fixtures`, `packages/cox-methodology`.
+- **What:** Added the P1 draft: canonical methodology/price/snapshot encodings, provisional roster, integer reference/MVP-0/accounting rules, lifecycle and draft ABI. Twelve Node tests and twelve independent byte/math/ledger checks pass. Exact Paper 3 accounting assigns rounding dust to pool residual rather than hiding it in backing.
+- **Rules for agents:** The manifest is unsealed; do not fabricate Joel's feed-check result or a common origin. Bybit is disabled pending its access decision. P1 TypeScript is specification tooling, not the P2 Rust crate or independent monitor. Keep reference and claim value distinct. No EOX deletion or deployment occurred.
+- **Open:** SYSTEM §3.3 requires full commit by +55 seconds, while product P3 allows later execution cranks. SPEC §1 proposes reversible staging plus finalize/abort; Peter must review this resolution before P3. P2 arithmetic parity/simulations and P3 runtime/ABI verification remain required.
+- **Refs:** `packages/cox/SPEC.md`, `packages/cox/fixtures/verification.json`, `packages/cox-methodology/README.md`; SYSTEM.md and product.md unchanged.
+
+### 2026-10-10 · Peter (Codex) · Next-publication eligibility without a fill deadline
+
+- **Area:** `SYSTEM.md` v2.4, `product.md` v12, COX P1 specification, manifest and vectors.
+- **What:** Peter replaced the proposed all-trades-by-deadline rule: requests become eligible from the next valid publication, never when created; filling has no hard deadline. Snapshot acceptance retains +55 seconds. Accepted work continues at fixed values until complete and blocks the next publication. Servers/workers must be provisioned and load-tested for the supported workload within a minute; this is an operating capacity target.
+- **Rules for agents:** Do not cancel, roll or reprice an accepted batch because execution is slow. Evaluate expiry against its accepted batch, not eventual fill time. The 30-asset list is the P1 roster; Joel owns feed validation, not Peter. This supersedes the pending staging/deadline review described in the earlier P1 entry. Other SYSTEM sign-offs remain pending; none are invented.
+- **Open:** P2 parity and P3 runtime/capacity verification; Joel's separately assigned feed check. No deployment or commit performed.
+- **Refs:** `packages/cox/SPEC.md` sections 1 and 7, `SYSTEM.md` section 3.3, `product.md` section 4.
+
+### 2026-10-10 · Peter (Codex) · P2 COX math, CLI and simulations
+
+- **Area:** `packages/cox` Rust workspace, fixtures, research and results.
+- **What:** Implemented independent checked Rust reference/MVP-0/fixed-value flow arithmetic, pure custody ledger transitions, strict JSON CLI and price/snapshot encoders. All nine P1 arithmetic and three wire vectors match. Nineteen Rust tests, thirteen methodology tests, strict Clippy and formatting pass; simulations cover 2,880 thirty-asset publications, 6,200 round trips, 1,410 split comparisons and a 3,100-request full exit.
+- **Rules for agents:** Use `cox-math` for P3 calculations. Preserve bound publication values across slow execution; no fill deadline. Enforce supported-state products before accepting resulting balances: storage widths alone do not guarantee arithmetic safety. Residual remains outside active backing; tiny operations can erode backing into residual despite no tested user extraction. These are finite synthetic devnet-mechanism checks, not production approval.
+- **Open:** P3 ownership/lifecycle, atomic execution, conservative admission and runtime capacity. Product step 10 schedules Peter's EOX deletions after P3; current Joel/Godwin callers still import them, so no premature deletions were made. P1's referenced SPEC.md is absent from commit 7810e09; P2 documents exact implemented rules in its README. An unrelated root `spec.md` appeared during work and was left untouched.
+- **Refs:** `packages/cox/README.md`, `packages/cox/results/verification.json`, `packages/cox/research/deletion-audit.md`, `packages/cox/research/simulation-methods.md`.
+
+### 2026-10-10 · Godwin (Claude Code) · G1 done: EVM/UMA stack removed
+
+- **Area:** `packages/optimistic-oracle` (deleted), `apps/uma-relay` (deleted), new `apps/cox-monitor`.
+- **What:** `product.md` task G1, done on branch `dev` after Peter pushed the `eox-archive` tag. Deleted the yearly and continuous EVM adapters, `ContinuousProtocol`, the deploy script, the 65 Foundry tests, the two Foundry submodules and `.gitmodules`, the yearly `eox_settlement_oracle` program, and the UMA assertion, relay and challenger service with its tests. The yearly `EoxAssertionAdapter` on Ethereum Sepolia at `0x06a14d49f977898db03fffff699ad15b2aceece4` is abandoned in place; the continuous adapter was never deployed. Carried into `apps/cox-monitor/src`: `env.ts` (without the identity-token helper), `state-file.ts` and `evidence-source.ts` reduced to the `/v1/artifacts/:sha256` hash check. `pnpm -r build` passes for all 11 packages.
+- **Rules for agents:** The deleted code is at the `eox-archive` tag only. The challenger's tick-and-cursor loop was not moved because it imports the deleted UMA code; G2 rewrites it for COX from the archive. `apps/cox-monitor` is only these three helper files so far and is not a monitor yet.
+- **Open:** `pnpm -r test` does not pass on Godwin's machine for reasons outside this change: `evidence-store`, `ingestion` and `evidence-api` need the local Postgres on port 5433, and `apps/app-api` "fixture provenance" fails because `fixtures/oracle-preview.json` no longer matches `packages/oracle/fixtures` (Joel). Signing, methodology, oracle-worker and signer tests pass. Peter still deletes `packages/oracle/fixtures/protocol-v1.json`; Joel still retires the `uma-asserter`, `uma-challenger` and `evm-relayer` signer roles.
+- **Refs:** commits `65f0a50`..`0427ac2`; `product.md` §6.3 and §7.3.
+
 ### 2026-10-10 · Joel (Claude Code) · Dev VM moved to the EU
 
 - **Area:** `deploy/dev`, GCP project `colosseum-eox`.
@@ -353,6 +391,14 @@ another agent needs to know.
 - **Rules for agents:** The publisher and the monitor read prices through these routes, never the database. A cutoff returns 404 until its snapshot is written; do not poll the tables to get it earlier. Use only snapshots with `admissible: true` for publication. Each archiver restart makes two to four cutoffs late and inadmissible.
 - **Open:** EOX routes (`/v1/changes`, `/v1/records/...`) stay until the `eox-archive` tag exists. Snapshot digest encoding still waits on Peter's P1.
 - **Refs:** `apps/evidence-api/README.md` (COX prices), commits `bb63d8c`, `daf4cb4`.
+
+### 2026-10-10 · Godwin (Claude Code) · Monitor maths matches the P1 vectors; SPEC.md committed
+
+- **Area:** `apps/cox-monitor`, `packages/cox/SPEC.md`.
+- **What:** First part of `product.md` G2. `apps/cox-monitor/src` now has an independent TypeScript implementation of SPEC §4 (references), §5 (MVP-0 revaluation), §6 (fixed-value batch flows and residual) and the §3 price and snapshot encodings and digests. It does not import `@cox/methodology`. 25 tests pass: all 9 cases and the wire bytes in `packages/cox/fixtures/vectors.json`, plus order independence, conservation, vault equality and rejected inputs. `packages/cox/SPEC.md` is Peter's version 0.2 draft, committed unchanged by Godwin because earlier entries and the methodology README referenced a file that was not in the repo.
+- **Rules for agents:** This is the maths only. The monitor does not yet read publications, fetch archived snapshots, re-fetch venues or serve verdicts, so do not describe a monitor as running. The rounding order was learned from Peter's `vectors.ts` before SPEC.md was available, so agreement with the vectors is not a fully blind second derivation. A change to `vectors.json` fails `pnpm --filter @eox/cox-monitor test`.
+- **Open:** Peter: vectors for the SPEC §3 receipt root and state digest; the monitor will not implement either without bytes to check against. Joel: the archiver's provisional price and snapshot digest layout differs from SPEC §3 (`COX/WIRE/V1`), so the monitor would report his current digests as mismatches. The live half of G2 waits on P3.
+- **Refs:** commits `1699666`..`fca926b`, `463f29a`; `packages/cox/SPEC.md` §3–6.
 
 ### 2026-10-10 · Joel (Claude Code) · Archiver digests now COX/WIRE/V1
 

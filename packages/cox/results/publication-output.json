@@ -1,0 +1,76 @@
+{
+  "batch": {
+    "classes": [
+      {
+        "backing": "141",
+        "units": "126785714285714"
+      },
+      {
+        "backing": "29",
+        "units": "40000000000000"
+      },
+      {
+        "backing": "0",
+        "units": "0"
+      }
+    ],
+    "payable": "7",
+    "receipts": [
+      {
+        "id": "entry",
+        "minted": "26785714285714",
+        "outcome": "Filled",
+        "proceeds": "0"
+      },
+      {
+        "id": "exit",
+        "minted": "0",
+        "outcome": "Filled",
+        "proceeds": "7"
+      }
+    ],
+    "refunds": "0",
+    "residual": "2"
+  },
+  "ledger": {
+    "active": "170",
+    "payable": "7",
+    "pending": "0",
+    "residual": "3",
+    "vault": "180"
+  },
+  "reference": {
+    "benchmark": "100000000000000",
+    "benchmarkGross": "1000000000000",
+    "gross": [
+      "1200000000000",
+      "800000000000"
+    ],
+    "h": [
+      "1200000000000",
+      "800000000000",
+      "1000000000000"
+    ],
+    "relative": [
+      "120000000000000",
+      "80000000000000"
+    ]
+  },
+  "revaluation": {
+    "classes": [
+      {
+        "backing": "112",
+        "units": "100000000000000"
+      },
+      {
+        "backing": "37",
+        "units": "50000000000000"
+      },
+      {
+        "backing": "0",
+        "units": "0"
+      }
+    ],
+    "residual": "1"
+  }
+}
