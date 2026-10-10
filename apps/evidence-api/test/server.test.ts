@@ -148,14 +148,19 @@ describe("GET /v1/records/:recordId", () => {
       periodOrdinal: periodOrdinal("monthly", "2026-08"),
       value: "2.456557",
       rawValue: "2.456557",
-      publishedAt: null,
       artifactDigest: payloadSha,
       coverage: null,
       revision: { revises: null, orderBasis: "retrieval", sourceEdition: null },
       supersedes: null,
-      publication: null,
     });
     expect(Number.isInteger(fact.recordedAt)).toBe(true);
+    expect(fact.publishedAt).toBe(fact.recordedAt);
+    expect(fact.publication).toEqual({
+      policy: "PUBLICATION/RELEASE-OR-FIRST-OBSERVED/V1",
+      basis: "first-observed",
+      firstObservedAtMs: expect.any(Number),
+    });
+    expect(Math.floor(fact.publication.firstObservedAtMs / 1000)).toBe(fact.publishedAt);
   });
 
   it("uses the quarterly period for New Zealand unemployment", async () => {
@@ -247,15 +252,16 @@ describe("publication evidence", () => {
       releaseId: current.id,
     });
     const fact = await (await get(`/v1/records/eox:observation:${row.id}`)).json();
-    expect(fact.publishedAt).toBeNull();
+    expect(fact.publishedAt).toBe(1791312087);
     expect(fact.publication).toEqual({
+      policy: "PUBLICATION/RELEASE-OR-FIRST-OBSERVED/V1",
       basis: "source-data-edit",
       release: { releasedAtMs: 1791312087589, latestPeriod: "2026-10-02", metadataDigest: current.metadataSha256, periodsDigest: current.periodsSha256 },
       previousRelease: { releasedAtMs: 1791194400000, latestPeriod: "2026-10-01", metadataDigest: previous.metadataSha256, periodsDigest: previous.periodsSha256 },
     });
   });
 
-  it("reports a whole-second release time as publishedAt", async () => {
+  it("uses a whole-second release time unchanged", async () => {
     const current = await release("2026-10-07T09:00:00.000Z", "2026-10-03");
     const row = await recordObservation({
       countryIso3: "JPN",
