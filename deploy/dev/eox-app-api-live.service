@@ -16,6 +16,7 @@ Environment=SOLANA_RPC_URL=https://api.devnet.solana.com
 Environment=SOLANA_RPC_INTERVAL_MS=800
 Environment=EVIDENCE_API_URL=http://127.0.0.1:8787
 Environment=APP_API_STATE_DIR=/opt/eox/state/app-api-live
+EnvironmentFile=-/opt/eox/app-api-live.env
 ExecStart=/opt/eox/app/apps/app-api/node_modules/.bin/tsx src/main.ts
 Restart=on-failure
 RestartSec=5
