@@ -298,6 +298,38 @@ another agent needs to know.
 - **Open:** Benchmark policy, final transfer rule, holdable CRYPTO rights, source/cutoff rules, exceptional states and production proofs.
 - **Refs:** `docs/cox/cox-paper-3.md`, `docs/cox/build_pdf.py`, `docs/cox/verification.json`; EOX Paper 3 and RPM Paper 1 in `docs/papers`.
 
+### 2026-10-10 · Peter (Claude Code) · Pivot from EOX to COX: SYSTEM.md v2 and product.md v9
+
+- **Area:** `SYSTEM.md` (version 2), `product.md` (version 9); no code changed.
+- **What:** At Peter's request, rewrote both documents for COX (`docs/cox/cox-paper-3.md`). `SYSTEM.md` v2 is the COX engineering contract: Pyth prices via an archived Hermes update per one-minute cutoff, one `cox` Solana program (CRYPTO, references, closed-pool revaluation, batch execution), test collateral, no UMA/EVM/Wormhole relay of our own, independent monitor. `product.md` v9 assigns every existing EOX component to one owner as preserve, carry over or delete, lists new tasks J1–J5, P0–P5, G1–G4, and gives the execution order to the devnet MVP.
+- **Rules for agents:** Supersedes every earlier entry's rules about UMA assertions, Wormhole relay, the continuous and annual adapters, economic indicators, publication-time policies, confidence assessments and the exchange equations; those components are being deleted. Do not delete code until Peter has pushed the `eox-archive` tag. `COX/TRANSFER/MVP-0` is a test mechanism, not the production transfer rule. SYSTEM.md v2 items are PROPOSED until its §13 sign-off.
+- **Open:** All §13 sign-offs. Hermes update endpoints returned `unauthorized` without an API key on 2026-10-10 (Joel). ZEC admission depends on Joel's feed check.
+- **Refs:** `SYSTEM.md`, `product.md`, `docs/cox/cox-paper-3.md`; EOX versions in git history.
+
+### 2026-10-10 · Peter (Claude Code) · COX pilot roster expanded to 30 assets
+
+- **Area:** `SYSTEM.md` version 2.1 (§4.1, §5.2, §7.1, §13), `product.md` version 9 (§3, J1, P3, §8, §9).
+- **What:** At Peter's request, the pilot roster grows from BTC/ETH/SOL (+ZEC) to 30 non-stablecoin assets with Pyth `Crypto.<ASSET>/USD` feeds, listed with full feed ids and a canonical order in `SYSTEM.md` §4.1 (read from the Hermes feed catalogue on 2026-10-10). Stablecoins, other pegged tokens, wrapped/bridged/liquid-staking duplicates and STARK are excluded. Publications are now staged in three pages of 10 price accounts before `publish`; the pool has 31 classes. Supersedes the roster and ZEC-only feed check in the earlier 2026-10-10 "Pivot from EOX to COX" entry.
+- **Rules for agents:** Use the asset order in §4.1 everywhere. An asset failing Joel's 30-day feed check is dropped, not substituted; label CRYPTO with the sealed N. Adding or replacing an asset after sealing needs a new methodology version.
+- **Open:** Joel's feed check for all 30 assets (needs the Hermes API key); Peter's measurement of whether staging and publishing for 30 assets fits the 45-second deadline and the compute limit.
+- **Refs:** `SYSTEM.md` §4.1 and §5.2, `product.md` J1, P3 and §9.
+
+### 2026-10-10 · Peter (Claude Code) · COX prices from Kraken; modern-token roster
+
+- **Area:** `SYSTEM.md` version 2.2, `product.md` version 10; no code changed.
+- **What:** At Peter's request, Pyth is dropped (Hermes needs a paid key) and Kraken's public REST one-minute OHLC candles are the only price source for the devnet MVP. The price for batch `k` is the close of the final candle with `time = cutoff − 60`; Kraken empty minutes carry the last trade price with `count = 0`, so each price carries a trade age, and above 30 minutes the minute is inadmissible. The publisher's `oracle-operator` key attests each snapshot; the program checks it deterministically and the monitor re-fetches Kraken to verify. Peter removed DOGE, ADA, LINK, LTC, TON, BCH, XLM, ATOM, HBAR, ETC, FIL, XMR and ICP; they are replaced by STRK, HYPE, TAO, WLD, ONDO, ENA, ZRO, FET, JUP, AERO, RENDER, TIA and W (most-traded newer tokens on Kraken USD). Supersedes the Pyth feed ids, staging pages and Hermes blocker in the earlier 2026-10-10 "COX pilot roster expanded to 30 assets" entry.
+- **Rules for agents:** Do not describe Kraken prices as independently verified; they are operator-attested and devnet-only. Use the asset order and Kraken pair names in `SYSTEM.md` §4.1. Never fill a missing candle or loosen the trade-age bound to keep a thin asset; drop it before sealing instead.
+- **Open:** Joel's 7-day feed check (APT is the main risk: 58% empty minutes on 2026-10-10). Peter confirms STRK is the Paper 3 "STARK". Kraken data terms before any public launch.
+- **Refs:** `SYSTEM.md` §2, §3.1–3.2, §4.1, §5.2, §6.3, §9; `product.md` J1, J2, P3, P4, G2, §9.
+
+### 2026-10-10 · Peter (Claude Code) · Exchange fallback and the price-feeds package
+
+- **Area:** `SYSTEM.md` version 2.3 (§3.1, §3.2, §4.1, §5, §6, §9, §10.1), `product.md` version 11 (new task J0, J1, G2, §9); no code changed.
+- **What:** At Peter's request, Coinbase and Bybit are fallbacks used only when Kraken's cutoff minute has no trade, in the fixed order Kraken → Coinbase → Bybit (`COX/PRICE-FALLBACK/V1`); no venue prices are averaged. Bybit quotes USDT and is converted with the same cutoff's USDT/USD price (`COX/USDT-USD/V1`). All on-chain prices are USD × 10⁸. Measured over 300 minutes on 2026-10-10, the fallback cut asset-minutes without a trade from about 5 per minute to 0.6% (RENDER and TAO weakest). Joel owns a new `packages/price-feeds` (J0): venue adapters, the Kraken WebSocket as the primary feed, one rate limiter per venue at no more than half the published limit, backoff, circuit breaker and cache. It is the only code allowed to call an exchange. Supersedes the Kraken-only price rule in the earlier 2026-10-10 "COX prices from Kraken; modern-token roster" entry.
+- **Rules for agents:** Call exchanges only through `packages/price-feeds`. Never raise a venue budget above `SYSTEM.md` §10.1. Do not use a proxy or VPN to reach Bybit.
+- **Open:** Joel confirms Bybit is reachable from the US-region dev VM and permitted by its terms; without it TRX and JUP have no fallback. Venue data terms before any public launch.
+- **Refs:** `SYSTEM.md` §3.2 and §10.1; `product.md` J0, J1, G2.
+
 ### 2026-10-10 · Joel (Claude Code) · Dev VM moved to the EU
 
 - **Area:** `deploy/dev`, GCP project `colosseum-eox`.

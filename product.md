@@ -1,732 +1,399 @@
-# EOX product direction
+# COX product direction and work plan
 
-Version 8 · 10 October 2026 · Approved publication-time admission
+Version 11 · 10 October 2026 · Exchange fallback and the price-feeds package
 
-This document explains what EOX should do for its users and how the three
-developers' work must connect. It records Peter's product direction and pins the implementation rules in
-section 8. It does not claim that the complete product is
-already implemented or that the team has signed off this document.
+Version 11 adds Coinbase and Bybit as fallbacks when Kraken's cutoff minute is
+empty, and gives Joel a separate rate-limited `packages/price-feeds` package
+(task J0), following `SYSTEM.md` version 2.3. Version 10 replaced Pyth with Kraken's public one-minute candles and replaces 13
+older assets with newer tokens, following `SYSTEM.md` version 2.2. Version 9
+recorded the pivot from EOX to COX.
 
-This is the product brief for implementing v1; section 8 replaces its earlier
-open-decision list. These are requirements, not claims about deployed behavior. `SYSTEM.md` remains the
-separate engineering contract and has not been changed. Its annual settlement
-flow and older timing proposals must not determine this release's behavior.
-Peter owns their follow-up alignment through the engineering contract's
-documented change process. This edit leaves that file unchanged.
+This brief replaces the EOX product direction (version 8, in git history). It
+records the decision to stop building EOX and build COX, the Crypto Outlook
+Index, described in `docs/cox/cox-paper-3.md` (COX Paper 3). It assigns every
+existing piece of work to one developer as **preserve**, **carry over** or
+**delete**, and lists the new work needed to reach the COX MVP.
 
-## 1. What EOX is
+`SYSTEM.md` version 2.3 is the engineering contract for COX. Where this brief and
+`SYSTEM.md` disagree, `SYSTEM.md` wins after sign-off; until then, raise the
+conflict rather than choosing. These are requirements, not claims of deployed
+behaviour.
 
-EOX lets people trade the relative economic performance of countries.
-WORLD is the common benchmark, built from the countries in the chosen EOX
-methodology. A country can improve economically and still underperform WORLD
-or another country.
+## 1. Why the pivot
 
-The trading interface can show a pair such as US/JP. Underneath, both countries
-have a reference against WORLD. Comparing those references gives US against
-JP; WORLD cancels from that comparison. An update to a third country can move
-US/WORLD without moving US/JP when the US and Japan indices are unchanged.
+EOX hit walls that COX removes by design (COX Paper 3 §16):
 
-The product keeps three things visible and separate:
+| EOX wall | COX answer |
+|---|---|
+| Economic statistics have no machine-readable release times; all 180 slots were blocked or needed a first-observed policy | Every price is an exchange one-minute candle fixed by the cutoff and a fixed venue order (Kraken, then Coinbase, then Bybit), re-fetchable by anyone |
+| Methodology needed calibrated anchors, weights and eight-factor confidence ratings that do not exist | Price return needs no normalisation; quality only admits or rejects |
+| Every evidence record needed a bonded UMA assertion, relayed over Wormhole, with one-hour windows | No challenge path and no third-party oracle; our publisher key attests the snapshot, deterministic on-chain checks, and an independent monitor that re-fetches the venues |
+| Two chains, two adapters, a relay, a receiver and six signing roles before one reference could publish | One Solana program, one runtime signing role |
+| Quarterly data cannot support continuous trading signals | One-minute publications |
+| The exchange payoff and reserve equations were never written | The closed pool and unit accounting are the core of the design, specified first |
 
-- **Economic reference:** the result calculated from accepted evidence under
-  published rules.
-- **Confidence:** how much trust the evidence deserves, including its quality,
-  age and dispute history.
-- **Trade and account value:** what the exchange allows a user to buy, sell or
-  redeem under its collateral and pricing rules.
+What COX keeps from EOX: a shared benchmark, reproducible references,
+immutable evidence, separation of evidence, reference and claims, and the
+closed-collateral ambition.
 
-An EOX reference is an index, not a dollar balance. The EOX-20 multiplier
-amplifies the defined relative index movement; it does not by itself promise
-20-times leverage or a corresponding USDC payout.
+## 2. What COX is
 
-## 2. The experience we want
+A user believes an asset will outperform the crypto market from now on. They
+allocate test collateral to that asset's claim class. Every minute, COX takes
+exchange prices (Kraken first, Coinbase and Bybit only when Kraken had no trade), computes CRYPTO (the shared benchmark) and each asset's COX
+reference, revalues the existing claims inside a closed pool, then executes the
+requests queued for that minute at the new values. Winners are paid only by
+other claims; nothing is created.
 
-Users should be able to enter and exit continuously using the latest accepted
-on-chain reference. New evidence being processed or challenged does not, by
-itself, stop trading against that reference.
+Three things stay visible and separate (Paper 3 §13):
 
-There is no routine wait for the next evidence batch before executing a trade,
-and no annual wait imposed by the oracle before a user can exit. Trading can
-start only after the first complete reference and baseline have been accepted.
+- **Underlying price** of the asset.
+- **COX reference**: price performance against CRYPTO, starting at 100.
+- **Claim value**: what the user's units can redeem for in collateral.
 
-The intended exit route is from a country exposure through WORLD into USDC.
-The exchange must remain fully collateralized: its redeemable obligations must
-be covered by its collateral. Section 8 pins the collateral and launch boundary: the first integrated
-release uses test funds, and a complete exchange accounting specification is
-required before real-money trading. Calling WORLD
-the benchmark does not automatically make it a USDC-backed redeemable asset.
+A rising reference is not a promise of the same percentage gain on a position.
 
-For the initial devnet pool, Peter has accepted execution at the latest
-finalized oracle reference. Someone who calculates an incoming update early
-may gain an advantage. This is an accepted devnet limitation, not a problem
-solved by confidence scores, timestamps or restricting access to our client.
+## 3. MVP definition
 
-## 3. How a new reference reaches the product
+The MVP is complete when a user on Solana devnet can, through the web app and
+their own wallet: deposit test collateral into any of the 30 pilot asset
+classes (BTC, ETH, SOL, XRP and the others in `SYSTEM.md` §4.1) or the CRYPTO
+class; see the request queued for a named batch; see it
+execute at the next valid publication; switch classes; redeem; withdraw; and
+see every step reconciled by the independent monitor and traceable to archived
+price evidence.
+
+| In the MVP | Not in the MVP |
+|---|---|
+| Solana devnet, test SPL collateral token | Real USDC or any real-value collateral |
+| Kraken USD prices with Coinbase and Bybit fallback for 30 non-stablecoin assets, weighted to newer tokens (`SYSTEM.md` §4.1), attested by our publisher key | Stablecoins and pegged tokens, wrapped or liquid-staking duplicates, the 13 removed older tokens, any asset failing the feed check, independently authenticated prices |
+| Equal-weight pilot CRYPTO, one-minute publications | Production weight schedule |
+| Transfer rule `COX/TRANSFER/MVP-0`, zero fees | A final transfer rule, fees, reserves |
+| Deposit, switch, redeem, withdraw, cancel before cutoff | Secondary market, expectation price, leverage |
+| Independent monitor, evidence archive, incidents | UMA, EVM, Wormhole relay of our own, annual settlement |
+
+Every rule behind these choices is in `SYSTEM.md` §3–9. MVP-0 is labelled as a
+test mechanism in the app, the API and every document (`SYSTEM.md` §7.2).
+
+## 4. How one minute works
 
 ```text
-Fetch data → preserve evidence → apply methodology → freeze and pre-commit
-    → one-hour challenge window → resolve and confirm the outcome
-    → post-commit → calculate and publish on Solana → use the new reference
-
-Throughout this process, trading uses the previous accepted reference.
+:00   batch k closes (requests after this go to k+1)
+:00–:30  Joel's archiver closes each asset's cutoff candle from the Kraken
+      WebSocket; for assets with no Kraken trade it asks Coinbase, then Bybit,
+      through the rate-limited price-feeds package; stores raw bytes, checks
+      admissibility, records incidents
+after :00, by :55  Peter's publisher submits that snapshot, signed by oracle-operator;
+      the cox program checks it → computes CRYPTO and references → revalues
+      classes → executes batch k at fixed unit values → commits publication k
+after  Godwin's monitor re-fetches the venues and recomputes publication k;
+      Joel's app API indexes it; the web app shows fills and new values
 ```
 
-1. **Fetch and store.** Check supported sources at least hourly, subject to
-   source availability. Preserve the original response, exact values, source,
-   period and any stated publication time. Store corrections as new records.
-2. **Prepare the next snapshot.** At an hourly cutoff, select the evidence under
-   the agreed methodology. Carry forward accepted observations where no
-   replacement exists. Missing data must never become invented values.
-3. **Pre-commit.** Freeze the exact evidence and rules for this proposal. Make
-   the evidence and explanation available to challengers. New arrivals belong
-   to a later proposal and cannot change this one.
-4. **Assert and allow challenges.** Open a one-hour challenge window through
-   the UMA integration. The full hour starts when the assertion is challengeable
-   and its supporting evidence is available, not when fetching started.
-5. **Confirm the outcome.** If nobody disputes it, settle the assertion after
-   the window and deliver authenticated confirmation to Solana. A local timer
-   alone cannot approve the proposal.
-6. **Post-commit and publish.** Bind the frozen evidence to the confirmed
-   challenge outcome. Solana calculates and publishes the complete new
-   reference together with its confidence and version. Only then does it
-   become the reference used for new trades.
-
-This is a repeating process. Annual assertions are not a required stage in
-this continuous product. Any future annual instrument needs its own explicit
-product brief and must not impose its schedule on ordinary trading or exits.
-
-### Example timing
-
-| Time | What happens |
-| --- | --- |
-| Before 10:00 | Data is collected and prepared for the next hourly snapshot. |
-| 10:00 | The snapshot is frozen; assume its assertion and evidence become available immediately. |
-| 10:00–11:00 | Anyone eligible under the dispute mechanism can challenge. Users trade against the previous accepted reference. |
-| Shortly after 11:00 | If undisputed, settlement, relay and Solana publication make the new reference usable. |
-
-Network or processing delays add time. A disputed proposal can take longer
-than one hour. The hourly cadence is a processing target, not a promise that
-new economic information or a new accepted reference exists every hour.
-
-An hourly check also does not turn quarterly GDP into hourly GDP. Every
-observation retains its original economic period. Regular snapshots make
-reference timing more predictable; they do not guarantee smooth candles.
-The app must distinguish reference history from actual trading candles.
-
-## 4. What happens when something is challenged
-
-A challenge must identify the exact proposal and evidence being contested.
-Duplicate delivery must not count as another challenge.
-
-- **While unresolved:** the proposed reference stays pending. The previous
-  accepted reference remains available for trading. The app shows the dispute.
-- **If the evidence is upheld:** the proposal may proceed once all challenges
-  are resolved. Its evidence retains the confidence penalty defined by the
-  methodology.
-- **If the evidence is disproven:** reject the proposal. A correction must be
-  new evidence in a new proposal with a fresh challenge window.
-
-Confidence already reflects source quality and freshness. UMA challenges add
-another factor to that calculation. Lower confidence does not directly lower
-the economic index or multiply a user's balance. Invalid evidence cannot be
-made acceptable simply by assigning it a lower confidence score.
-
-Reusing the same evidence must preserve its challenge history. Later revisions
-must not rewrite old published references or silently reprice completed trades.
-Section 8 defines how to handle a newly discovered error in an already
-published reference.
-
-## 5. What the methodology defines
-
-Every reference version must use one identifiable set of rules. Those rules
-define the country roster, indicators, sources, comparison periods, weights,
-normalization, WORLD calculation, baseline, multiplier and confidence policy.
-They remain fixed within a methodology epoch. An epoch is a period of fixed
-rules; it does not automatically mean a calendar year or a trading lock.
-
-The current oracle design uses an equal-weight WORLD containing each configured
-country. Pair references use country indices from the same accepted snapshot
-and baseline. Confidence changes alone must not create economic movement.
-
-The six implemented source pipelines and current 30-country catalogue are
-the v1 calibration universe. Their availability does not prove that every
-record is ready for the oracle. Geffy's research informs
-source suitability; its infrastructure ratings are not economic weights or
-automatic confidence scores.
-
-For OECD and BIS, use the time EOX first observed the record when the source
-does not provide a publication time. For PortWatch, drop milliseconds by rounding
-down to whole seconds. Section 8 defines this approved admission rule. This time
-conversion does not permit rounding economic source values.
-
-## 6. Ownership
-
-Joel owns ingestion, evidence storage, infrastructure signing and app APIs/service
-integrations. Peter owns methodology, the Solana oracle and trading contracts.
-Godwin owns UMA/dispute relay and the trading UI. Section 8 assigns the changes
-at each boundary; section 9 specifies execution order and dependencies.
-
-## 7. What users and operators must be able to see
-
-The app should show the accepted reference, confidence, evidence age, last
-publication time and exact reference version. Pending updates and disputes
-must be clearly separate from the reference currently used for execution.
-Each trade must record the accepted version it used.
-
-Anyone reviewing a reference should be able to trace it to the source records,
-methodology and dispute outcome. A service restart must not lose queued
-evidence, duplicate publication or expose a partially calculated reference.
-
-When a source, UMA or relay is delayed, keep the last accepted reference
-available and show its age and status. Never label old evidence as newly
-published just because it was fetched again. The stale-reference and incident restrictions in section 8 apply to execution;
-historical references remain readable.
-
-## 8. CODE contract rules
-
-The following instructions resolve the mismatches identified in `SYSTEM.md`.
-Each named person must make the stated change in their component. These are
-implementation requirements, not options or requests for a later agreement.
-
-### 8.1 Remove the annual settlement dependency
-
-**Mismatch — SYSTEM §2, §3.3 and §6.4:** Godwin's adapter accepts a result for a
-calendar year; Peter's oracle needs a dispute result for each proposed update.
-
-**Godwin:** implement a continuous proposal path in `packages/optimistic-oracle`
-keyed by deployment, methodology epoch and unique proposal ID. Remove the July
-cutoff, 21-day assertion period, 35-day void deadline and one-result-per-year
-restriction from this path. Do not send the continuous oracle through the
-annual settlement receiver. Leave any retained annual contracts outside this
-product's execution path.
-
-**Peter:** give every snapshot a unique proposal ID, a methodology epoch and
-its published predecessor. Consume Godwin's result for that proposal. Do not
-create an annual evidence selection or wait for an annual claim before publishing.
-Treat an epoch as fixed methodology rules, not a calendar year. Keep old epochs
-and baselines readable when a new epoch starts.
-
-### 8.2 Replace the conflicting timers with the product's hourly cycle
-
-**Mismatch — SYSTEM §3.1–3.3:** ingestion runs daily, the worker gathers for five
-seconds, confidence refreshes every minute, and dispute windows differ between
-60 seconds, two hours and 72 hours.
-
-**Joel:** change the ingestion schedule in `deploy/dev` from daily at 06:00 UTC
-to hourly. Prevent overlapping runs of the same source job and retain retry
-progress. Keep the source's native daily, monthly or quarterly economic period;
-polling hourly must not create artificial observations.
-
-**Peter:** change the worker to UTC hourly cutoffs. Replace the five-second
-proposal trigger and minute confidence refresh with one proposal at the next
-hourly cutoff when idle. Keep the one-hour post-commitment publication expiry.
-Freeze evidence at pre-commitment, but do not treat a local pre-commit timer as
-proof that UMA's window has completed.
-
-**Peter:** replace the Solana deadline derived from pre-commit time with the
-authenticated start and deadline of each registered UMA assertion. Require
-each deadline to equal its start plus 3,600 seconds. A late assertion or relay
-must not shorten that window. Keep proposal state frozen and pending until
-the complete required assertion set has valid settled outcomes.
-
-**Godwin:** set UMA liveness to exactly 3,600 seconds for every assertion in
-this path. Start it when the assertion is registered and its supporting evidence
-is available. Relay its actual start and deadline. Settle an undisputed assertion
-after expiry; wait for UMA resolution when disputed. A timer cannot generate an
-accepted result.
-
-### 8.3 Make UMA assertions match the oracle's evidence and snapshot
-
-**Mismatch — SYSTEM §6.2–6.4:** the existing annual claim cannot express the
-per-evidence challenges and per-proposal acceptance required by Peter's oracle.
-
-**Peter:** produce two claim types using versioned canonical Borsh encoding and
-SHA-256. Publish the encoder and exact-byte/hash examples for Godwin to implement.
-Use distinct domains for evidence claims, snapshot claims and relay messages.
-Populate these exact bindings:
-
-| Claim | Required binding |
-| --- | --- |
-| Both | Schema version, source EVM chain/adapter, destination Solana deployment, methodology epoch, manifest digest, on-chain configuration digest and evidence-policy version. |
-| Evidence | Portable evidence digest, metadata digest, immutable source record identity, original artifact digests, confidence-assessment digest and supporting provenance digests. |
-| Snapshot | Proposal ID, pre-commitment, published predecessor, cutoff, ordered country/indicator slots, current/comparison record and assessment identities, and the required evidence-assertion IDs. |
-
-**Godwin:** implement the evidence claim as: “This observation and assessment
-satisfy the identified EOX evidence policy and are supported by the committed
-source material.” Implement the snapshot claim as: “This complete ordered
-selection follows the identified methodology's cutoff, revision and comparison
-rules.” Submit these claims to UMA; do not assert a USDC payout or an annual result.
-Reject requests whose contents conflict with an existing request identity.
-
-**Peter:** request evidence assertions first and persist their returned IDs.
-Then freeze their mapping into the snapshot claim. Reuse a settled-true evidence
-assessment only when its evidence, assessment, policy and epoch are unchanged.
-Create new evidence assertions when that assessment or epoch changes.
-
-**Godwin:** register exactly one snapshot assertion against the frozen proposal.
-Its own returned UMA ID is added to the closure set after registration; it is
-not included in its own claim. Never replace the frozen list or registered
-snapshot assertion. An identical retry must return the same assertion ID,
-including after a lost response or service restart.
-
-### 8.4 Replace simulated challenge signatures with authenticated relay
-
-**Mismatch — SYSTEM §6.3:** Peter's program trusts a devnet adapter signer,
-while Godwin's Wormhole path targets an annual result receiver.
-
-**Godwin:** make the EVM adapter accept callbacks only from its configured UMA
-contract and only for registered assertions. Persist registration, dispute and
-settlement events. Construct closure from that recorded state. Emit the following
-messages through Wormhole and deliver them to Peter's continuous-oracle receiver:
-
-| Message | Payload |
-| --- | --- |
-| Every message | Schema version, source chain/adapter, destination program/registry, epoch, proposal ID, pre-commitment, proposal event number and event kind. |
-| Registered | UMA contract, assertion ID, claim type/digest, subject identity, start and deadline. |
-| Disputed | Assertion ID, subject identity and authenticated dispute identity. |
-| Settled | Assertion ID, subject identity, true/false result, disputed flag and settlement time. |
-| Closed | Required-assertion-set digest, final ordered-event count/digest and accepted/rejected result. |
-
-**Peter:** implement that message schema and verification in the continuous
-Solana oracle. Pin the deployed EVM adapter, Wormhole emitter, destination and
-schema before opening proposals. Verify Wormhole authentication on-chain; a
-worker or relay signature alone cannot authorize acceptance. Keep evidence,
-metadata, configuration, manifest and executable-image identities distinct.
-Do not implement SYSTEM §6.4's substitution of configuration digest for image ID.
-
-**Godwin:** emit accepted closure only when every required evidence assertion
-and the snapshot assertion are settled true. Emit rejection when a required
-assertion settles false. An unresolved assertion must block accepted closure.
-Reuse original receipts for reused evidence rather than inventing new events.
-Relay finalized source-chain outcomes and retry delivery without altering them.
-
-**Peter:** verify the complete required assertion set and its receipts before
-accepting closure. Buffer out-of-order messages. Deduplicate by source adapter,
-proposal and event number; reject changed contents for the same identity.
-Reject wrong deployments, epochs, commitments and stale predecessors. Pause
-publication on conflicting authenticated outcomes. Post-commit only after valid
-closure; calculate all results and update the latest pointer atomically. Announce
-publication only after Solana finalized confirmation.
-
-### 8.5 Preserve the correct confidence effect of each dispute
-
-**Mismatch — SYSTEM §6.2–6.3:** a whole-snapshot UMA verdict does not identify
-which individual observation was wrong, but confidence history is per evidence.
-
-**Godwin:** preserve the assertion type and exact subject identity in every
-dispute/outcome message. An evidence dispute names the evidence assessment;
-a selection dispute names the snapshot. Count one dispute per UMA assertion.
-Never turn a rejected snapshot into invented verdicts against its records.
-
-**Peter:** deduplicate challenge history by source chain, UMA contract and
-assertion ID. Attach evidence disputes to the stable evidence identity across
-proposals and assessment revisions. Apply the existing experimental dispute
-factor: five percentage points per unsuccessful challenge, capped at twenty;
-pending challenges block acceptance. A false evidence assertion makes that
-record ineligible; a false selection assertion rejects that proposal. Neither
-case is made acceptable by lowering confidence alone.
-
-**Peter:** keep quality, freshness and dispute confidence separate from the
-economic calculation. Retain the v0.1 eight-factor product and minimum of current
-and comparison confidence. Do not silently change historical-comparison freshness
-or multiply economic references by confidence. Publish unchanged economic outputs
-when only confidence changes.
-
-### 8.6 Connect the implemented evidence API to the fixture-only worker
-
-**Mismatch — SYSTEM §2, §5.2, §5.5–5.6:** the provider mapping was unassigned in
-practice. Joel's API now exists; Peter's worker still needs its live adapter.
-
-**Joel:** retain the deployed commit-safe change cursor and these routes:
-`GET /v1/changes`, `GET /v1/records/:recordId`, and
-`GET /v1/artifacts/:sha256`. Return immutable record IDs as
-`eox:observation:<id>`, change IDs as `eox:change:<id>`, and opaque durable cursors.
-Return raw source values, units, periods, source identities, revision provenance,
-coverage, timestamps and artifact links. Do not add methodology-selected
-comparisons or fabricated confidence fields to the source facts.
-
-**Peter:** implement the HTTP `EvidenceProvider` in `apps/oracle-worker` against
-those routes. Verify artifact hashes, stage changes durably before advancing
-the consumed cursor, and resume from the journal after restart. Do not access
-Postgres directly or infer ordering from numeric IDs. Map countries through the
-methodology catalogue, use `seriesIdentity` and native `periodOrdinal`, select
-comparison records and compile confidence assertions on the methodology side.
-
-### 8.7 Admit OECD/BIS first-observed times and whole-second port times
-
-**Decision — Peter:** yes to first-observed time for OECD and BIS when source
-publication time is missing. Yes to dropping PortWatch milliseconds. These rules
-replace the previous strict publication-time requirements in this section.
-
-**Joel:** supply the immutable database `recorded_at` for each OECD/BIS record.
-When the source has no publication time, that first-observed time is sufficient
-for oracle admission. Never replace it with the time of a later poll or API read.
-For PortWatch, convert source release milliseconds to seconds with
-`floor(milliseconds / 1000)`.
-
-**Peter:** implement `EOX/PUBLICATION/V2`: prefer a supplied source timestamp;
-otherwise use `recordedAt` for sources `oecd` and `bis`. For `imf-portwatch`, floor
-the release milliseconds to whole seconds. Use the resulting timestamp for
-freshness and cutoff checks in the existing oracle math. Include the time basis
-and policy in committed evidence metadata. Do not reset the timestamp when
-carrying a record forward or retrying a proposal. Reject invalid/future times and
-records first observed after the cutoff. Other sources still require their source
-time. No source-value precision rule changes.
-
-**Godwin:** check assertions using the same policy. Missing source publication
-time alone does not invalidate an OECD/BIS record with a valid first-observed
-time. First-observed time is the approved freshness origin; it is not a claim
-that the source released the record within the preceding hour.
-
-### 8.8 Resolve raw precision versus rounded stored values
-
-**Mismatch — SYSTEM §5.3:** the store has six-decimal normalized values, some
-sources have more precision, and port aggregation currently rounds its sum.
-
-**Joel:** preserve the full original decimal strings and original payloads.
-Expose them through the evidence API even when a normalized database column is
-rounded. For ports, expose the constituent port/day import and export decimals
-and coverage. Do not present a `toFixed(6)` total as exact source evidence.
-
-**Peter:** implement `EXACT-6/V1` input admission: read the raw decimal without
-binary floating point, apply only the declared unit conversion, and require
-multiplication by 1,000,000 to produce an integer within the oracle's bounds.
-Reject excess nonzero precision with `EXCESS_PRECISION`; do not round it or
-fall back to the normalized database value. `1.2345670` passes; `1.2345671` fails.
-For conversion to millions, `1234567` becomes `1.234567` exactly. Keep this rule
-separate from the specified rounding during subsequent oracle calculations.
-
-**Godwin:** run the same declared conversion/admission checks when checking
-asserted evidence. Dispute a claim that presents a rounded replacement as the
-exact admitted source value.
-
-### 8.9 Resolve revisions and comparison selection
-
-**Mismatch — SYSTEM §5.2 and §6.4:** a vintage string is not a unique revision
-identity, and annual selection differs from continuous current/comparison selection.
-
-**Joel:** assign each correction/revision a new immutable record ID, preserve
-its source edition and link the superseded record. Expose the source evidence
-establishing revision order. Preserve conflicting source records for inspection;
-do not overwrite one with whichever arrived last.
-
-**Peter:** use the immutable record identity for revision identity and preserve
-the source vintage separately. Validate same-series, acyclic supersession.
-Select the latest eligible source revision established by source order at the
-cutoff, not lexical IDs or arrival time. Quarantine ambiguous replacements and
-carry forward the last accepted observation. Never modify a frozen snapshot.
-
-**Peter:** for GDP, choose the newest eligible edition containing both the
-current quarter and its four-quarter comparison in matching units. For ports,
-freeze country/port membership and sum import plus export tonnage over 28 complete
-UTC days; compare with the equivalent window ending 364 days earlier. Require
-every expected port/day and both flows, treating explicit source zero as zero
-and absence as missing. Sum exact decimals before applying `EXACT-6/V1`. Commit
-the membership, contributing records and aggregation so the result is reproducible.
-
-### 8.10 Make methodology outputs consumable by all components
-
-**Mismatch — SYSTEM §4 and §5.2:** available source feeds do not supply economic
-normalization rules or the eight confidence assessments required by the oracle.
-
-**Peter:** publish one immutable methodology artifact for the 30-country,
-six-indicator v1 universe. Include source bindings, units, transforms, comparison
-periods, normalization anchors, positive equal indicator weights, equal-country
-WORLD, multiplier 20, baseline rules, freshness windows and the eight-factor
-rating rubric. Compile it into the existing Rust/Solana configuration and use
-its exact version in every proposal. Do not let packages choose independent defaults.
-
-**Peter:** produce numeric calibration from the declared 2019–2023 training set
-and evaluate it on 2024–2025 data. Commit the actual resulting parameters and
-report; do not ship symbolic or placeholder anchors as a live methodology.
-Use GDP and property four-quarter changes, unemployment twelve-month changes
-(four quarters for New Zealand), core CPI's reported year-over-year level,
-policy-rate level and the port transform in §8.9. Retain the fixture methodology
-as explicitly synthetic until the populated live artifact is available.
-
-**Peter:** produce record-level confidence manifests containing the eight named
-ratings, assessor, rubric version, source policy and supporting artifact digests.
-Missing ratings fail admission; they never default to perfect confidence.
-Calculate country indices, WORLD, baseline-relative EOX-20 and direct country
-pairs with the existing checked fixed-point math. Pairs must share one epoch,
-baseline and published snapshot. Keep signed expressed references and no compounding.
-
-**Godwin:** load the methodology and confidence artifacts committed by the
-proposal and validate assertions against those exact versions. Do not substitute
-Geffy's infrastructure scores for economic weights or observation confidence.
-
-### 8.11 Define backlog, rejection and recovery behavior
-
-**Mismatch — SYSTEM §3.2 and §7:** hourly collection, a longer dispute window
-and one active worker proposal otherwise leave scheduling and recovery inconsistent.
-
-**Peter:** process one active proposal. Keep incoming changes in the durable
-queue while it is pending. An unresolved dispute blocks new proposals, not reads
-of the last accepted reference. After completion, use the next hourly cutoff and
-latest eligible queued revisions; do not replay empty missed hours. Quarantine
-rejected evidence. Corrections enter a fresh proposal and full challenge window.
-
-**Joel:** keep hourly collection and the evidence API running during disputes
-and oracle pauses. Write correction records instead of editing accepted history.
-
-**Godwin:** keep disputed assertions pending until UMA resolves them. Persist
-assertion and relay progress through restarts; recover existing transactions and
-messages rather than creating replacement challenges or fabricated closure.
-
-**Peter:** after three hours without a new finalized publication, mark current
-status stale and block new/increased exposure in the future exchange contract.
-Keep historical reads and collateral-backed exits available. On proven material
-evidence error or conflicting authenticated outcomes, pause ordinary publication
-and new exposure. Permit only a recovery proposal through the full assertion
-and verification path. Resume after its finalized publication and recorded incident
-resolution. Never rewrite completed trades or published references.
-
-### 8.12 Deploy the missing services and provide one app-facing reference
-
-**Mismatch — SYSTEM §5.7 and §7:** deployment responsibilities are combined,
-some completed API/backup work is listed as missing, and the app has no single
-finalized-reference interface.
-
-**Joel:** retain the deployed evidence API and existing daily verified backup
-job; do not rebuild them as missing features. Provision persistent storage,
-service accounts and service supervision on the dev environment for the oracle
-worker. Keep database access private and provide the worker's evidence API
-connection configuration. Restore backups into a new database and verify hashes
-and immutable history before using it.
-
-**Peter:** package, configure and operate the worker on that provisioned runtime.
-Use the deployed Solana oracle with the authenticated receiver and a persistent
-single-writer journal. Publish its network, program, registry, methodology and
-service addresses. Keep secret keys out of the deployment manifest.
-
-**Godwin:** deploy and operate the continuous EVM adapter, assertion/settlement
-service, challenger and Wormhole relay. Publish EVM chain, UMA/adapter addresses,
-bond token, Wormhole emitter, message version and deployment transactions.
-Fund assertions using the current UMA minimum bond from an operating wallet;
-stop new assertions when underfunded. Do not spend trader collateral.
-
-**Peter:** publish the on-chain account/event definitions and deterministic
-reference/pair readers for Joel to consume. Preserve the version and arithmetic
-contract; the HTTP service must not introduce another calculation implementation.
-
-**Joel:** expose one typed app client and API for latest reference, historical snapshot,
-country/WORLD, country/country, proposal status, evidence readiness and resumable
-finalized-publication subscriptions. Include deployment, epoch, methodology,
-baseline, snapshot, sequence, cutoff, post-commitment/publication times, commitments
-and finalization identity. Return fixed-point values as scaled integer strings.
-Keep committed confidence and evaluation-time ages immutable; report current
-staleness, evidence age and eligibility in a separately timestamped status envelope.
-A pending proposal never replaces the latest accepted snapshot.
-
-**Joel:** return `NO_ACCEPTED_REFERENCE`, `SNAPSHOT_NOT_FOUND` and `INVALID_PAIR`
-explicitly. Supply the same client/response format for the fixture service so app
-work can start without inventing another backend contract. Identify fixture/live
-origin and never mix networks or baselines. Return the exact snapshot identity for Peter's trade instruction to enforce.
-Do not label index values as USDC prices or authorize payouts through
-the reference API.
-
-### 8.13 Keep exchange accounting outside oracle acceptance
-
-**Mismatch — SYSTEM §3.3:** the annual oracle schedule is presented as a money
-settlement rule even though the exchange's monetary contracts are separate.
-
-**Peter:** implement the reference consumer for immediate execution against the
-latest eligible finalized version. Do not add annual locks, order batching or a
-requirement to wait for the pending reference. Keep test assets for the initial
-integrated release. Before enabling real USDC, implement and verify deposit,
-issuance, bounded payout, fee, reserve and redemption equations. Reject obligations
-exceeding collateral; debit or burn a funded claim and transfer its USDC backing
-atomically. Neither EOX-20 nor confidence directly creates a dollar claim.
-
-**Godwin:** do not use the annual result receiver to unlock ordinary reference
-reads or exits. Deliver verification results only; the relay must not mint claims,
-move trader collateral or decide payouts.
-
-### 8.14 Replace scattered infrastructure wallets with one signing service
-
-**Mismatch:** the oracle worker loads a local Solana keypair and the UMA client
-accepts an EVM wallet. Separate private-key copies and independently configured
-public keys can cause authority mismatches, unsafe rotation and service outages.
-
-**Joel:** build `apps/signer` and `packages/signing`. The service holds the signing
-policy and calls managed key storage; the package supplies typed remote-signer
-clients. Expose `getPublicKey`, `signSolanaTransaction` and `signEvmTransaction`.
-Use one interface with separate keys per role, chain and environment. Do not
-create one all-powerful key shared by the infrastructure.
-
-**Joel:** use Google Cloud KMS for non-exportable keys: pure Ed25519 for Solana
-and secp256k1 for EVM. Use the supported protection level for each algorithm.
-Sign Solana message bytes directly. For EVM, sign the transaction's Keccak-256
-digest, decode the returned ECDSA signature and verify the recovered address
-before returning the signed transaction. Do not accidentally hash the EVM digest
-again. Prove both adapters against local verification and testnet transactions.
-The relevant provider behavior is documented in [Cloud KMS algorithms](https://docs.cloud.google.com/kms/docs/algorithms)
-and [ECDSA digest support](https://docs.cloud.google.com/kms/docs/create-validate-signatures#ecdsa_support_for_other_hash_algorithms).
-
-**Joel:** authenticate each caller by its service identity. Accept only decoded,
-allowlisted operations for that caller's role: network, program/contract, method,
-accounts/recipient, token, value, fee and spending limits. Reject unknown
-instructions and arbitrary opaque signing requests. Check the entire transaction,
-including resolved Solana lookup-table addresses. Do not allow a permitted
-instruction to conceal an additional transfer or authority change.
-
-**Joel:** require a request ID, role, immutable key version, network, operation
-identity, expiry and exact transaction bytes. Persist the request decision and
-result. An identical retry returns the recorded result; changed bytes under the
-same request ID fail. Log caller, role, payload digest and decision, never secrets.
-
-**Peter:** keep oracle operation IDs and transaction progress in the worker.
-Before rebuilding an expired Solana transaction, reconcile its on-chain result;
-use a new signing request linked to the same operation only if still needed.
-
-**Godwin:** coordinate EVM nonces per operational account and reconcile uncertain
-submissions before replacement. Link a fee replacement or retry to the original
-operation. A signing request's idempotency alone does not prevent a duplicated
-on-chain action.
-
-**Joel:** publish a versioned public-key directory containing role, environment,
-chain, algorithm, public key/address, key version, activation state and validity
-period. Never expose private keys. Publish it through authenticated deployment
-configuration and a read-only endpoint. Discovery does not grant authority:
-contracts must still pin the authorized addresses. Retain old public keys for
-historical verification. Rotate through explicit on-chain authority updates;
-do not replace a key midway through an open proposal. On compromise, pause the
-affected role rather than silently substituting another key.
-
-**Joel:** create role keys and publish their public identities before contract
-deployment. Keep signing for an undeployed or unbound target disabled.
-**Peter:** deploy the Solana programs using those identities and publish their
-addresses and permitted instruction definitions. **Godwin:** deploy the EVM
-adapter and publish its address and permitted calls. **Joel:** then bind these
-exact deployments into signer policies. **Peter:** pin Godwin's deployed emitter
-before enabling proposals. This sequence avoids requiring deployed contracts
-to create keys, or requiring a live relay to deploy the receiver.
-
-#### Exact signing connection points
-
-| Connection | Individual implementation action | Key and permitted purpose |
-| --- | --- | --- |
-| Oracle worker → Solana | **Peter:** replace the wallet-file dependency in `apps/oracle-worker/src/solana.ts` with Joel's remote Anchor-compatible signer. Separate bootstrap/configuration from runtime publication. | `oracle-operator`: permitted proposal, upload, calculation and publication operations only. |
-| UMA service → EVM | **Godwin:** adapt the wallet consumed by `packages/optimistic-oracle/sdk/src/evm.ts` to Joel's remote signer. | `uma-asserter`: approved adapter calls and bounded bond-token allowances; no arbitrary transfers. |
-| UMA challenger → EVM | **Godwin:** use a separate signer identity for the challenge service. **Peter:** use a distinct checker identity for his independent challenger. | Separate `uma-challenger` and `oracle-checker` accounts; permitted bonded disputes only. |
-| Settlement/Wormhole publication → EVM | **Godwin:** connect the settlement and publication service to its operational signer. | `evm-relayer`: settlement and message-publication calls plus bounded fees. |
-| Wormhole delivery → Solana | **Godwin:** use Joel's Solana signer to pay for approved proof-posting and receiver transactions. | `solana-relayer`: delivery fees and instructions; no oracle-admin authority. |
-| Registry, epoch and exchange setup | **Peter:** implement distinct admin and runtime authorities. **Godwin:** do the same in the EVM adapter. | Admin/upgrade keys stay outside the automatic signing API; use controlled deployment/multisig operations. |
-| App APIs and UI | **Joel:** expose public addresses and build unsigned user transactions. **Godwin:** request user signatures from the connected wallet. | User keys remain in user wallets. No infrastructure key signs a user's trade. |
-
-**Joel:** keep signing infrastructure private to authenticated services. Source
-reads and ordinary public API reads do not require a blockchain signature. Use
-normal service authentication for the evidence API. A new signature does not make
-source data true, prove UMA acceptance or replace Wormhole guardian signatures.
-On signer outage, pause affected writes and preserve queues; keep reads available.
-Never fall back to a shared local private key.
-
-### 8.15 Build the trading app against the converged infrastructure
-
-**Mismatch:** the app was previously unassigned and API ownership overlapped
-with oracle ownership. For this release, Godwin owns UI, Peter owns contracts,
-and Joel owns APIs plus connections to the infrastructure and external services.
-
-**Peter:** implement the Solana exchange contracts for collateral deposits,
-position issuance, country/WORLD and country/country execution, position reduction,
-fees and USDC withdrawal/redemption. First write the exact payoff, quote, reserve
-and maximum-liability equations and test them; do not encode EOX-20 directly as a
-USDC price. Publish the resulting instruction/account/event definitions, errors,
-quote examples and test vectors for Joel. Enforce solvency, user authorization,
-slippage, expiry, snapshot consistency and stale/incident restrictions on-chain.
-Store the actual snapshot used. Reject a changed-reference quote so the client
-can rebuild it; never silently execute at a different reference.
-
-**Joel:** implement the app API and typed client using Peter's published contract
-interfaces. Connect to Solana RPC, finalized reference updates, exchange accounts
-and events, evidence artifacts and Godwin's dispute-status service. Serve markets,
-references, confidence, proposal/dispute status, wallet positions, collateral,
-trade history and executable quotes. Index finalized trades with durable progress;
-label pending transactions separately. Derive trading candles from executed trades
-and reference history from oracle publications; never mix the two series.
-
-**Joel:** build unsigned deposit, trade, reduction and withdrawal transactions
-from Peter's instructions. Return the network, program, accounts, amounts, fees,
-slippage bound, expiry and reference identity for the UI to show. Submission and
-retry handling must preserve the user's signed bytes; changed quotes require
-another user signature. The API cannot bypass contract validation, create an
-unfunded balance or authorize a payout. Fixture responses must use the same
-versioned schema and be visibly labelled as fixtures.
-
-**Godwin:** implement wallet connection, market/pair selection, reference and
-confidence display, trading candles, deposit, buy/sell, position reduction,
-withdrawal, portfolio and transaction history screens. Use Joel's typed client.
-Show the quote, fees, slippage and reference age before requesting the user's
-wallet signature. Handle stale references, insufficient collateral, failed or
-expired transactions, pending disputes and disconnected services explicitly.
-Do not wait for a pending oracle proposal before letting the user use the last
-eligible finalized reference. Do not require an EOX server signature to authorize
-an ordinary user trade.
-
-**Peter:** deploy the exchange with test assets first and verify accounting and
-reference-consumption behavior. **Joel:** connect the API to that deployment and
-reconcile indexed balances with chain state. **Godwin:** connect the UI to that
-API and demonstrate deposit → trade → reduce/exit → withdraw. Real-money release
-remains gated by section 8.13; the UI and API work starts earlier.
-
-## 9. Execution order, parallel work and blockers
-
-The numbered tasks below are the execution plan. Each has one owner. A dependency
-blocks that task's live completion, not unrelated development with fixtures.
-No date estimate is implied. Tasks for the same person remain that person's queue;
-parallel tracks identify work different owners can progress independently.
-
-### First: establish the interfaces
-
-| Step | Owner | Exact work and output | Dependency |
-| --- | --- | --- | --- |
-| 1 | Peter | Publish oracle claim/relay schemas, encoding vectors, account/event layouts and deterministic reference readers for §8.3–8.6. | Start now; existing fixture oracle is the base. |
-| 2 | Joel | Publish signing client/request/key-directory types, app API types and a fixture API implementing those responses. | Use step 1 for final oracle fields; the signer and UI fixture skeleton can start immediately. |
-| 3 | Godwin | Start trading UI screens, wallet connection and fixture-driven reference/portfolio/status views. | Step 2 fixture API. No dependency on live UMA, live source readiness or trading-contract deployment. |
-
-### Next: advance the infrastructure and trading design in parallel
-
-| Step | Owner | Exact work and output | Dependency |
-| --- | --- | --- | --- |
-| 4 | Joel | Build and deploy signing service, isolated operational keys, caller policies and public-key directory; verify both chain adapters. | Step 2 signing types. Live completion needs cloud key access, service identities and test funds. |
-| 5 | Joel | Deliver hourly ingestion, exact source/API mappings, release provenance, immutable revisions and retrievable port constituents under §8.6–8.9. | Existing API; independent of UMA and exchange. Follows step 4 in Joel's default queue. |
-| 6 | Peter | Implement admission, hourly worker, methodology/assessment artifacts and authenticated Solana receiver under §8.1–8.11. Integrate the remote signer. | Step 1. Deploy the receiver after 4 without waiting for live relay delivery. Complete live-input admission after 5 and calibration; test full relay acceptance at 13. |
-| 7 | Godwin | Implement recurring UMA assertions, challenge handling, closure and relay against step 1's vectors; integrate the remote signer. | Step 1; live signing/delivery needs 4 and step 6's receiver deployment. UI work from 3 can continue with fixtures. |
-| 8 | Peter | Write executable exchange payoff/quote/reserve equations, test collateral invariants, and publish trade instruction/event schemas and quote vectors. | Step 1 reference semantics; does not wait for live data or UMA. Complete before trading-contract implementation. |
-| 9 | Joel | Implement app reference/status APIs and finalized indexer using Peter's readers; connect evidence and dispute services; keep the fixture API available. | Steps 1–2. Live connections need 5, 6 and 7; reference API development can precede those deployments. |
-
-Steps 4–5, step 6 and step 7 are separate owner tracks. Peter schedules step 8
-alongside his oracle work; it is the trading track's first hard dependency.
-Godwin can finish fixture UI while waiting for signer/receiver deployment.
-Joel can build step 9 against recorded events while the pipeline is being connected.
-
-### Then: connect contracts, APIs and UI
-
-| Step | Owner | Exact work and output | Dependency |
-| --- | --- | --- | --- |
-| 10 | Peter | Implement and deploy test-asset exchange contracts; test deposits, execution, reserve limits, exits, withdrawals and snapshot/slippage checks. | Step 8 equations and interfaces. Use a controlled fixture reference deployment until step 6 is ready. |
-| 11 | Joel | Implement executable quotes, unsigned transaction builders, submission tracking, positions, balances and executed-trade candles. | Step 8 vectors and step 9 API; end-to-end transactions require step 10 deployment. |
-| 12 | Godwin | Connect UI trading actions to Joel's API and the user's wallet; complete portfolio/history and error flows. | Steps 3 and 11; real test-asset actions need step 10. |
-| 13 | Peter | Run the real-evidence → pre-commit → UMA → Wormhole → Solana demonstration; record acceptance, rejection, correction, confidence refresh and restart behavior. | Steps 4–7 and the populated methodology artifact. API visibility uses step 9. Can run independently of UI completion. |
-| 14 | Joel | Connect the app API to the verified live-data oracle and exchange deployments; verify history, subscription recovery and chain/indexer balance equality. | Steps 9–11 and 13. |
-| 15 | Godwin | Demonstrate the complete devnet user journey: deposit, trade using an accepted reference, trade while another proposal is pending, reduce/exit and withdraw. | Steps 12 and 14. |
-| 16 | Peter | Verify end-to-end collateral accounting, contract authorization, stale/incident behavior and finalization; publish the integrated test results. | Steps 13–15. Real-USDC activation additionally requires the security and accounting gate in §8.13. |
-
-### Blockers that must stay visible
-
-- **Joel — source readiness:** absent times admitted by §8.7, unusable revision
-  provenance or incomplete constituents block those records.
-  They do not block UI work or fixture integration. Report the affected slots.
-- **Peter — methodology readiness:** unpopulated calibration parameters or missing
-  confidence assessments block the live baseline. Do not mark a fixture run as a
-  completed live-data demonstration.
-- **Joel — signing readiness:** missing permissions, policy configuration or funded
-  operational accounts block service transactions. They do not block public reads.
-- **Godwin — assertion/relay readiness:** unresolved disputes or incomplete verified
-  delivery block publication; they do not invalidate the previous accepted reference.
-- **Peter — trading mathematics:** missing payoff/reserve equations block executable
-  quote semantics and exchange correctness. Screens may use labelled fixtures;
-  no API developer or UI developer invents these equations to unblock themselves.
-
-The first app work starts at step 3. The first connected test-asset trading path
-is steps 10–12. Full live-data devnet integration is complete at step 16.
+If the snapshot is inadmissible or the publication misses its deadline, batch
+k does not publish, its requests roll forward until they expire, and the next
+valid publication covers the whole elapsed interval.
+
+## 5. Ownership
+
+| Person | Owns in COX |
+|---|---|
+| **Joel** | Price evidence (`price-feeds` venue package, archiver, store, evidence API), dev operations, signing service, app API and typed client, unsigned transaction builders, indexer |
+| **Peter** | Methodology manifest, mechanism specification, COX math crate, `cox` Solana program, publisher service, end-to-end verification |
+| **Godwin** | Removal of the EVM/UMA stack, independent monitor, web app |
+
+Each task below has exactly one owner. No task is assigned to a pair.
+
+## 6. Preserve, carry over, delete
+
+Definitions used in this section:
+
+- **Preserve** — keep running and unchanged. Do not refactor it for COX.
+- **Carry over** — reuse the code or pattern in a COX component, changing what
+  the right-hand column says.
+- **Delete** — remove from `main` and stop any running service. Before any
+  deletion, Peter tags the current `main` as `eox-archive` and pushes the tag
+  (step 0), so nothing is lost. Deletions are separate commits
+  (`chore(cox): remove ...`).
+
+### 6.1 Joel
+
+| Existing work | Action | What to do |
+|---|---|---|
+| Dev VM `eox-dev`, Postgres, private RPC, firewall | **Preserve** | Unchanged host for every COX service. |
+| Daily backups to `gs://colosseum-eox-db-backups`, `eox-dev-vm` service account | **Preserve** | Unchanged; the backup now also covers COX tables. |
+| `packages/evidence-store`: `source_payloads`, SHA-256 check, append-only triggers, `recorded_at`, xid change feed (`007`), migration runner | **Carry over** | Keep the machinery. Add migrations for `assets`, `candle_responses`, `price_observations`, `snapshots`, `incidents` (`SYSTEM.md` §5.1). Add store functions for them and a change feed over `price_observations`. |
+| `packages/evidence-store`: `observations`, `indicators`, `source_releases`, revision links (`001`–`006`, `008`, `009`) and their TS functions | **Delete** (code) / **Preserve** (data) | Applied migrations and their rows stay in the database as a read-only EOX archive. Remove the TS write and query paths for them (`recordObservation`, `recordCorrection`, `getAsOf`, release functions) once nothing imports them. |
+| `packages/ingestion`: `sources/payload.ts`, `record-payloads.ts`, `decimal.ts` | **Carry over** | Fetch-with-raw-bytes and exact decimals move into the new `packages/price-feeds` (J0); `record-payloads.ts` stays in ingestion for the archiver (J1). |
+| `packages/ingestion`: OECD, BIS, PortWatch, SDMX sources, all six `indicators/` and `ingest/` modules, `pilot-countries.ts`, `ingest-oecd-snapshot.ts`, `record-revisions.ts`, `port-publication.ts` | **Delete** | Economic indicators are not part of COX. |
+| `postman/eox-source-apis.postman_collection.json` | **Delete** | Replace with a venue collection: Kraken `AssetPairs` and `OHLC`, Coinbase `products` and `candles`, Bybit `instruments-info` and `kline`. |
+| `deploy/dev/run-ingests.sh` and its hourly cron line in `setup.sh` | **Delete** | Stop the hourly EOX ingests first, then remove them. |
+| `apps/evidence-api`: server, auth-free read-only design, `/v1/artifacts/:sha256`, cursor handling | **Carry over** | Keep the artifact route unchanged. Replace `facts.ts` with price routes (§7.1, task J2). |
+| `apps/evidence-api`: `/v1/changes`, `/v1/records/:id`, `/v1/records/:id/constituents`, EOX fact shape, publication policy | **Delete** | Remove after the COX routes ship; nothing in COX consumes them. |
+| `apps/signer`: Cloud Run service, KMS adapters, caller auth, decode-and-allowlist policy, Firestore idempotency, key directory | **Preserve** | Unchanged service. |
+| `apps/signer` roles and config | **Carry over** | Keep `oracle-operator` (Ed25519, existing KMS key) as the single COX runtime role. Bind it to the `cox` program's runtime instructions (`publish`, `execute`) and compute budget only. Add Peter's publisher service account as the only caller. |
+| `apps/signer` EVM path (`evm.ts`, EVM policy, `signEvmTransaction`) and roles `uma-asserter`, `uma-challenger`, `oracle-checker`, `evm-relayer`, `solana-relayer` | **Delete** | Disable (do not destroy) those KMS key versions; mark them `retired` in `deploy/signing/dev-keys.json` so old public keys stay verifiable. Remove the EVM code and the roles from `packages/signing`. |
+| `packages/app-api` and `apps/app-api`: response envelope, typed client, fixture/live origin split, SSE stream with `Last-Event-ID` resume, state file, explicit error codes, separate status envelope | **Carry over** | New schema `cox.app-api/v1` (§7.1, task J3). |
+| `packages/app-api` / `apps/app-api`: country, WORLD, pair, proposal, assertion and readiness types and routes; `fixture-source.ts`; `readiness.ts`; `live-source.ts`; `indexer.ts` EOX event decoding; `fixture-generator` (Rust on `eox-oracle-math`) | **Delete** | Replaced by COX equivalents. Keep the indexer's finalized-walk and durable-progress logic when rewriting it. |
+| `deploy/dev` services `eox-app-api`, `eox-app-api-live` | **Carry over** | Same units serving the COX schema; rename to `cox-app-api(-live)` when replaced. |
+| `deploy/dev` `eox-evidence-api.service` | **Preserve** | Same unit, new routes. |
+
+### 6.2 Peter
+
+| Existing work | Action | What to do |
+|---|---|---|
+| `packages/oracle/crates/math`: `SCALE`, `MathError`, `rounded_div`, `multiply`, checked bounds, domain-separated `digest`, `artifact_digest` | **Carry over** | Into `packages/cox/crates/math`, with the scales in `SYSTEM.md` §5.3. |
+| `packages/oracle/crates/math`: `Rule`, `Slot`, `transform`, `normalize`, `confidence`, `calculate_indicator`, `country`, `world`, `reference`, `preview`, `parse_decimal`, `Evidence`/`Metadata` digests; `protocol.rs`, `relay.rs`, `streaming.rs` | **Delete** | Economic normalisation, confidence and UMA/Wormhole claim encoding have no COX use. |
+| `packages/oracle/crates/cli`: preview binary and vector-test pattern | **Carry over** | `packages/cox/crates/cli` computes publications from a JSON input and checks the published vectors. |
+| `packages/oracle/programs/eox-oracle`: registry, pause, admin-versus-runtime authority split, sequence plus predecessor, atomic latest pointer, published event, read-only simulated reader (`read_pair` pattern) | **Carry over** | Patterns for `programs/cox`. |
+| `eox-oracle`: epochs, rule pages, evidence pages and history, challenges, `precommit`/`postcommit`, `close_window`, `cancel`/`expire`, `authenticated.rs` receiver; devnet program `D1HhP4kV…CYe85` | **Delete** | Stop using the devnet program; do not upgrade it. |
+| `packages/oracle/PROTOCOL.md`, `RECEIVER.md`, `fixtures/*` (`protocol-v1.json`, baseline, contested, us-improves, confidence-decay), `idl/` | **Delete** | Shared EOX vectors; Godwin's Foundry tests depending on them are deleted in the same step. |
+| `packages/methodology`: canonical manifest and digest approach | **Carry over** | Into `packages/cox-methodology` as `COX/METHODOLOGY/V1`. |
+| `packages/methodology`: country catalogue, ISO mappings, period ordinals, confidence compiler, research bindings, calibration research, synthetic policy | **Delete** | |
+| `apps/oracle-worker`: `journal.ts` (atomic state, PID lock), `retry.ts`, `solana.ts` transport (finalized reads, Anchor transactions, no fake chain), operation-ID and reconcile-before-rebuild logic | **Carry over** | Into `apps/cox-publisher`. Replace the wallet-file signer with `@eox/signing` (`oracle-operator`). |
+| `apps/oracle-worker`: `provider.ts`, `worker.ts` proposal flow, `protocol.ts`, `authenticated.ts`, `publication.ts`, `references.ts`, `preview.ts`, `codec.ts`, `demo.ts`, `examples/`, `REFERENCE-READERS.md`, `AUTHENTICATED-RECEIVER.md` | **Delete** | |
+| Product step 8 (exchange payoff, quote and reserve equations) and step 10 (exchange contracts) — not started | **Delete** (as tasks) | Superseded by the COX mechanism specification and the pool inside the `cox` program. |
+| `docs/papers`, `docs/cox` | **Preserve** | Paper 3 is the product source. |
+| Root `README.md` | **Carry over** | Rewrite for COX once the deletions land. |
+
+### 6.3 Godwin
+
+| Existing work | Action | What to do |
+|---|---|---|
+| `packages/optimistic-oracle/evm`: `EoxAssertionAdapter`, `EoxContinuousAdapter`, `ContinuousProtocol`, deploy script, interfaces, 65 Foundry tests | **Delete** | COX has no EVM chain. The annual adapter already on Sepolia is abandoned in place; record its address in the deletion commit message. |
+| `packages/optimistic-oracle/solana`: `eox_settlement_oracle` | **Delete** | No annual settlement in COX. |
+| `apps/uma-relay`: asserter, relay, settle/close/publish loop, `abi.ts`, `claims.ts`, `digest.ts`, `remote-sender.ts`, `server.ts`, `auth.ts`, UMA bond handling | **Delete** | |
+| `apps/uma-relay`: `env.ts`, `state-file.ts`, the challenger's tick-and-cursor loop with per-item verdicts, `evidence-source.ts` artifact hash checks | **Carry over** | Into `apps/cox-monitor` (task G2). The monitor holds no key and signs nothing. |
+| Trading UI from product step 3, if any exists outside this repo | **Carry over** | Keep wallet connection, layout and use of the typed client. Replace country, WORLD and pair screens with the COX screens in task G3. If nothing exists, start fresh in `apps/web`. |
+
+## 7. New work
+
+### 7.1 Joel
+
+**J0 — `packages/price-feeds` (new package).** The only code in the repository
+that talks to an exchange. Joel owns it; the archiver (J1) and Godwin's monitor
+(G2) both import it. It contains:
+
+- **Venue adapters**, one module per venue, each returning the raw response
+  bytes together with the parsed candle, and nothing else:
+  - `kraken-ws`: one WebSocket v2 connection subscribed to `ohlc`, interval 1,
+    for all roster symbols plus `USDT/USD`. Keeps the frames per symbol per
+    minute; a minute with no update is empty only if the connection had no gap
+    across it. Reconnects with backoff 1 s doubling to 60 s plus jitter.
+  - `kraken-rest`: `GET /0/public/OHLC?interval=1&since=…`, used only to repair
+    minutes covered by a WebSocket gap and for bulk verification.
+  - `coinbase`: `GET /products/{id}/candles?granularity=60&start&end`; an
+    omitted candle is an empty minute.
+  - `bybit`: `GET /v5/market/kline?category=spot&interval=1&start&end`; volume
+    0 is an empty minute.
+- **One rate limiter per venue per process**, shared by every caller: token
+  bucket at the budgets in `SYSTEM.md` §10.1 (half the published limit or
+  less), concurrency 1 per venue, exponential backoff with jitter on `429`,
+  Kraken `EAPI:Rate limit exceeded` and Bybit rate-limit codes, `Retry-After`
+  honoured, a 60-second circuit breaker after five consecutive failures, and a
+  one-minute cache so an identical request is never sent twice. Budgets are
+  configuration with the §10.1 values as maximums; the package refuses a
+  configured budget above them.
+- **`resolveCutoffPrice(asset, cutoff)`** implementing `COX/PRICE-FALLBACK/V1`
+  exactly (`SYSTEM.md` §3.2): Kraken, then Coinbase, then Bybit with USDT/USD
+  conversion, then Kraken's carried close. It queries a fallback venue only
+  for an asset that needs it and returns every attempt with its outcome and
+  raw bytes.
+- **`verifyRange(venue, asset, from, to)`** for bulk re-fetching (Kraken 720,
+  Coinbase 300, Bybit up to 1,000 candles per call), used by the monitor.
+- **Metrics:** requests, `429`s, backoff time and breaker state per venue,
+  exported for the dev VM's logs.
+- **Tests** with recorded venue responses: empty-minute handling per venue,
+  every fallback step, USDT conversion, rate-limit backoff, breaker, cache and
+  budget refusal. No test calls a live venue.
+
+Before J1 runs live, Joel checks from the dev VM that `api.bybit.com`
+responds and that Bybit's terms permit our use. If either fails, the Bybit
+adapter stays disabled by configuration (no proxy or VPN) and TRX and JUP run
+on Kraken alone.
+
+**J1 — Archiver.** A loop in `packages/ingestion` (systemd `cox-archiver` on
+the dev VM) that calls `resolveCutoffPrice` for the 30 assets after each
+cutoff; stores every attempt's raw bytes in `source_payloads`; records
+`venue_responses`, `venue_attempts` and `price_observations` with venue, step,
+close text, `price_e8`, trade evidence, trade age, admissibility and reason
+(`SYSTEM.md` §3.2, §5.1, §9); writes the `snapshots` row with its digest by
+cutoff + 30 s; records incidents. After a restart, catch up missed cutoffs only
+within the venues' history windows, in order, without inventing data. Watch the
+three venues' listings daily and raise an incident if a symbol is renamed,
+delisted or changes its decimals. **Feed check:** run for 7 days before P1
+seals the manifest and report, per asset, the share of inadmissible cutoffs,
+the share resolved by each venue and step, the longest trade age, and each
+venue's request count and rate-limit responses. An asset above 0.1%
+inadmissible fails; RENDER and TAO are the ones to watch.
+
+**J2 — Evidence API price routes.** On `apps/evidence-api`:
+`GET /v1/prices/cutoffs/:cutoff` (the archived snapshot for a cutoff: per
+asset every venue attempt and its response SHA-256, the chosen venue and step,
+candle, close text, `price_e8`, trade evidence and age, admissibility, snapshot
+digest, incidents),
+`GET /v1/prices/changes?after=` (commit-safe feed of new cutoffs),
+`GET /v1/artifacts/:sha256` (unchanged). Read-only; never computes references.
+
+**J3 — App API `cox.app-api/v1` and fixture.** Same envelope, client and
+fixture/live split as today. Routes: deployment; assets with their venue symbols, last price venue and
+current trade age;
+CRYPTO composition and history; latest and historical publications with
+prices, CRYPTO level and references; per-class backing, units and unit value;
+current batch (cutoff, open/closed) and system status (fresh, delayed,
+halted, incident); a wallet's positions, pending requests, receipts,
+withdrawal payable; publication stream (SSE, resumable). Fixed-point values as
+integer strings with their scale. Fixture values come from Peter's vectors
+(P1), never computed in the API. Error codes: `NO_PUBLICATION`,
+`PUBLICATION_NOT_FOUND`, `UNKNOWN_ASSET`, `UNKNOWN_CLASS`, plus the existing
+generic codes.
+
+**J4 — Signer bindings.** After P3 deploys: bind `oracle-operator` as in §6.1,
+retire the EVM and unused roles, publish the updated key directory.
+
+**J5 — Live app API.** Indexer over finalized `cox` program events with durable
+progress; positions and receipts from chain state; unsigned transaction
+builders for deposit, switch, redeem, cancel and withdraw showing batch,
+cutoff, amounts, conditions and expiry; submission tracking that preserves the
+user's signed bytes; monitor verdicts from G2 in the status envelope.
+Reconcile indexed totals with the on-chain vault and ledger every publication.
+Reference history and executed-flow history are separate series.
+
+### 7.2 Peter
+
+**P0 — Archive tag.** Tag `main` as `eox-archive` and push it before anyone
+deletes code. First task; unblocks every deletion.
+
+**P1 — Mechanism and methodology specification.** `packages/cox/SPEC.md` plus
+`packages/cox-methodology`: the `COX/METHODOLOGY/V1` manifest (assets in
+canonical order, venue symbols, price scale (USD × 10⁸), weights, origin rule,
+candle and fallback rule (`COX/PRICE-FALLBACK/V1`), USDT/USD conversion, maximum trade age, cadence, archive and commit deadlines, runtime
+authority, transfer rule id, arithmetic scales and rounding); exact formulas for CRYPTO, references, MVP-0 and unit
+accounting; request and publication state machine; account, instruction,
+event and error definitions; and `packages/cox/fixtures/vectors.json` with
+exact inputs and outputs, including a missed minute, an empty class, a
+condition failure, an expiry and the Paper 3 §12 worked example. This is the
+contract Joel and Godwin build against.
+
+**P2 — COX math crate and simulations.** `packages/cox/crates/math` and `cli`,
+passing the vectors. Run the Paper 3 §17 checks that MVP-0 must pass on
+synthetic paths: equal returns leave references unchanged, deposit after a gain
+cannot buy it, redeem after a loss cannot escape it, batch permutations give
+identical results, split orders gain nothing from rounding, mass exit and full
+drain stay backed, vault equality holds after every step. Commit the results.
+
+**P3 — `cox` program on devnet.** Registry, pause, admin and runtime
+authorities, test collateral mint and vault, classes, request accounts,
+`publish` (operator-signed snapshot of 30 prices and trade ages → checks in
+`SYSTEM.md` §5.2 → reference → revalue 31 classes → fix unit values → commit), `execute` (crank batch requests at the fixed values; the next
+publication cannot start until the batch is fully executed), `cancel`,
+`withdraw`, halted-mode refunds, read-only simulated readers. Vault equality
+asserted in every value-moving instruction. Publish program ID, IDL and the
+permitted runtime instruction list to Joel.
+
+**P4 — Publisher.** `apps/cox-publisher`: for each cutoff, read the archived
+snapshot from J2, submit exactly those values and their digest in `publish`,
+crank `execute` to completion, reconcile on restart, never publish a cutoff
+twice. Signs only through the signer.
+
+**P5 — End-to-end verification.** Run the devnet MVP for 24 hours with live
+exchange prices and scripted users; record publications, misses, incidents,
+monitor verdicts and vault reconciliation; publish the results. This is the
+MVP acceptance record.
+
+### 7.3 Godwin
+
+**G1 — Remove the EVM/UMA stack.** The deletions in §6.3, after P0, in one or
+more `chore(cox):` commits. Confirm `pnpm -r build` and `pnpm -r test` still
+pass.
+
+**G2 — Independent monitor.** `apps/cox-monitor`: an independent TypeScript
+implementation of `SYSTEM.md` §4 and §7 that matches every vector in P1. For
+each finalized publication: fetch the archived snapshot from J2, check every
+response SHA-256, re-fetch the same candles in bulk from each venue through
+its own `@eox/price-feeds` client (J0) at no more than a quarter of each
+venue's published limit, confirm every fallback step's outcome and the chosen
+close, and check the digest against the archive and the on-chain prices; recompute CRYPTO, references, revaluation and every executed
+request; check vault equality. Emit one verdict per publication through a small
+read-only HTTP endpoint that Joel's API consumes. Report mismatches; never
+sign or pause.
+
+**G3 — Web app.** `apps/web` against Joel's typed client, fixture origin first:
+wallet connection; asset pages (price with its venue and trade age, COX reference,
+CRYPTO, next cutoff);
+CRYPTO page (pilot label, members, weights, history); deposit, switch and
+redeem forms showing the target batch, conditions and the estimate labelled as
+an estimate, not a quote; queued, executed and rejected request states;
+portfolio (units, redeemable value, deposited basis, withdrawals, pending);
+withdraw; publication history; status banner (fresh, delayed, halted,
+incident, monitor mismatch). MVP-0, test collateral and "prices attested by
+the operator from exchange data" are labelled on every trading screen. User keys stay in the user's wallet.
+
+**G4 — Live user journey.** Connect G3 to the live API and demonstrate on
+devnet: deposit → queued → executed; switch; redeem while another user
+deposits in the same batch; withdraw; cancel before cutoff; a missed minute
+seen by the user.
+
+## 8. Execution order
+
+| Step | Owner | Task | Depends on |
+|---|---|---|---|
+| 0 | Peter | P0 archive tag | — |
+| 1 | Peter | P1 specification and vectors | — |
+| 2 | Joel | J0 `price-feeds` package and Bybit access check, then J1 archiver and the 7-day feed check | — |
+| 3 | Godwin | G1 remove EVM/UMA stack | 0 |
+| 4 | Joel | EOX deletions in §6.1 that nothing COX depends on (ingests, cron, Postman) | 0 |
+| 5 | Joel | J2 evidence API price routes | 2 |
+| 6 | Joel | J3 app API schema and fixture | 1 (fields and fixture values); skeleton can start at once |
+| 7 | Godwin | G3 web app on fixture | 6 |
+| 8 | Peter | P2 math crate and simulations | 1 |
+| 9 | Godwin | G2 monitor against vectors | 1; venue re-fetch needs J0 (step 2); live checks need 5 |
+| 10 | Peter | P3 `cox` program on devnet; then Peter's §6.2 deletions | 8 |
+| 11 | Joel | J4 signer bindings and role retirement | 10 |
+| 12 | Peter | P4 publisher running on the dev VM | 5, 10, 11 |
+| 13 | Joel | J5 live app API; then Joel's remaining §6.1 deletions | 9, 12 |
+| 14 | Godwin | G4 live user journey | 7, 13 |
+| 15 | Peter | P5 24-hour end-to-end verification — **MVP done** | 9, 14 |
+
+Parallel tracks: Joel (2 → 4 → 5 → 6), Peter (1 → 8 → 10), Godwin (3 → 7, 9)
+run independently until step 10. Fixture work never waits for live services.
+
+## 9. Blockers that must stay visible
+
+- **Peter — trust boundary:** exchange data is unsigned, so the program trusts
+  the `oracle-operator` key for prices (`SYSTEM.md` §2). Acceptable on devnet
+  with test collateral only; an authenticated source is a real-collateral gate.
+- **Joel — thin pairs:** with the Coinbase and Bybit fallback, 0.6% of
+  asset-minutes still had no trade on any venue (RENDER 31 of 300, TAO 9). A
+  trade age above 30 minutes on any asset stops the whole minute. If the feed
+  check shows this happening often, Peter drops the asset before sealing
+  rather than loosening the bound.
+- **Joel — Bybit access:** Bybit excludes US users and is reported to block US
+  and cloud IPs; the dev VM is in a US region. Without Bybit, TRX and JUP have
+  no fallback.
+- **Joel — venue load:** the feed-check report must show no sustained `429`s
+  from any venue. If one appears, lower the budget; never raise it.
+- **Joel — roster admission:** each of the 30 assets enters the manifest only
+  if it passes the J1 feed check before P1 seals it. Failing assets are
+  dropped, not substituted; the sealed `N` is what the product labels.
+- **Peter — transfer rule:** MVP-0 is a test mechanism. Real collateral stays
+  blocked until the items in `SYSTEM.md` §12 are decided and simulated. No API
+  or UI developer invents payout rules to unblock themselves.
+- **Peter — Solana limits:** if archiving by cutoff + 30 s and `publish` by
+  cutoff + 55 s cannot be met, or `publish` exceeds the compute limit for 31
+  classes, P3 reports the
+  measured limit before changing the cadence; the cadence is a product
+  commitment.
+- **Joel — signer funding:** `oracle-operator` must hold devnet SOL for publication
+  and execution fees.
+
+## 10. Rules for agents during the pivot
+
+- Do not delete anything before the `eox-archive` tag exists on `origin`.
+- Do not port EOX concepts by renaming: countries, WORLD, indicators,
+  confidence factors, vintages, challenge windows and epochs have no COX
+  meaning (Paper 3 §14).
+- Do not call an exchange from any package other than `packages/price-feeds`.
+- Do not reintroduce UMA, EVM or a challenge window into the publication path
+  without a new version of this brief and `SYSTEM.md`.
+- Record each finished task in `AGENTS.md`.
