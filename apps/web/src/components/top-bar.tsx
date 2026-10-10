@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NetworkSwitcher } from "./network-switcher";
 import { WalletButton } from "./wallet-button";
 
 const links = [
   { href: "/", label: "Markets" },
+  { href: "/swap", label: "Swap" },
   { href: "/crypto", label: "CRYPTO" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/publications", label: "Publications" },
@@ -47,6 +49,7 @@ export function TopBar() {
           <NavLinks pathname={pathname} />
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <NetworkSwitcher />
           <WalletButton />
         </div>
       </div>
