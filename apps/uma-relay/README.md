@@ -27,9 +27,36 @@ with an empty state rebuilds everything from `startBlock` and publishes nothing 
 
 ## Signing
 
-`Relay` takes a `Sender` (`address`, `send(transaction)`). Tests use a local Anvil key.
-The deployed service must use Joel's remote signer with the `evm-relayer` role and never a
-local key (`product.md` §8.14).
+`Relay` takes a `Sender` (`address`, `send(transaction, operation)`). `remoteSender` is the
+one the service runs with: it builds an EIP-1559 transaction for the `evm-relayer` key from
+Joel's signing service, asks the service to sign it, checks that the returned transaction
+is the same one and recovers to that key, and broadcasts it. The request ID is derived from
+the unsigned bytes, so a retry of the same bytes is idempotent and a rebuilt transaction is
+a new request under the same operation ID (`settle:<assertion>`, `close:<proposal>`,
+`publish:<proposal>:<event number>`). The service never holds a private key
+(`product.md` §8.14). Tests use a local Anvil key behind the same interfaces.
+
+## Run
+
+```bash
+pnpm --filter @eox/uma-relay start
+```
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `RPC_URL` | EVM RPC endpoint of the adapter's chain | required |
+| `ADAPTER_ADDRESS` | Deployed `EoxContinuousAdapter` | required |
+| `SIGNER_URL` | Signing service base URL | required |
+| `STATE_PATH` | State file on a persistent disk | required |
+| `SIGNER_AUDIENCE` | Identity-token audience | `SIGNER_URL` |
+| `START_BLOCK` | Block the adapter was deployed in | `0` |
+| `CONFIRMATIONS` | Blocks behind the head that events are read at | `2` |
+| `TICK_SECONDS` | Pause between ticks | `30` |
+
+It authenticates to the signing service with the Google identity token of the service
+account it runs as, read from the metadata server, so it must run on Google Cloud. The
+signing service must list that account as a caller with the `evm-relayer` role and bind
+UMA `settleAssertion` and the adapter's `close` and `publish` for that role.
 
 ## Test
 
@@ -44,7 +71,6 @@ worker's encoding.
 
 ## Not built yet
 
-- The process entry point and its configuration.
-- The remote-signer `Sender`.
+- A deployment (systemd unit or Cloud Run) and its service account.
 - Fetching the signed Wormhole message and delivering it to the Solana receiver.
 - The challenger.
