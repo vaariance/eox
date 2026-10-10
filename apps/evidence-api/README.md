@@ -23,6 +23,19 @@ pnpm --filter @eox/evidence-api test
 Every other method or path is refused. Inputs are validated against strict
 patterns before reaching the database.
 
+## COX prices
+
+`product.md` J2. Read-only views of what the archiver (`cox-archiver`) stored;
+the API never computes a price or a reference.
+
+| Request | Returns |
+|---|---|
+| `GET /v1/prices/cutoffs/:cutoff` | the archived snapshot for one cutoff (Unix seconds on a minute boundary): `snapshot` (`digest`, `admissible`, `recordedAtMs`), then for every asset in canonical order its fallback `attempts` (`step`, `venue`, `outcome`, `artifactDigest`) and the chosen `price` (`venue`, `step`, `candleStart`, `close` as the venue's text, `usdtUsd` and `usdtArtifactDigest` for Bybit, `priceE8` at scale 10⁸, `tradeEvidence`, `tradeAgeMinutes`, `artifactDigest`, `admissible`, `rejection`), the USDT/USD attempts and the cutoff's `incidents`. 404 until the snapshot row exists, so a cutoff still being archived is never served |
+| `GET /v1/prices/changes?after=&limit=` | `{ after, cutoffs: [{ cutoff, admissible, snapshotDigest }] }`, archived cutoffs in commit order; pass the returned `after` back. Same commit-safe rule as the change feed below |
+
+Every `artifactDigest` is retrievable from `/v1/artifacts/:sha256`. A Kraken
+WebSocket artifact is the ordered raw frames for that candle, one per line.
+
 ## Change feed
 
 Start with no cursor and pass back the returned `cursor` each time. A cursor stays
