@@ -5,6 +5,7 @@
   "type": "module",
   "main": "src/relay.ts",
   "scripts": {
+    "start": "tsx src/main.ts",
     "build": "tsc --noEmit",
     "test": "vitest run"
   },
