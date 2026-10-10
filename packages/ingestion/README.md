@@ -38,14 +38,17 @@ npx newman run postman/eox-source-apis.postman_collection.json --delay-request 2
 
 ## Publication time
 
-`published_at` is set only with archived evidence of an actual source release
-(`product.md` §8.7); the database rejects it otherwise. Fetch time is never used.
+`published_at` is stored only with archived evidence of an actual source release;
+the database rejects it otherwise. The evidence API then applies Peter's policy
+`PUBLICATION/RELEASE-OR-FIRST-OBSERVED/V1` (2026-10-10): the verified release time
+when one exists, otherwise the record's database-stamped first observation time,
+rounded down to whole seconds and labelled with its basis.
 
 | Source | Evidence available | Result |
 |---|---|---|
-| IMF PortWatch | layer `dataLastEditDate` (the source's own data edit time) | A day is dated by the edit at which it first appears: our previous archived release's latest day was earlier, the current release includes it, and the edit time did not change during the run. Times carry milliseconds. |
-| OECD | none (dataflow annotations are display settings; `Last-Modified` is static) | `published_at` stays null |
-| BIS | none documented (the `etag` timestamp is undocumented) | `published_at` stays null |
+| IMF PortWatch | layer `dataLastEditDate` (the source's own data edit time) | A day is dated by the edit at which it first appears: our previous archived release's latest day was earlier, the current release includes it, and the edit time did not change during the run. Otherwise first-observed time. Milliseconds are dropped when served. |
+| OECD | none (dataflow annotations are display settings; `Last-Modified` is static) | first-observed time |
+| BIS | none documented (the `etag` timestamp is undocumented) | first-observed time |
 
 ## Revisions and reruns
 

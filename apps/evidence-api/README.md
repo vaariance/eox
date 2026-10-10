@@ -50,8 +50,8 @@ frequency. Everything else returns 404 and is left out of the change feed.
 | `indicator`, `source`, `unit`, `frequency` | catalogue values |
 | `period`, `periodOrdinal` | native label (`YYYY-MM-DD`, `YYYY-MM`, `YYYY-Qn`) and `periodOrdinal` |
 | `value`, `rawValue` | stored normalised value and the source's exact string |
-| `publishedAt` | Unix seconds, only when the release time is an exact whole second; otherwise `null` (never rounded). Set only with verified release evidence |
-| `publication` | `null`, or `{ basis: "source-data-edit", release, previousRelease }`: the source release that first contained the observation and the earlier release that lacked it, each with `releasedAtMs`, `latestPeriod` and the digests of the archived responses that prove them (fetch from `/v1/artifacts`) |
+| `publishedAt` | Unix seconds under policy `PUBLICATION/RELEASE-OR-FIRST-OBSERVED/V1` (Peter, 2026-10-10): the verified source release time when one exists, otherwise the time EOX first observed the record (`recordedAt`); either rounded down to whole seconds |
+| `publication` | `{ policy, basis, ... }`. `basis: "source-data-edit"` carries `release` and `previousRelease` (`releasedAtMs`, `latestPeriod` and digests of the archived responses that prove them). `basis: "first-observed"` carries `firstObservedAtMs`. For backfilled history, first observation is the load date, not the source's release; `knownAt` and `revision.sourceEdition` show the source's own dating |
 | `knownAt`, `recordedAt` | Unix seconds |
 | `artifactDigest` | SHA-256 of the raw response, retrievable from `/v1/artifacts` |
 | `coverage` | `{ reported, total }` for container throughput, else `null` |
