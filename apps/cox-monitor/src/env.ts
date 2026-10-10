@@ -11,14 +11,6 @@ export function integer(name: string, fallback: bigint): bigint {
   return BigInt(value);
 }
 
-export async function identityToken(audience: string): Promise<string> {
-  const url = new URL("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity");
-  url.searchParams.set("audience", audience);
-  const response = await fetch(url, { headers: { "Metadata-Flavor": "Google" } });
-  if (!response.ok) throw new Error(`identity token request failed with HTTP ${response.status}`);
-  return response.text();
-}
-
 export function log(message: string): void {
   process.stdout.write(`${new Date().toISOString()} ${message}\n`);
 }
