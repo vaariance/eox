@@ -171,14 +171,16 @@ function price(venue: Venue, step: FallbackStep, cutoff: number, found: Found, u
   const tradeAgeMinutes = (cutoff - candle.start - 60) / 60;
   let priceE8: string | null;
   let rejection: PriceRejection | null = null;
-  if (venue === "bybit") {
+  if (!isPositiveDecimal(candle.close)) {
+    priceE8 = null;
+    rejection = "non_positive_price";
+  } else if (venue === "bybit") {
     priceE8 = convertedE8(candle.close, usdt!.close!).toString();
   } else {
     const exact = exactE8(candle.close);
     priceE8 = exact === null ? null : exact.toString();
     if (exact === null) rejection = "excess_decimals";
   }
-  if (rejection === null && !isPositiveDecimal(candle.close)) rejection = "non_positive_price";
   if (rejection === null && tradeAgeMinutes > MAX_TRADE_AGE_MINUTES) rejection = "trade_age_exceeded";
   return {
     venue,

@@ -15,13 +15,15 @@ import {
 import { FakeClock, FakeHttp, recordedText, UA } from "./helpers.js";
 
 describe("exact prices", () => {
-  it("converts a close to USD x 10^8 exactly and refuses more than eight significant decimals", () => {
+  it("converts a close to USD x 10^8 exactly and refuses any text the spec cannot represent", () => {
     expect(exactE8("82758.6")).toBe(8_275_860_000_000n);
     expect(exactE8("0.8650")).toBe(86_500_000n);
-    expect(exactE8("1.000000000")).toBe(100_000_000n);
     expect(exactE8("0.00000001")).toBe(1n);
-    expect(exactE8("0.000000001")).toBeNull();
-    expect(() => exactE8("1e5")).toThrow();
+    expect(exactE8("0.12345678")).toBe(12_345_678n);
+    expect(exactE8("184467440737.09551615")).toBe((1n << 64n) - 1n);
+    for (const refused of ["1.000000000", "0.000000001", "01.5", "1.", ".5", "-1", "1e5", "184467440737.09551616"]) {
+      expect(exactE8(refused), refused).toBeNull();
+    }
   });
 
   it("converts a Bybit USDT close with the one named rounding, half away from zero", () => {

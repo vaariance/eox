@@ -12,11 +12,14 @@ function parts(text: string): { negative: boolean; digits: bigint; scale: number
   return { negative: match[1] === "-", digits: BigInt(`${match[2]}${fraction}`), scale: fraction.length };
 }
 
+const USD_E8 = /^(0|[1-9][0-9]*)(?:\.([0-9]{1,8}))?$/;
+const U64_MAX = (1n << 64n) - 1n;
+
 export function exactE8(text: string): bigint | null {
-  const { negative, digits, scale } = parts(text);
-  if (scale > 8) return null;
-  const value = digits * 10n ** BigInt(8 - scale);
-  return negative ? -value : value;
+  const match = USD_E8.exec(text);
+  if (!match) return null;
+  const value = BigInt(match[1]!) * E8 + BigInt((match[2] ?? "").padEnd(8, "0"));
+  return value > U64_MAX ? null : value;
 }
 
 export function convertedE8(close: string, usdtUsd: string): bigint {
