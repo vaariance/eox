@@ -78,10 +78,10 @@ describe.skipIf(!canRun)("relay against the adapter on Anvil", () => {
 
   it("resumes from saved state or from the chain without repeating anything", async () => {
     const path = join(mkdtempSync(join(tmpdir(), "uma-relay-")), "state.json");
-    expect(await readState(path)).toEqual(emptyState());
+    expect(await readState(path, emptyState())).toEqual(emptyState());
     await writeState(path, saved);
 
-    expect(await newRelay(await readState(path)).tick()).toEqual({ settled: 0, closed: 0, published: 0 });
+    expect(await newRelay(await readState(path, emptyState())).tick()).toEqual({ settled: 0, closed: 0, published: 0 });
     const rebuilt = newRelay(emptyState());
     expect(await rebuilt.tick()).toEqual({ settled: 0, closed: 0, published: 0 });
     expect(rebuilt.state.proposals).toEqual(relay.state.proposals);

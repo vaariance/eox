@@ -1,18 +1,16 @@
 import { open, readFile, rename } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import { type RelayState, emptyState } from "./relay.js";
-
-export async function readState(path: string): Promise<RelayState> {
+export async function readState<T>(path: string, initial: T): Promise<T> {
   try {
-    return JSON.parse(await readFile(path, "utf8")) as RelayState;
+    return JSON.parse(await readFile(path, "utf8")) as T;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return emptyState();
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return initial;
     throw error;
   }
 }
 
-export async function writeState(path: string, state: RelayState): Promise<void> {
+export async function writeState(path: string, state: unknown): Promise<void> {
   const temporary = `${path}.${process.pid}.tmp`;
   const file = await open(temporary, "w", 0o600);
   try {
