@@ -1,0 +1,24 @@
+[Unit]
+Description=COX app API (read-only, fixture source from the P1 oracle)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=eox
+Group=eox
+WorkingDirectory=/opt/eox/app/apps/app-api
+Environment=APP_API_HOST=127.0.0.1
+Environment=APP_API_PORT=8790
+Environment=APP_API_SOURCE=cox-fixture
+ExecStart=/opt/eox/app/apps/app-api/node_modules/.bin/tsx src/main.ts
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/eox
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

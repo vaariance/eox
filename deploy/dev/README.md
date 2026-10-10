@@ -10,7 +10,7 @@ compose) and the six ingestion pipelines on an hourly cron.
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
 | Ingests | hourly at :05 UTC as system user `eox`; each job holds its own lock in `/opt/eox/locks` (a run still in progress is skipped, not doubled) and is stopped after 50 minutes; log in `/opt/eox/logs/ingest.log` |
 | Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
-| App API (fixture) | systemd `eox-app-api`, `127.0.0.1:8790` on the VM only; logs via `journalctl -u eox-app-api` |
+| App API (COX fixture) | systemd `cox-app-api`, `127.0.0.1:8790` on the VM only; `cox.app-api/v1` from `apps/app-api/fixtures/cox-fixture.json` (P1 oracle, synthetic); logs via `journalctl -u cox-app-api`. Replaced the EOX fixture service `eox-app-api` on 2026-10-10 |
 | App API (live) | systemd `eox-app-api-live`, `127.0.0.1:8791` on the VM only; reads finalized `eox-oracle` publications on Solana devnet and evidence readiness from the evidence API; state in `/opt/eox/state/app-api-live`; logs via `journalctl -u eox-app-api-live` |
 | Backups | daily 05:30 UTC to `gs://colosseum-eox-db-backups`, kept 30 days, log in `/opt/eox/logs/backup.log` |
 | Service account | `eox-dev-vm`, which can only create objects in the backup bucket |

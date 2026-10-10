@@ -74,7 +74,12 @@ start_service() {
 }
 
 start_service eox-evidence-api 8787
-start_service eox-app-api 8790
+if [ -f /etc/systemd/system/eox-app-api.service ]; then
+  systemctl disable --now eox-app-api >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/eox-app-api.service
+  systemctl daemon-reload
+fi
+start_service cox-app-api 8790
 start_service eox-app-api-live 8791
 
 install -m 0644 /opt/eox/app/deploy/dev/cox-archiver.service /etc/systemd/system/cox-archiver.service
