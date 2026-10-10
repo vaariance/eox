@@ -240,3 +240,11 @@ another agent needs to know.
 - **Rules for agents:** Read `publication.basis` and `publication.policy`; never treat a `first-observed` time as the source's release time. For backfilled history, first observation is the load date, so freshness looks better than it is; use `knownAt` and `revision.sourceEdition` for the source's own dating. Do not round or substitute times anywhere else.
 - **Open:** Whether methodology freshness should treat `first-observed` records differently (Peter).
 - **Refs:** `apps/evidence-api/README.md`, `packages/ingestion/README.md`, commits `6ff76a2`..`f01e5f4`.
+
+### 2026-10-10 · Joel (Claude Code) · Step 9: live app API on devnet
+
+- **Area:** `apps/app-api`, `packages/app-api`, `deploy/dev`.
+- **What:** The app API has a live source behind the same `ReferenceSource` interface as the fixture. An indexer walks the `eox-oracle` registry's finalized transactions, skips failed ones, and keeps a `ReferencePublished` event only when Peter's `ReferenceReader` reads that snapshot as published with the same sequence, epoch and postcommitment. Pairs come from simulating `read_pair` at `finalized`; nothing is signed. Readiness follows the evidence change feed for all 180 pilot slots with the worker's `assertReady` rules. Runs on the dev VM as `eox-app-api-live` at `127.0.0.1:8791`; the fixture stays on 8790. Verified at `39cf5f0`: devnet publications 0, 1, 3 and 4 indexed; the US/JP pair is served from the program; all 180 slots are `missing-assessment`.
+- **Rules for agents:** `GET /v1/publications` without `after` now starts at sequence 0, the on-chain baseline; `nextAfter` is `null` until a publication is returned, and `subscribePublications(null, ...)` streams from the start. Readiness never reports `ready` until confidence assessments exist. `configurationDigest` is the on-chain configuration, not the methodology manifest digest. `assertions` stays empty until challenges go through UMA (`SYSTEM.md` §6.3).
+- **Open:** The public devnet RPC rate-limits (HTTP 429), so indexing is slow; a dedicated RPC endpoint would fix it. Trading endpoints wait on Peter's step 8.
+- **Refs:** `apps/app-api/README.md` (The live source), `deploy/dev/README.md`, commits `2de4e6d`..`39cf5f0`.
