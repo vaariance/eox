@@ -7,7 +7,7 @@ const origin = 1_800_000_000 - (1_800_000_000 % 60);
 
 describe("batch clock", () => {
   it("assigns a request to the first cutoff strictly after its submission time", () => {
-    expect(batchFor(origin - 1, origin)).toEqual({ cutoff: origin, commitDeadline: origin + 45, state: "open" });
+    expect(batchFor(origin - 1, origin)).toEqual({ cutoff: origin, commitDeadline: origin + 55, state: "open" });
     expect(batchFor(origin, origin).cutoff).toBe(origin + 60);
     expect(batchFor(origin + 59, origin).cutoff).toBe(origin + 60);
     expect(batchFor(origin + 60, origin).cutoff).toBe(origin + 120);

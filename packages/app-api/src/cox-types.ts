@@ -1,11 +1,13 @@
 import type { UnixSeconds } from "./types.js";
 
 export const COX_APP_API_SCHEMA_VERSION = "cox.app-api/v1";
+export const COX_PRICE_SCALE = "100000000";
 export const COX_REFERENCE_SCALE = "1000000000000";
 export const COX_UNIT_SCALE = "1000000000000";
 export const COX_TRANSFER_RULE = "COX/TRANSFER/MVP-0";
 export const BATCH_SECONDS = 60;
-export const COMMIT_DEADLINE_SECONDS = 45;
+export const COMMIT_DEADLINE_SECONDS = 55;
+export const MAX_TRADE_AGE_MINUTES = 30;
 export const DELAYED_AFTER_MISSED_CUTOFFS = 3;
 export const HALTED_AFTER_MISSED_CUTOFFS = 60;
 
@@ -27,11 +29,19 @@ export interface CoxDeployment {
   fixtureSource: string | null;
 }
 
+export type PriceVenue = "kraken" | "coinbase" | "bybit";
+export type FallbackStep = 1 | 2 | 3 | 4;
+
 export interface CoxAsset {
   assetId: string;
-  feedId: string;
-  symbol: string;
-  quote: string;
+  position: number;
+  name: string;
+  krakenWsSymbol: string;
+  krakenRestPair: string;
+  coinbaseProduct: string | null;
+  bybitSymbol: string | null;
+  lastVenue: PriceVenue | null;
+  tradeAgeMinutes: number | null;
 }
 
 export interface CryptoMember {
@@ -58,10 +68,10 @@ export interface PublicationIdentity {
 
 export interface PublishedPrice {
   assetId: string;
-  feedId: string;
-  price: string;
-  expo: number;
-  publishTime: UnixSeconds;
+  priceE8: Scaled;
+  venue: PriceVenue;
+  step: FallbackStep;
+  tradeAgeMinutes: number;
 }
 
 export interface AssetReference {
