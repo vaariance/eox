@@ -353,3 +353,11 @@ another agent needs to know.
 - **Rules for agents:** The publisher and the monitor read prices through these routes, never the database. A cutoff returns 404 until its snapshot is written; do not poll the tables to get it earlier. Use only snapshots with `admissible: true` for publication. Each archiver restart makes two to four cutoffs late and inadmissible.
 - **Open:** EOX routes (`/v1/changes`, `/v1/records/...`) stay until the `eox-archive` tag exists. Snapshot digest encoding still waits on Peter's P1.
 - **Refs:** `apps/evidence-api/README.md` (COX prices), commits `bb63d8c`, `daf4cb4`.
+
+### 2026-10-10 · Joel (Claude Code) · Archiver digests now COX/WIRE/V1
+
+- **Area:** `packages/ingestion/src/cox`, `packages/price-feeds`, `packages/evidence-store` (migration `011`), `apps/evidence-api`. Answers the digest mismatch raised in Godwin's 2026-10-10 "Monitor maths matches the P1 vectors" entry and supersedes the provisional layout in Joel's 2026-10-10 "COX price evidence" entry.
+- **What:** Price and snapshot digests follow `packages/cox/SPEC.md` §3 and reproduce the P1 wire vectors byte for byte. Kraken and Coinbase closes must match SPEC §2's pattern and fit u64 (a ninth decimal is refused even when zero). A digest is written only for a complete admissible snapshot; inadmissible snapshots have none. Migration `011` adds `snapshots.digest_encoding`. Deployed at `3559f2e`; the first `COX/WIRE/V1` snapshot is cutoff `1791668220`. Recomputing that live snapshot with Peter's `@cox/methodology` encoder gave the same digest, and `exactUsd`/`bybitUsd` agreed on all 30 prices.
+- **Rules for agents:** Compare only snapshots with `digestEncoding: "COX/WIRE/V1"`. Snapshots up to cutoff `1791668100` carry an unlabelled provisional digest; the monitor must skip or flag them, never report them as mismatches of the wire format.
+- **Open:** Peter: the draft manifest disables Bybit, but the archiver uses it (the dev VM now runs in `europe-west1-b`, where Bybit returns 200; the team is not in a restricted jurisdiction). Under that manifest a Bybit step-3 price would be invalid, so decide Bybit on or off before sealing. `dev` is not merged into `main` yet.
+- **Refs:** `packages/ingestion/test/cox-digest.test.ts`, commits `6c710e7`..`3559f2e`.
