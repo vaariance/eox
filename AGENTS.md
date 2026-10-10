@@ -383,3 +383,11 @@ another agent needs to know.
 - **Rules for agents:** The publisher and the monitor read prices through these routes, never the database. A cutoff returns 404 until its snapshot is written; do not poll the tables to get it earlier. Use only snapshots with `admissible: true` for publication. Each archiver restart makes two to four cutoffs late and inadmissible.
 - **Open:** EOX routes (`/v1/changes`, `/v1/records/...`) stay until the `eox-archive` tag exists. Snapshot digest encoding still waits on Peter's P1.
 - **Refs:** `apps/evidence-api/README.md` (COX prices), commits `bb63d8c`, `daf4cb4`.
+
+### 2026-10-10 · Godwin (Claude Code) · Monitor maths matches the P1 vectors; SPEC.md committed
+
+- **Area:** `apps/cox-monitor`, `packages/cox/SPEC.md`.
+- **What:** First part of `product.md` G2. `apps/cox-monitor/src` now has an independent TypeScript implementation of SPEC §4 (references), §5 (MVP-0 revaluation), §6 (fixed-value batch flows and residual) and the §3 price and snapshot encodings and digests. It does not import `@cox/methodology`. 25 tests pass: all 9 cases and the wire bytes in `packages/cox/fixtures/vectors.json`, plus order independence, conservation, vault equality and rejected inputs. `packages/cox/SPEC.md` is Peter's version 0.2 draft, committed unchanged by Godwin because earlier entries and the methodology README referenced a file that was not in the repo.
+- **Rules for agents:** This is the maths only. The monitor does not yet read publications, fetch archived snapshots, re-fetch venues or serve verdicts, so do not describe a monitor as running. The rounding order was learned from Peter's `vectors.ts` before SPEC.md was available, so agreement with the vectors is not a fully blind second derivation. A change to `vectors.json` fails `pnpm --filter @eox/cox-monitor test`.
+- **Open:** Peter: vectors for the SPEC §3 receipt root and state digest; the monitor will not implement either without bytes to check against. Joel: the archiver's provisional price and snapshot digest layout differs from SPEC §3 (`COX/WIRE/V1`), so the monitor would report his current digests as mismatches. The live half of G2 waits on P3.
+- **Refs:** commits `1699666`..`fca926b`, `463f29a`; `packages/cox/SPEC.md` §3–6.
