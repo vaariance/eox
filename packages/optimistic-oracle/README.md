@@ -59,6 +59,35 @@ The SDK's Anvil and LiteSVM tests are skipped when `anvil`, the Foundry build or
 compiled program is missing. After changing the adapter, run `pnpm --filter
 @eox/optimistic-oracle gen:abi` to refresh `sdk/src/adapter-abi.ts`.
 
+## Deploy the continuous adapter
+
+`EoxContinuousAdapter` is the hourly path of `product.md` section 8: evidence and snapshot
+claims go to UMA with one-hour liveness and their outcomes are relayed over Wormhole in the
+format of `packages/oracle/PROTOCOL.md`. It is separate from the yearly adapter above.
+
+```bash
+cd evm
+SOLANA_PROGRAM=0x... REGISTRY=0x... \
+  forge script script/DeployContinuousAdapter.s.sol --rpc-url <rpc> --broadcast --account <keystore>
+```
+
+Without `--broadcast` the script only simulates the deployment.
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `SOLANA_PROGRAM` | The `eox-oracle` program address as 32 bytes of hex | required |
+| `REGISTRY` | That program's registry account (PDA of seed `registry`) as 32 bytes of hex | required |
+| `OOV3` | UMA Optimistic Oracle V3 | Ethereum Sepolia |
+| `WORMHOLE` | Wormhole core bridge | Ethereum Sepolia |
+| `BOND_CURRENCY` | ERC-20 on UMA's collateral whitelist | Sepolia WETH |
+| `OWNER` | Adapter owner, who opens epochs and sets asserters | the deployer |
+| `ASSERTER` | Account allowed to assert claims; `0x0000000000000000000000000000000000000000` to skip | dev `uma-asserter` in `deploy/signing/dev-keys.json` |
+
+The destination is fixed at deployment, so deploy one adapter per Solana network and
+registry. The asserter is only set when the deployer is the owner; otherwise the owner calls
+`setAsserter`. Before the first claim the owner must also call `openEpoch` with the epoch's
+methodology manifest, configuration digest and evidence policy.
+
 ## Before mainnet
 
 - Pick the bond currency and size, and UMA's minimum bond for it on the chosen chain.
