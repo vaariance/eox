@@ -1,8 +1,11 @@
 import { createSigningClient } from "@eox/signing";
 import { type PublicClient, createPublicClient, getAddress, http } from "viem";
 
+import { Asserter } from "./asserter.js";
+import { googleIdTokenVerifier } from "./auth.js";
 import { Relay } from "./relay.js";
 import { remoteSender } from "./remote-sender.js";
+import { createAssertionServer } from "./server.js";
 import { readState, writeState } from "./state-file.js";
 
 function required(name: string): string {
@@ -35,9 +38,24 @@ const tickMs = Number(integer("TICK_SECONDS", 30n)) * 1000;
 const client = createPublicClient({ transport: http(required("RPC_URL")) }) as PublicClient;
 const signer = createSigningClient({ baseUrl: signerUrl, identityToken: () => identityToken(audience) });
 
+const adapter = getAddress(required("ADAPTER_ADDRESS"));
+
+const callers = new Set((process.env.ASSERTION_CALLERS ?? "").split(",").map((caller) => caller.trim()).filter(Boolean));
+const server = createAssertionServer({
+  verifyCaller: googleIdTokenVerifier(required("ASSERTION_AUDIENCE"), callers),
+  asserter: new Asserter({ client, adapter, sender: await remoteSender({ client, signer, role: "uma-asserter" }) }),
+  onRequest: (caller, route, receipt) =>
+    log(`${caller} ${route} ${receipt.claimDigest} -> ${receipt.assertionId}${receipt.created ? "" : " (existing)"}`),
+  onError: (error) => log(`assertion request failed: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`),
+});
+const port = Number(integer("ASSERTION_PORT", 8792n));
+const host = process.env.ASSERTION_HOST ?? "127.0.0.1";
+await new Promise<void>((resolve) => server.listen(port, host, resolve));
+log(`assertion API listening on ${host}:${port} for ${callers.size} caller(s)`);
+
 const relay = new Relay({
   client,
-  adapter: getAddress(required("ADAPTER_ADDRESS")),
+  adapter,
   sender: await remoteSender({ client, signer, role: "evm-relayer" }),
   state: await readState(statePath),
   save: (state) => writeState(statePath, state),
@@ -47,7 +65,12 @@ const relay = new Relay({
 });
 
 let stopping = false;
-for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => (stopping = true));
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    stopping = true;
+    server.close();
+  });
+}
 
 log("uma-relay started");
 while (!stopping) {
