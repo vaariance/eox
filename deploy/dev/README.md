@@ -49,6 +49,20 @@ gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone
 gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=us-central1-a --command "sudo cat /opt/eox/.env"
 ```
 
+## Private RPC for the live app API
+
+The live app API uses the public devnet RPC unless `/opt/eox/app-api-live.env`
+exists. That file is never in the repo; it holds the private RPC URL (which
+contains the provider's API key) and overrides the unit's defaults:
+
+```bash
+gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=us-central1-a --   'read -rs -p "RPC URL: " url && echo && sudo install -m 600 -o eox -g eox /dev/null /opt/eox/app-api-live.env    && printf "SOLANA_RPC_URL=%s
+SOLANA_RPC_INTERVAL_MS=200
+" "$url" | sudo tee /opt/eox/app-api-live.env >/dev/null    && sudo systemctl restart eox-app-api-live'
+```
+
+The URL is read without echo, so it stays out of shell history and logs.
+
 ## Backups and restore
 
 `backup-db.sh` runs `pg_dump --format=custom`, checks the archive with
