@@ -36,7 +36,7 @@ if [ ! -f /opt/eox/.env ]; then
 fi
 
 install -m 0644 /opt/eox/app/deploy/dev/docker-compose.override.yml /opt/eox/app/docker-compose.override.yml
-install -m 0755 /opt/eox/app/deploy/dev/run-ingests.sh /opt/eox/run-ingests.sh
+rm -f /opt/eox/run-ingests.sh
 install -m 0755 /opt/eox/app/deploy/dev/backup-db.sh /opt/eox/backup-db.sh
 chown -R eox:eox /opt/eox
 chmod 600 /opt/eox/.env
@@ -56,8 +56,7 @@ sudo -u eox -H PNPM_VERSION="$pnpm_version" bash -c '
 '
 
 printf '%s\n' \
-  "30 5 * * * /opt/eox/backup-db.sh ${backup_bucket} >> /opt/eox/logs/backup.log 2>&1" \
-  "5 * * * * /opt/eox/run-ingests.sh >> /opt/eox/logs/ingest.log 2>&1" | crontab -u eox -
+  "30 5 * * * /opt/eox/backup-db.sh ${backup_bucket} >> /opt/eox/logs/backup.log 2>&1" | crontab -u eox -
 start_service() {
   install -m 0644 "/opt/eox/app/deploy/dev/$1.service" "/etc/systemd/system/$1.service"
   systemctl daemon-reload
