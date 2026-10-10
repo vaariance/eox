@@ -79,7 +79,12 @@ if [ -f /etc/systemd/system/eox-app-api.service ]; then
   systemctl daemon-reload
 fi
 start_service cox-app-api 8790
-start_service eox-app-api-live 8791
+if [ -f /etc/systemd/system/eox-app-api-live.service ]; then
+  systemctl disable --now eox-app-api-live >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/eox-app-api-live.service /opt/eox/app-api-live.env
+  rm -rf /opt/eox/state/app-api-live
+  systemctl daemon-reload
+fi
 
 install -m 0644 /opt/eox/app/deploy/dev/cox-archiver.service /etc/systemd/system/cox-archiver.service
 systemctl daemon-reload
@@ -95,4 +100,4 @@ echo "$commit" > /opt/eox/DEPLOYED_COMMIT
 chown eox:eox /opt/eox/DEPLOYED_COMMIT
 
 echo "deployed $commit"
-ss -ltn | grep -E ':(5433|8787|8790|8791) '
+ss -ltn | grep -E ':(5433|8787|8790) '

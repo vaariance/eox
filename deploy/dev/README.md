@@ -11,7 +11,6 @@ were removed on 2026-10-10; their data stays in the database as a read-only arch
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
 | Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
 | App API (COX fixture) | systemd `cox-app-api`, `127.0.0.1:8790` on the VM only; `cox.app-api/v1` from `apps/app-api/fixtures/cox-fixture.json` (P1 oracle, synthetic); logs via `journalctl -u cox-app-api`. Replaced the EOX fixture service `eox-app-api` on 2026-10-10 |
-| App API (live) | systemd `eox-app-api-live`, `127.0.0.1:8791` on the VM only; reads finalized `eox-oracle` publications on Solana devnet and evidence readiness from the evidence API; state in `/opt/eox/state/app-api-live`; logs via `journalctl -u eox-app-api-live` |
 | Backups | daily 05:30 UTC to `gs://colosseum-eox-db-backups`, kept 30 days, log in `/opt/eox/logs/backup.log` |
 | Service account | `eox-dev-vm`, which can only create objects in the backup bucket |
 
@@ -40,27 +39,12 @@ project.
 ## Connect
 
 Open a tunnel, then use `localhost:5434` with the password from the VM (add
-`-L 8787:localhost:8787` for the evidence API, `-L 8790:localhost:8790` for the fixture app API and
-`-L 8791:localhost:8791` for the live app API):
+`-L 8787:localhost:8787` for the evidence API and `-L 8790:localhost:8790` for the COX app API):
 
 ```bash
 gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b -- -L 5434:localhost:5433 -N
 gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b --command "sudo cat /opt/eox/.env"
 ```
-
-## Private RPC for the live app API
-
-The live app API uses the public devnet RPC unless `/opt/eox/app-api-live.env`
-exists. That file is never in the repo; it holds the private RPC URL (which
-contains the provider's API key) and overrides the unit's defaults:
-
-```bash
-gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b --   'read -rs -p "RPC URL: " url && echo && sudo install -m 600 -o eox -g eox /dev/null /opt/eox/app-api-live.env    && printf "SOLANA_RPC_URL=%s
-SOLANA_RPC_INTERVAL_MS=200
-" "$url" | sudo tee /opt/eox/app-api-live.env >/dev/null    && sudo systemctl restart eox-app-api-live'
-```
-
-The URL is read without echo, so it stays out of shell history and logs.
 
 ## Backups and restore
 
