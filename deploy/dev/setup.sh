@@ -71,8 +71,21 @@ for attempt in $(seq 1 30); do
   sleep 1
 done
 
+install -m 0644 /opt/eox/app/deploy/dev/eox-app-api.service /etc/systemd/system/eox-app-api.service
+systemctl daemon-reload
+systemctl enable eox-app-api >/dev/null
+systemctl restart eox-app-api
+for attempt in $(seq 1 30); do
+  curl -fsS http://127.0.0.1:8790/health >/dev/null 2>&1 && break
+  if [ "$attempt" -eq 30 ]; then
+    journalctl -u eox-app-api -n 40 --no-pager >&2
+    exit 1
+  fi
+  sleep 1
+done
+
 echo "$commit" > /opt/eox/DEPLOYED_COMMIT
 chown eox:eox /opt/eox/DEPLOYED_COMMIT
 
 echo "deployed $commit"
-ss -ltn | grep -E ':(5433|8787) '
+ss -ltn | grep -E ':(5433|8787|8790) '
