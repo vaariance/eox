@@ -3,7 +3,7 @@ set -euo pipefail
 
 account="${GCP_ACCOUNT:?set GCP_ACCOUNT to the gcloud account with access to the project}"
 project="${GCP_PROJECT:-colosseum-eox}"
-zone="${GCP_ZONE:-us-central1-a}"
+zone="${GCP_ZONE:-europe-west1-b}"
 instance="${GCP_INSTANCE:-eox-dev}"
 backup_bucket="${GCP_BACKUP_BUCKET:-colosseum-eox-db-backups}"
 
