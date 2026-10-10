@@ -1,0 +1,29 @@
+[Unit]
+Description=EOX app API (read-only, live Solana devnet source)
+After=network-online.target eox-evidence-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=eox
+Group=eox
+WorkingDirectory=/opt/eox/app/apps/app-api
+Environment=APP_API_HOST=127.0.0.1
+Environment=APP_API_PORT=8791
+Environment=APP_API_SOURCE=live
+Environment=SOLANA_NETWORK=solana-devnet
+Environment=SOLANA_RPC_URL=https://api.devnet.solana.com
+Environment=SOLANA_RPC_INTERVAL_MS=800
+Environment=EVIDENCE_API_URL=http://127.0.0.1:8787
+Environment=APP_API_STATE_DIR=/opt/eox/state/app-api-live
+ExecStart=/opt/eox/app/apps/app-api/node_modules/.bin/tsx src/main.ts
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/eox
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -58,34 +58,27 @@ sudo -u eox -H PNPM_VERSION="$pnpm_version" bash -c '
 printf '%s\n' \
   "30 5 * * * /opt/eox/backup-db.sh ${backup_bucket} >> /opt/eox/logs/backup.log 2>&1" \
   "5 * * * * /opt/eox/run-ingests.sh >> /opt/eox/logs/ingest.log 2>&1" | crontab -u eox -
-install -m 0644 /opt/eox/app/deploy/dev/eox-evidence-api.service /etc/systemd/system/eox-evidence-api.service
-systemctl daemon-reload
-systemctl enable eox-evidence-api >/dev/null
-systemctl restart eox-evidence-api
-for attempt in $(seq 1 30); do
-  curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1 && break
-  if [ "$attempt" -eq 30 ]; then
-    journalctl -u eox-evidence-api -n 40 --no-pager >&2
-    exit 1
-  fi
-  sleep 1
-done
+start_service() {
+  install -m 0644 "/opt/eox/app/deploy/dev/$1.service" "/etc/systemd/system/$1.service"
+  systemctl daemon-reload
+  systemctl enable "$1" >/dev/null
+  systemctl restart "$1"
+  for attempt in $(seq 1 30); do
+    curl -fsS "http://127.0.0.1:$2/health" >/dev/null 2>&1 && return 0
+    if [ "$attempt" -eq 30 ]; then
+      journalctl -u "$1" -n 40 --no-pager >&2
+      exit 1
+    fi
+    sleep 1
+  done
+}
 
-install -m 0644 /opt/eox/app/deploy/dev/eox-app-api.service /etc/systemd/system/eox-app-api.service
-systemctl daemon-reload
-systemctl enable eox-app-api >/dev/null
-systemctl restart eox-app-api
-for attempt in $(seq 1 30); do
-  curl -fsS http://127.0.0.1:8790/health >/dev/null 2>&1 && break
-  if [ "$attempt" -eq 30 ]; then
-    journalctl -u eox-app-api -n 40 --no-pager >&2
-    exit 1
-  fi
-  sleep 1
-done
+start_service eox-evidence-api 8787
+start_service eox-app-api 8790
+start_service eox-app-api-live 8791
 
 echo "$commit" > /opt/eox/DEPLOYED_COMMIT
 chown eox:eox /opt/eox/DEPLOYED_COMMIT
 
 echo "deployed $commit"
-ss -ltn | grep -E ':(5433|8787|8790) '
+ss -ltn | grep -E ':(5433|8787|8790|8791) '
