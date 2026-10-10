@@ -1,9 +1,9 @@
 # app-api (Joel)
 
 The app-facing reference API from `product.md` §8.12 and §9 step 2. It serves the
-schema in `@eox/app-api` (`packages/app-api`) from a pluggable source. Today the
-only source is the **fixture**; the live source (step 9) implements the same
-`ReferenceSource` interface, so clients do not change.
+schema in `@eox/app-api` (`packages/app-api`) from one of two sources behind the
+same `ReferenceSource` interface, so clients do not change: the **fixture** and
+the **live** source (step 9), which reads the `eox-oracle` program on Solana.
 
 ```bash
 pnpm --filter @eox/app-api-server start   # http://127.0.0.1:8790, fixture data
@@ -38,7 +38,7 @@ data. All index, confidence and baseline values are integer strings at scale
 | `GET /v1/references/latest/pairs/:BASE/:QUOTE` (or under `/v1/snapshots/:id`) | country/country reference |
 | `GET /v1/proposals/current` | the pending proposal and its UMA assertions, or `null` |
 | `GET /v1/evidence/readiness` | per slot: ready, or why not |
-| `GET /v1/publications?after=&limit=` | finalized publications after a sequence |
+| `GET /v1/publications?after=&limit=` | finalized publications after a sequence; without `after`, from the first (sequence 0). `nextAfter` is `null` until one is returned |
 | `GET /v1/publications/stream` | server-sent events; resume with `Last-Event-ID: <sequence>` |
 
 Errors are `{ schemaVersion, error: { code, message } }` with codes
@@ -47,6 +47,44 @@ Errors are `{ schemaVersion, error: { code, message } }` with codes
 
 A pending proposal never replaces the latest accepted snapshot. The API never
 calculates a reference: every value comes from the oracle.
+
+## The live source
+
+Set `APP_API_SOURCE=live` and:
+
+| Variable | Meaning |
+|---|---|
+| `SOLANA_RPC_URL` | RPC endpoint, read at `finalized` commitment only |
+| `SOLANA_NETWORK` | label reported in `deployment.network`, e.g. `solana-devnet` |
+| `EVIDENCE_API_URL` | the evidence API (`apps/evidence-api`) |
+| `APP_API_STATE_DIR` | directory for the indexer and readiness state files |
+| `APP_API_POLL_MS` | poll interval, default 30,000 |
+| `SOLANA_RPC_INTERVAL_MS` | minimum gap between indexer RPC calls, default 400 |
+
+The program and registry come from `packages/oracle/idl/eox_oracle.json`.
+
+- **Publications** come from an indexer that walks the registry's finalized
+  transactions oldest first. It skips failed transactions, stops (and retries on
+  the next poll) when a finalized transaction is not yet retrievable, decodes
+  `ReferencePublished` events, and accepts one only if Peter's `ReferenceReader`
+  reads the snapshot as published with the same sequence, epoch and
+  postcommitment. Progress is saved after every transaction, so a restart
+  resumes where it stopped. `finalization` carries the publishing transaction
+  and slot.
+- **Snapshots** are read with `ReferenceReader.readSnapshot`. `snapshotId` is the
+  snapshot account, `epoch` the epoch id, `configurationDigest` the sealed
+  on-chain configuration (not the methodology manifest digest), and `baselineId`
+  the epoch's baseline snapshot. WORLD has no stale or saturated flag on chain, so
+  none is reported.
+- **Pairs** are computed by the program: `read_pair` is simulated at `finalized`
+  with the registry authority as fee payer; nothing is signed or sent.
+- **Proposal** is the registry's active snapshot and its status. `assertions` is
+  empty until challenges go through UMA (`SYSTEM.md` §6.3).
+- **Readiness** follows the evidence API change feed and keeps, per pilot slot
+  (30 countries × six indicators), the record with the latest period, then the
+  latest recording. It applies the worker's `assertReady` checks to the source's
+  exact value. A slot that passes is `missing-assessment`, never `ready`, because
+  confidence assessments do not exist yet.
 
 ## The fixture
 
