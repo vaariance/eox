@@ -26,6 +26,8 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
     uint256 private _nonce;
     mapping(bytes32 => Recorded) public assertions;
     mapping(bytes32 => IOptimisticOracleV3.Assertion) private _state;
+    mapping(bytes32 => bool) public voted;
+    mapping(bytes32 => bool) public vote;
 
     constructor(uint256 minimumBond_) {
         minimumBond = minimumBond_;
@@ -87,6 +89,28 @@ contract MockOptimisticOracleV3 is IOptimisticOracleV3 {
 
     function claimOf(bytes32 assertionId) external view returns (bytes memory) {
         return assertions[assertionId].claim;
+    }
+
+    function setVote(bytes32 assertionId, bool truthful) external {
+        voted[assertionId] = true;
+        vote[assertionId] = truthful;
+    }
+
+    function settleAssertion(bytes32 assertionId) external {
+        IOptimisticOracleV3.Assertion storage state = _state[assertionId];
+        require(state.asserter != address(0), "Assertion does not exist");
+        require(!state.settled, "Assertion already settled");
+        bool truthful = true;
+        if (state.disputer == address(0)) {
+            require(state.expirationTime <= block.timestamp, "Assertion not expired");
+        } else {
+            require(voted[assertionId], "Price not resolved");
+            truthful = vote[assertionId];
+        }
+        state.settled = true;
+        state.settlementResolution = truthful;
+        IOptimisticOracleV3CallbackRecipient(state.callbackRecipient)
+            .assertionResolvedCallback(assertionId, truthful);
     }
 
     function resolve(bytes32 assertionId, bool truthful) external {
