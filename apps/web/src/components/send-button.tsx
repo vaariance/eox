@@ -31,7 +31,7 @@ function explain(code: string, message: string, intent: Intent): string {
   if (code === "NOT_LIVE") return "This is fixture data, so nothing can be sent.";
   if (code === "UNAVAILABLE") return message;
   if (code === "TRANSACTION_REJECTED") {
-    if (intent.operation === "deposit" && /AccountNotFound|insufficient|0x1\b/i.test(message)) return `The test run of this buy failed. Your wallet may have no ${COLLATERAL.symbol}, or no devnet SOL for the fee.`;
+    if (intent.operation === "deposit" && /AccountNotInitialized|user_token|AccountNotFound|insufficient|0x1\b/i.test(message)) return `Your wallet does not have enough ${COLLATERAL.symbol}, or has no devnet SOL for the fee. You can get both on the Faucet page.`;
     return `The test run of this request failed, so it was not sent: ${message}`;
   }
   return message;

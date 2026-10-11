@@ -46,18 +46,19 @@ export function TradeForm({ claim, others, nextBatch, decimals }: { claim: Class
     collateralDecimals: decimals,
   });
 
-  const sourceValue = claim.unitValue ?? 1;
-  const destinationValue = destination.unitValue ?? 1;
+  const empty = 10 ** -decimals;
+  const sourceValue = claim.unitValue ?? empty;
+  const destinationValue = destination.unitValue ?? empty;
   const estimate = !valid
     ? null
     : operation === "deposit"
       ? { value: parsed / sourceValue, unit: `${claim.id} units` }
       : operation === "redeem"
-        ? { value: parsed * sourceValue, unit: "tUSDC" }
+        ? { value: parsed * sourceValue, unit: "USDC" }
         : { value: (parsed * sourceValue) / destinationValue, unit: `${destination.id} units` };
 
-  const amountLabel = operation === "deposit" ? "Amount (tUSDC)" : `${claim.id} units`;
-  const conditionLabel = operation === "deposit" ? "Minimum units" : operation === "redeem" ? "Minimum proceeds (tUSDC)" : "Minimum units out";
+  const amountLabel = operation === "deposit" ? "Amount (USDC)" : `${claim.id} units`;
+  const conditionLabel = operation === "deposit" ? "Minimum units" : operation === "redeem" ? "Minimum proceeds (USDC)" : "Minimum units out";
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 shadow-card">
@@ -121,7 +122,7 @@ export function TradeForm({ claim, others, nextBatch, decimals }: { claim: Class
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Last unit value</dt>
-            <dd className="num">{claim.unitValue === null ? "1.000000 (empty class)" : formatAmount(claim.unitValue, 6)}</dd>
+            <dd className="num">{claim.unitValue === null ? `${formatAmount(empty, 6)} (empty class)` : formatAmount(claim.unitValue, 6)}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Estimate</dt>
