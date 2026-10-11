@@ -10,6 +10,9 @@ const statePath = process.env.MONITOR_STATE ?? "cox-monitor-state.json";
 const host = process.env.MONITOR_HOST ?? "127.0.0.1";
 const port = Number(integer("MONITOR_PORT", 8792n));
 const interval = integer("MONITOR_INTERVAL_SECONDS", 20n);
+const pageSize = Number(integer("MONITOR_PAGE_SIZE", 50n));
+const maxPages = Number(integer("MONITOR_MAX_PAGES", 20n));
+if (pageSize < 1 || maxPages < 1) throw new Error("MONITOR_PAGE_SIZE and MONITOR_MAX_PAGES must be at least 1");
 const venueInterval = integer("MONITOR_VENUE_INTERVAL_SECONDS", 600n);
 const candles = process.env.MONITOR_VENUE_CHECK === "true" ? venueCandleSource(required("MONITOR_USER_AGENT")) : null;
 let nextVenueSweep = 0;
@@ -19,6 +22,8 @@ const monitor = new ArchiveMonitor({
   source: httpEvidenceSource(evidenceUrl),
   state,
   save: (next) => writeState(statePath, next),
+  pageSize,
+  maxPages,
   log,
 });
 
