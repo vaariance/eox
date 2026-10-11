@@ -1,10 +1,10 @@
 import { dirname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Connection } from "@solana/web3.js";
 import { loadProgram } from "./cox/chain.js";
 import { CoxFixtureSource } from "./cox/fixture-source.js";
 import { LiveCoxSource } from "./cox/live-source.js";
+import { checkGenesis, failoverConnection, parseRpcUrls } from "./cox/rpc.js";
 import { createCoxApiServer, type CoxApiServerOptions } from "./cox/server.js";
 import { CoxSubmissions } from "./cox/submissions.js";
 import { CoxTransactions } from "./cox/transactions.js";
@@ -41,8 +41,9 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
   const pollMs = Number(process.env.COX_POLL_MS ?? "5000");
   if (!Number.isInteger(pollMs) || pollMs < 1000) throw new Error(`invalid COX_POLL_MS: ${pollMs}`);
   const stateDir = resolve(required("APP_API_STATE_DIR"));
-  const connection = new Connection(required("COX_RPC_URL"), "finalized");
-  if ((await connection.getGenesisHash()) !== genesis) throw new Error(`COX_RPC_URL is not ${network}`);
+  const urls = parseRpcUrls(process.env.COX_RPC_URLS, "COX_RPC_URLS");
+  await checkGenesis(urls, genesis);
+  const connection = failoverConnection(urls, "finalized", (from, to, reason) => console.warn(`cox rpc failover from ${from} to ${to}: ${reason}`));
   const program = loadProgram(connection, process.env.COX_IDL_PATH ?? join(here, "..", "..", "..", "packages", "cox", "idl", "cox.json"));
   const poolId = BigInt(poolText);
   const options = { connection, program, poolId, network, logPath: join(stateDir, `publications-${poolId}.jsonl`), pollMs, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
