@@ -14,6 +14,9 @@ pnpm --filter @eox/cox-monitor test
 | `MONITOR_STATE` | `cox-monitor-state.json` | where progress and verdicts are kept |
 | `MONITOR_HOST`, `MONITOR_PORT` | `127.0.0.1`, `8792` | where verdicts are served |
 | `MONITOR_INTERVAL_SECONDS` | `20` | pause between checks |
+| `MONITOR_VENUE_CHECK` | off | `true` re-fetches candles from the venues |
+| `MONITOR_USER_AGENT` | none | required with the venue check; names COX and a contact address |
+| `MONITOR_VENUE_INTERVAL_SECONDS` | `600` | pause between venue sweeps |
 
 ## What it checks today
 
@@ -30,6 +33,27 @@ It follows the evidence API's price change feed. For every archived cutoff it:
 Each cutoff gets one verdict: `match`, `mismatch` (with findings), `skipped`
 (digest written before `COX/WIRE/V1`) or `inadmissible` (no usable snapshot).
 Progress is saved after every page, so a restart continues where it stopped.
+
+## Checking against the venues
+
+With `MONITOR_VENUE_CHECK=true`, every cutoff whose archive check matched is
+later compared with the venues themselves, through `@eox/price-feeds` only:
+
+- the close that was used must be the venue's close for that candle, and that
+  candle must have trades;
+- every earlier step the archive recorded as empty must have no trades at the
+  venue;
+- a carried Kraken close must be Kraken's last trade before the cutoff;
+- a Bybit price's USDT/USD rate must be the venue's cutoff close.
+
+Requests are bulk and sequential: one per venue and asset covers many cutoffs.
+Budgets are a quarter of each venue's published limit or less (`SYSTEM.md`
+§10.1): Kraken one request per 4 s, Coinbase and Bybit one per second. A
+cutoff waits three minutes before it is checked so candles are final.
+
+The result is each verdict's `venues` field: `pending`, `confirmed`,
+`mismatch` (the verdict itself becomes `mismatch`), `unverified` (a venue no
+longer returns the candle) or `not-checked`.
 
 ## Verdicts
 
@@ -54,8 +78,8 @@ snapshot digests, receipt root and state digest (§3).
 - It does not read publications from the `cox` program, so it does not yet
   compare its own references, revaluation, receipts or state digest with what
   was committed. That needs a live pool.
-- It does not re-fetch candles from the venues. The archive is checked against
-  itself, not yet against Kraken, Coinbase and Bybit.
+- The venue check has only been tested against recorded-style candle data.
+  It has not been run against the live venues.
 - It does not model the SPEC §11 safety pass or capacity caps.
-- A `match` here means the archive is internally consistent. It does not mean
-  a venue's price was true.
+- A `match` means the archive is internally consistent, and `confirmed` means
+  the venues return the same candles. Neither means a venue's price was true.
