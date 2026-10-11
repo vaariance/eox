@@ -8,7 +8,7 @@ import { shortAddress } from "@/lib/address";
 import { COLLATERAL } from "@/lib/config";
 import { costBasis, paidFor } from "@/lib/basis";
 import { direction, formatAmount, formatSigned, formatWhole } from "@/lib/format";
-import { type ClassView, nameOf, toNumber, unitDigits } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, nameOf, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { useOpenBatch } from "./open-batch";
 import { RequestList } from "./request-list";
@@ -106,6 +106,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
                   <td className="num px-4 py-3 text-right">{row.redeemable === null ? "n/a" : formatAmount(row.redeemable, 6)}</td>
                   <td className={`num px-4 py-3 text-right ${tone(row.change)}`}>{row.change === null ? "—" : formatSigned(row.change, 6)}</td>
                   <td className="px-4 py-2 text-right">
+                    {row.classId === CRYPTO_CLASS && (
                     <span className="inline-flex flex-col items-end gap-1">
                       <SendButton
                         intent={row.free !== null && expiryBatch !== null ? { operation: "redeem", fromClass: row.classId, units: row.free, minimumProceeds: "0", expiryBatch } : null}
@@ -116,6 +117,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
                         quiet
                       />
                     </span>
+                    )}
                   </td>
                 </tr>
               ))}

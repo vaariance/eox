@@ -101,7 +101,7 @@ export function PositionView({ classId, claim, crypto, values, reference, price,
             )}
             <span className="text-xs text-muted">Unit value{status.latestSequence !== null && ` · publication #${formatWhole(status.latestSequence)}`}</span>
           </div>
-          {holding && (
+          {holding && classId === CRYPTO_CLASS && (
             <span className="flex flex-col items-end gap-1">
               <SendButton
                 intent={free > 0n && expiryBatch !== null ? { operation: "redeem", fromClass: classId, units: free.toString(), minimumProceeds: "0", expiryBatch } : null}
