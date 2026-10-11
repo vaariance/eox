@@ -55,3 +55,27 @@ test("configuration rejects unsafe settings and identity changes", async () => {
   ];
   for (const change of invalid) await withConfig(change, async path => { await assert.rejects(loadConfig(path)); });
 });
+
+test("private runtime settings pin a separate signer endpoint and audience", async () => {
+  const previousUrl = process.env.COX_SIGNER_URL;
+  const previousAudience = process.env.COX_SIGNER_AUDIENCE;
+  process.env.COX_SIGNER_URL = "https://private-signer.example.com";
+  process.env.COX_SIGNER_AUDIENCE = "https://private-audience.example.com";
+  try {
+    await withConfig({ signerUrl: process.env.COX_SIGNER_URL, signerAudience: process.env.COX_SIGNER_AUDIENCE }, async path => {
+      const config = await loadConfig(path);
+      assert.equal(config.signerAudience, process.env.COX_SIGNER_AUDIENCE);
+    });
+    await withConfig({ signerUrl: "https://other.example.com", signerAudience: process.env.COX_SIGNER_AUDIENCE }, async path => {
+      await assert.rejects(loadConfig(path), /InvalidPublisherConfig:signerUrl/);
+    });
+    await withConfig({ signerUrl: process.env.COX_SIGNER_URL, signerAudience: "https://other.example.com" }, async path => {
+      await assert.rejects(loadConfig(path), /InvalidPublisherConfig:signerAudience/);
+    });
+  } finally {
+    if (previousUrl === undefined) delete process.env.COX_SIGNER_URL;
+    else process.env.COX_SIGNER_URL = previousUrl;
+    if (previousAudience === undefined) delete process.env.COX_SIGNER_AUDIENCE;
+    else process.env.COX_SIGNER_AUDIENCE = previousAudience;
+  }
+});

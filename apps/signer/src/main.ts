@@ -16,6 +16,8 @@ const port = Number(process.env.PORT ?? "8080");
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`invalid PORT: ${port}`);
 
 const config = loadSignerConfig(configPath);
+config.audience = process.env.SIGNER_AUDIENCE ?? config.audience;
+if (!config.audience) throw new Error("SIGNER_AUDIENCE is required");
 const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
 const token = async () => {
   const value = (await auth.getAccessToken()) as string | null | undefined;

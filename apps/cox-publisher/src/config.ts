@@ -6,7 +6,7 @@ export const COX_PROGRAM_ID = "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF";
 export const DEV_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 export const DEV_SIGNER_NETWORK = `solana:${DEV_GENESIS.slice(0, 32)}`;
 export const DEV_KEY_VERSION = "projects/colosseum-eox/locations/us-central1/keyRings/eox-signing-dev/cryptoKeys/oracle-operator/cryptoKeyVersions/1";
-export const DEV_SIGNER_URL = "https://eox-signer-529206295845.us-central1.run.app";
+export const DEV_SIGNER_URL = "https://signer.getrelative.trade";
 
 export interface PublisherConfig {
   enabled: boolean;
@@ -70,8 +70,8 @@ export async function loadConfig(path: string): Promise<PublisherConfig> {
   valid(input.genesisHash === DEV_GENESIS, "genesisHash");
   valid(input.signerNetwork === DEV_SIGNER_NETWORK, "signerNetwork");
   valid(input.keyVersion === DEV_KEY_VERSION, "keyVersion");
-  valid(input.signerUrl === DEV_SIGNER_URL, "signerUrl");
-  valid(input.signerAudience === DEV_SIGNER_URL, "signerAudience");
+  valid(input.signerUrl === (process.env.COX_SIGNER_URL ?? DEV_SIGNER_URL), "signerUrl");
+  valid(input.signerAudience === (process.env.COX_SIGNER_AUDIENCE ?? DEV_SIGNER_URL), "signerAudience");
   const config = input as unknown as PublisherConfig;
   if (config.enabled) assertReady(config);
   return config;

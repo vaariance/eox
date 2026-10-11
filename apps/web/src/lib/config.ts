@@ -7,7 +7,7 @@ export const NETWORKS = [
   { id: "mainnet", label: "Mainnet", live: false },
 ] as const;
 
-export const DEFAULT_API_URL = "https://cox-app-api-live-529206295845.europe-west1.run.app";
+export const DEFAULT_API_URL = "https://api.getrelative.trade";
 export const FIXTURE_DEMO_WALLET = "HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU";
 
 export const CIRCLE_DEVNET_USDC = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";

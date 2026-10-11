@@ -35,6 +35,11 @@ The wire schema is `eox.signing/v1`.
 
 Authenticated calls use a Google-signed identity token whose audience matches the configuration. The token must identify an allowlisted service account. Cloud Run deployments also require the caller to have service invocation permission. Generate short-lived tokens using workload identity or IAM service-account impersonation; do not distribute service-account key files.
 
+The tracked dev configuration omits the deployment audience. Set
+`SIGNER_AUDIENCE` in private runtime configuration before starting the signer.
+It must match the existing Cloud Run invocation audience; the branded hostname
+does not automatically change that audience.
+
 ## Signing policy
 
 Each request carries an ID, role, network, key version, operation identity, expiry and exact transaction bytes. The service accepts expiry at most 600 seconds ahead. It records decisions in Firestore: retrying the same request returns its recorded result, while changed bytes or a different caller under the same ID produce `REQUEST_ID_CONFLICT`.

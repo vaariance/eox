@@ -1,6 +1,6 @@
 {
   "environment": "dev",
-  "audience": "https://eox-signer-529206295845.us-central1.run.app",
+  "audience": "",
   "directoryVersion": 2,
   "keys": {
     "oracle-operator": {

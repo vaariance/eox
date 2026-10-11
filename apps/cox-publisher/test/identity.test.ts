@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createPublisherIdentityToken, PUBLISHER_IDENTITY } from "../src/identity.ts";
 
-const audience = "https://eox-signer-529206295845.us-central1.run.app";
+const audience = "https://signer.getrelative.trade";
 
 test("uses VM access credentials to mint the dedicated publisher identity with email", async () => {
   const calls: { url: string; init?: RequestInit }[] = [];
