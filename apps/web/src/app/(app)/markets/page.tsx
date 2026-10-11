@@ -3,13 +3,12 @@ import Link from "next/link";
 import { Change } from "@/components/change";
 import { CoinIcon } from "@/components/coin-icon";
 import { FirstPublication } from "@/components/first-publication";
-import { PriceSource } from "@/components/price-source";
 import { RowLink } from "@/components/row-link";
 import { Sparkline } from "@/components/sparkline";
 import { CardTitle, Figure, StatCard } from "@/components/stat-card";
 import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
-import { changeSince, decimalsOf, classViews, currentOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
+import { changeSince, decimalsOf, classViews, currentOf, findClass, latest, levelSeries, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 const WINDOW = 4 * HOUR;
@@ -27,7 +26,6 @@ function EmptyRow({ id, name, href }: { id: string; name: string; href: string }
         </Link>
       </th>
       <td className="num px-4 py-3 text-right text-muted">{EMPTY}</td>
-      <td className="px-4 py-3 text-xs text-muted">{EMPTY}</td>
       <td className="num px-4 py-3 text-right text-base text-muted">{EMPTY}</td>
       <td className="px-4 py-3 text-right text-muted">{EMPTY}</td>
       <td className="px-4 py-3 text-muted">{EMPTY}</td>
@@ -93,12 +91,11 @@ export default async function MarketsPage() {
         <div className="border-b border-line px-4 py-3">
           <CardTitle icon={LayoutList} aside={`${assets.length} coins`}>All markets</CardTitle>
         </div>
-        <table className="w-full min-w-[860px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-muted">
               <th scope="col" className="px-4 py-3 font-normal">Asset</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Price (USD)</th>
-              <th scope="col" className="px-4 py-3 font-normal">Price source</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Relative reference</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Reference, 1h</th>
               <th scope="col" className="px-4 py-3 font-normal">Last 4h</th>
@@ -121,7 +118,6 @@ export default async function MarketsPage() {
                     </Link>
                   </th>
                   <td className="num px-4 py-3 text-right">{formatPrice(latest(priceSeries([current], asset.assetId)))}</td>
-                  <td className="px-4 py-3"><PriceSource price={priceOf(current, asset.assetId)} /></td>
                   <td className="num px-4 py-3 text-right text-base">{formatAmount(latest(reference), 4)}</td>
                   <td className="px-4 py-3 text-right"><Change ratio={changeSince(reference, HOUR)} /></td>
                   <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(changeSince(reference, WINDOW))} /></td>
