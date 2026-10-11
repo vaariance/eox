@@ -7,6 +7,7 @@ import type {
   CoxPublicationEvent,
   CoxPublicationPage,
   CoxStatus,
+  CoxStreamEvent,
   CryptoComposition,
   DepositInput,
   DepositQuoteInput,
@@ -48,6 +49,26 @@ export interface CoxPublicationSubscription {
 const ASSET_PATTERN = /^[A-Z0-9]{2,12}$/;
 const OWNER_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const SIGNATURE_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
+
+async function readEvents(body: ReadableStream<Uint8Array>, onEvent: (event: string, data: string) => void): Promise<void> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary !== -1) {
+      const lines = buffer.slice(0, boundary).split("\n");
+      buffer = buffer.slice(boundary + 2);
+      const event = lines.find((line) => line.startsWith("event: "))?.slice(7) ?? "message";
+      const data = lines.filter((line) => line.startsWith("data: ")).map((line) => line.slice(6)).join("\n");
+      if (data) onEvent(event, data);
+      boundary = buffer.indexOf("\n\n");
+    }
+  }
+}
 
 function checkSequence(value: number | null, name: string): void {
   if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new CoxApiError("INVALID_REQUEST", `invalid ${name}`, 0);
@@ -116,32 +137,45 @@ export function createCoxApiClient(options: CoxApiClientOptions) {
           signal: controller.signal,
         });
         if (!res.ok || !res.body) throw new CoxApiError("INTERNAL_ERROR", `stream failed with ${res.status}`, res.status);
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        for (;;) {
-          const { value, done } = await reader.read();
-          if (done) return;
-          buffer += decoder.decode(value, { stream: true });
-          let boundary = buffer.indexOf("\n\n");
-          while (boundary !== -1) {
-            const data = buffer
-              .slice(0, boundary)
-              .split("\n")
-              .filter((line) => line.startsWith("data: "))
-              .map((line) => line.slice(6))
-              .join("\n");
-            buffer = buffer.slice(boundary + 2);
-            if (data) {
-              const event = JSON.parse(data) as CoxPublicationEvent;
-              if (lastSequence === null || event.sequence > lastSequence) {
-                lastSequence = event.sequence;
-                onEvent(event);
-              }
-            }
-            boundary = buffer.indexOf("\n\n");
+        await readEvents(res.body, (_type, data) => {
+          const event = JSON.parse(data) as CoxPublicationEvent;
+          if (lastSequence === null || event.sequence > lastSequence) {
+            lastSequence = event.sequence;
+            onEvent(event);
           }
-        }
+        });
+      })().catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        throw error;
+      });
+      return { close: () => controller.abort(), closed };
+    },
+    subscribe(options: { after?: number | null; wallet?: string | null }, onEvent: (event: CoxStreamEvent) => void): CoxPublicationSubscription {
+      const after = options.after ?? null;
+      const wallet = options.wallet ?? null;
+      checkSequence(after, "after");
+      if (wallet !== null && !OWNER_PATTERN.test(wallet)) throw new CoxApiError("INVALID_REQUEST", "invalid owner", 0);
+      const controller = new AbortController();
+      let lastSequence = after;
+      const closed = (async () => {
+        const query = wallet === null ? "" : `?wallet=${wallet}`;
+        const res = await doFetch(`${baseUrl}/v1/stream${query}`, {
+          headers: lastSequence === null ? { accept: "text/event-stream" } : { accept: "text/event-stream", "last-event-id": String(lastSequence) },
+          signal: controller.signal,
+        });
+        if (!res.ok || !res.body) throw new CoxApiError("INTERNAL_ERROR", `stream failed with ${res.status}`, res.status);
+        await readEvents(res.body, (type, data) => {
+          if (type === "publication") {
+            const event = JSON.parse(data) as CoxPublicationEvent;
+            if (lastSequence !== null && event.sequence <= lastSequence) return;
+            lastSequence = event.sequence;
+            onEvent({ type, data: event });
+          } else if (type === "status") {
+            onEvent({ type, data: JSON.parse(data) as CoxStatus });
+          } else if (type === "portfolio") {
+            onEvent({ type, data: JSON.parse(data) as Extract<CoxStreamEvent, { type: "portfolio" }>["data"] });
+          }
+        });
       })().catch((error: unknown) => {
         if (controller.signal.aborted) return;
         throw error;

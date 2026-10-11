@@ -254,6 +254,16 @@ export interface CoxPublicationEvent {
   publication: Publication;
 }
 
+export interface WalletPortfolioEvent {
+  owner: string;
+  portfolio: Portfolio | null;
+}
+
+export type CoxStreamEvent =
+  | { type: "publication"; data: CoxPublicationEvent }
+  | { type: "status"; data: CoxStatus }
+  | { type: "portfolio"; data: WalletPortfolioEvent };
+
 export interface CoxPublicationPage {
   events: CoxPublicationEvent[];
   nextAfter: number | null;
