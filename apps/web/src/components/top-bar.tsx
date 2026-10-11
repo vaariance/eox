@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NetworkSwitcher } from "./network-switcher";
@@ -21,6 +22,21 @@ function isCurrent(pathname: string, href: string): boolean {
 function NavLinks({ pathname }: { pathname: string }) {
   return links.map((link) => {
     const current = isCurrent(pathname, link.href);
+    if (link.href === "/swap") {
+      return (
+        <Link
+          key={link.href}
+          href={link.href}
+          aria-current={current ? "page" : undefined}
+          className={`flex h-10 shrink-0 items-center gap-1.5 rounded-pill border border-accent px-4 text-sm font-medium transition-colors duration-150 ${
+            current ? "bg-accent text-accent-ink" : "text-accent hover:bg-accent hover:text-accent-ink"
+          }`}
+        >
+          <ArrowLeftRight size={15} aria-hidden="true" />
+          {link.label}
+        </Link>
+      );
+    }
     return (
       <Link
         key={link.href}
