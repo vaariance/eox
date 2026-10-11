@@ -1,4 +1,4 @@
-export const COLLATERAL = { symbol: "tUSDC", name: "test USDC" };
+export const COLLATERAL = { symbol: "USDC", name: "devnet USDC" };
 
 export const SWAP_CHARGE_BPS: number | null = null;
 
