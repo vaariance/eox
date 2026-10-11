@@ -5,25 +5,14 @@ import { useState } from "react";
 import { COLLATERAL, SWAP_CHARGE_BPS } from "@/lib/config";
 import type { Batch } from "@eox/app-api";
 import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import { planRequest } from "@/lib/requests";
 import { type ClassView, type Holding, unlockedProblem } from "@/lib/view";
 import { Countdown } from "./countdown";
-import { RequestSubmit } from "./request-submit";
+import { WalletAction } from "./wallet-action";
 
 const CASH = "collateral";
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-interface SwapFormProps {
-  classes: ClassView[];
-  holdings: Holding[] | null;
-  nextBatch: Batch | null;
-  decimals: number;
-  poolId: string | null;
-}
-
-const VALID_FOR_BATCHES = 3;
-
-export function SwapForm({ classes, holdings, nextBatch, decimals, poolId }: SwapFormProps) {
+export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[]; holdings: Holding[] | null; nextBatch: Batch | null }) {
   const [from, setFrom] = useState(CASH);
   const [to, setTo] = useState("CRYPTO");
   const [amount, setAmount] = useState("250");
@@ -40,18 +29,6 @@ export function SwapForm({ classes, holdings, nextBatch, decimals, poolId }: Swa
   const gross = valid && !same ? (parsed * valueOf(from)) / valueOf(to) : null;
   const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;
   const estimate = gross === null ? null : gross - (charge ?? 0);
-
-  const indexOf = (id: string) => (id === CASH ? null : (classes.find((item) => item.id === id)?.index ?? null));
-  const planned = planRequest({
-    operation: from === CASH ? "deposit" : to === CASH ? "redeem" : "switch",
-    fromIndex: indexOf(from),
-    toIndex: indexOf(to),
-    amount,
-    minimum: "",
-    validForBatches: VALID_FOR_BATCHES,
-    targetBatch: nextBatch?.batch ?? Number.NaN,
-    collateralDecimals: decimals,
-  });
 
   const flip = () => {
     setFrom(to);
@@ -123,7 +100,7 @@ export function SwapForm({ classes, holdings, nextBatch, decimals, poolId }: Swa
           This is an estimate, not a quote. A swap is queued and executes at the unit values fixed by the next publication. You hold a share of a class, not the underlying coin.
         </p>
 
-        <RequestSubmit planned={same ? { plan: null, problem: "Choose two different sides." } : planned} poolId={poolId} label={`Queue ${operation.toLowerCase()}`} batch={nextBatch?.batch ?? null} blocked={unitsProblem} />
+        <WalletAction needsWallet="Connect wallet to swap" className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

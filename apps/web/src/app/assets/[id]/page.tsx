@@ -8,7 +8,7 @@ import { RequestList } from "@/components/request-list";
 import { TradeForm } from "@/components/trade-form";
 import { getAssets, getCrypto, getDeployment, getPortfolio, getPublications, getStatus } from "@/lib/data";
 import { formatAmount, formatChange, formatPrice } from "@/lib/format";
-import { SCALE_DIGITS, changeSince, classViews, decimalsOf, livePoolId, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries, toNumber } from "@/lib/view";
+import { SCALE_DIGITS, changeSince, classViews, decimalsOf, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries, toNumber } from "@/lib/view";
 
 const HOUR = 3600;
 
@@ -99,7 +99,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
           />
         </div>
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={classes.filter((item) => item.id !== asset.assetId)} holdings={holdings} nextBatch={status.currentBatch} decimals={decimalsOf(deployment)} poolId={livePoolId(deployment)} />
+          <TradeForm claim={claim} others={classes.filter((item) => item.id !== asset.assetId)} holdings={holdings} nextBatch={status.currentBatch} />
           <section className="rounded-card border border-line bg-surface p-4 shadow-card">
             <h2 className="text-sm font-medium">Your position</h2>
             {holding ? (

@@ -10,10 +10,6 @@ export function decimalsOf(deployment: CoxDeployment): number {
   return deployment.collateralDecimals ?? DEFAULT_DECIMALS;
 }
 
-export function livePoolId(deployment: CoxDeployment): string | null {
-  return deployment.origin === "live" && deployment.poolAddress !== null && deployment.collateralDecimals !== null ? deployment.poolId : null;
-}
-
 export function batchCutoff(status: CoxStatus, batch: number): number | null {
   if (status.currentBatch) return status.currentBatch.cutoff + (batch - status.currentBatch.batch) * BATCH_SECONDS;
   if (status.latestBatch !== null && status.latestCutoff !== null) return status.latestCutoff + (batch - status.latestBatch) * BATCH_SECONDS;
@@ -27,7 +23,6 @@ export interface Point {
 
 export interface ClassView {
   id: string;
-  index: number;
   backing: number;
   units: number;
   unitValue: number | null;
@@ -78,7 +73,7 @@ export function changeSince(points: readonly Point[], seconds: number): number {
 function classView(valuation: ClassValuation, decimals: number): ClassView {
   const backing = toNumber(valuation.final.backing, decimals);
   const units = toNumber(valuation.final.units, SCALE_DIGITS);
-  return { id: valuation.classId, index: valuation.classIndex, backing, units, unitValue: units > 0 ? backing / units : null };
+  return { id: valuation.classId, backing, units, unitValue: units > 0 ? backing / units : null };
 }
 
 export function classViews(publication: Publication, decimals: number): ClassView[] {
