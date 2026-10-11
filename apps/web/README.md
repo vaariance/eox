@@ -1,6 +1,6 @@
 # COX web app
 
-A Next.js interface for exploring the CRYPTO benchmark, asset performance, publications, portfolios and trading requests on Solana devnet. It reads the versioned COX app API and uses the connected wallet to authorize live trading requests.
+A Next.js interface for exploring the CRYPTO benchmark, asset performance, portfolios and trading requests on Solana devnet. It reads the versioned COX app API and uses the connected wallet to authorize live trading requests.
 
 The default API serves synthetic fixture data. Fixture pages are labelled and trading controls are disabled. Live mode uses the configured deployment's test collateral; it does not imply mainnet availability or real USDC support.
 
@@ -71,9 +71,7 @@ fresh class has a unit value of 1. Requests are still sent in exact quanta.
 
 The Faucet page links to Solana's devnet SOL faucet and Circle's devnet USDC
 faucet, shows the connected wallet's address to paste there, and reads its
-devnet SOL and USDC balances (`COX_RPC_URL`, default public devnet). The
-navigation no longer links to Publications; the page is still at
-`/publications`.
+devnet SOL and USDC balances (`COX_RPC_URL`, default public devnet).
 
 ## Gain or loss
 

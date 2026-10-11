@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, ArrowLeftRight, BarChart3, Droplets, Home, ListOrdered, PanelLeftClose, PanelLeftOpen, Wallet, type LucideIcon } from "lucide-react";
+import { Activity, ArrowLeftRight, BarChart3, Droplets, Home, PanelLeftClose, PanelLeftOpen, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -20,7 +20,6 @@ const main: Item[] = [
 
 const more: Item[] = [
   { href: "/faucet", label: "Faucet", icon: Droplets },
-  { href: "/publications", label: "Publications", icon: ListOrdered },
 ];
 
 const wordmark = stencilPath("RELATIVE", 1, 0.34);
