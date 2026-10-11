@@ -71,7 +71,7 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
       const transactions = new CoxTransactions({
         connection, program, poolId, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes,
       });
-      const submissions = new CoxSubmissions({ connection, programId: program.programId, path: join(stateDir, `submissions-${poolId}.json`) });
+      const submissions = new CoxSubmissions({ connection, programId: program.programId, path: join(stateDir, `submissions-${poolId}.json`), feeVersion: () => transactions.feeVersion() });
       return { source, transactions, submissions };
     } catch (error) {
       if (!(error instanceof Error) || !["CoxAccountNotFound", "PoolMethodologyNotSealed"].includes(error.message)) throw error;

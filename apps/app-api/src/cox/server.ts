@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { COX_APP_API_SCHEMA_VERSION, type CoxErrorCode, type CoxPublicationEvent, type CoxPublicationPage, type Publication } from "@eox/app-api";
 import type { CoxSource } from "./source.js";
 import type { CoxSubmissions } from "./submissions.js";
-import { TransactionInputError, TransactionRejectedError, type CoxTransactions } from "./transactions.js";
+import { FeeChangedError, TransactionInputError, TransactionRejectedError, type CoxTransactions } from "./transactions.js";
 
 const DEFAULT_PAGE = 100;
 const MAX_PAGE = 500;
@@ -12,6 +12,7 @@ const ASSET_PATTERN = /^[A-Z0-9]{2,12}$/;
 const OWNER_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_BODY_BYTES = 8192;
 const BUILDERS = ["deposit", "switch", "redeem", "cancel", "refund", "withdraw"] as const;
+const QUOTES = { deposit: "quoteDeposit", switch: "quoteSwitch", redeem: "quoteRedeem" } as const;
 
 class ApiError extends Error {
   constructor(
@@ -120,10 +121,14 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
 
   async function post(req: IncomingMessage, res: ServerResponse, path: string[]): Promise<void> {
     const [, a, b] = path;
-    if (path.length !== 3 || a !== "transactions") throw new ApiError(404, "NOT_FOUND", "not found");
-    if (!transactions || !submissions) throw new ApiError(409, "NOT_LIVE", "transactions are built only by a live deployment");
+    if (path.length !== 3 || (a !== "transactions" && a !== "quotes")) throw new ApiError(404, "NOT_FOUND", "not found");
+    if (!transactions || !submissions) throw new ApiError(409, "NOT_LIVE", "transactions are built and quoted only by a live deployment");
     admit(req, res);
     const input = await body(req);
+    if (a === "quotes") {
+      if (!Object.hasOwn(QUOTES, b!)) throw new ApiError(404, "NOT_FOUND", "not found");
+      return send(res, await (transactions[QUOTES[b as keyof typeof QUOTES]] as (value: unknown) => ReturnType<CoxTransactions["quoteDeposit"]>).call(transactions, input));
+    }
     if (b === "submit") return send(res, await submissions.submit(input.transaction));
     const builder = BUILDERS.find((name) => name === b);
     if (!builder) throw new ApiError(404, "NOT_FOUND", "not found");
@@ -192,7 +197,7 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
     }
     const url = new URL(req.url ?? "/", "http://localhost");
     const path = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-    if (req.method === "POST" && path[0] === "v1" && path[1] === "transactions") return post(req, res, path);
+    if (req.method === "POST" && path[0] === "v1" && (path[1] === "transactions" || path[1] === "quotes")) return post(req, res, path);
     if (req.method !== "GET") {
       res.setHeader("allow", path[1] === "transactions" ? "POST" : "GET");
       throw new ApiError(405, "METHOD_NOT_ALLOWED", "method not allowed");
@@ -213,6 +218,10 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
     if (path.length === 2 && a === "publications") return page(url, res);
     if (path.length === 3 && a === "publications" && b === "stream") return stream(req, url, res);
     if (path.length === 3 && a === "publications") return publication(res, b!);
+    if (path.length === 3 && a === "quotes" && Object.hasOwn(QUOTES, b!)) {
+      res.setHeader("allow", "POST");
+      throw new ApiError(405, "METHOD_NOT_ALLOWED", "method not allowed");
+    }
     if (path.length === 3 && a === "transactions") {
       if (b === "submit" || BUILDERS.some((name) => name === b)) {
         res.setHeader("allow", "POST");
@@ -237,6 +246,7 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
       const errorBody = (code: CoxErrorCode, message: string) => ({ schemaVersion: COX_APP_API_SCHEMA_VERSION, error: { code, message } });
       if (error instanceof ApiError) return write(res, error.status, errorBody(error.code, error.message));
       if (error instanceof TransactionInputError) return write(res, 400, errorBody("INVALID_REQUEST", error.message));
+      if (error instanceof FeeChangedError) return write(res, 409, errorBody("FEE_CHANGED", error.message));
       if (error instanceof TransactionRejectedError) return write(res, 422, errorBody("TRANSACTION_REJECTED", error.message));
       if (error instanceof URIError) return write(res, 400, errorBody("INVALID_REQUEST", "invalid path encoding"));
       options.onError?.(error);
