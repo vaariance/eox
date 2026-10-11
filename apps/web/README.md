@@ -3,25 +3,25 @@
 Next.js app for the COX devnet MVP (`product.md` task G3).
 
 ```sh
-pnpm --filter @eox/web dev
-```
-
-It opens on <http://localhost:3100> with built-in sample data for the 30 pilot
-assets. The sample is for layout only and is labelled on every page.
-
-To read from the app API instead, start the fixture server and point the app at
-it:
-
-```sh
 pnpm --filter @eox/app-api-server start
-COX_API_URL=http://127.0.0.1:8790 COX_DEMO_WALLET=<fixture wallet> pnpm --filter @eox/web dev
+COX_DEMO_WALLET=<fixture wallet> pnpm --filter @eox/web dev
 ```
+
+The app opens on <http://localhost:3100> and reads the COX app API through
+`createCoxApiClient`. There is no built-in data: without a reachable API it
+shows an error page with a retry button. The fixture server's assets, prices
+and wallets are synthetic, and the app labels them on every page.
 
 | Variable | Meaning |
 | --- | --- |
-| `COX_API_URL` | Base URL of a `cox.app-api/v1` server. Unset means sample data. |
+| `COX_API_URL` | Base URL of a `cox.app-api/v1` server. Defaults to `http://127.0.0.1:8790`. |
 | `COX_DEMO_WALLET` | Wallet whose portfolio is shown. Unset means no portfolio. |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Solana RPC for the wallet adapter. Defaults to public devnet. |
+
+The app is built with webpack (`next dev --webpack`, `next build --webpack`).
+Turbopack cannot resolve the `.js` import specifiers in `@eox/app-api` to its
+TypeScript sources; webpack does, through `resolve.extensionAlias` in
+`next.config.ts`.
 
 Every page reads through `src/lib/data.ts`, which returns the types from
 `@eox/app-api`. The app computes no reference and no claim value; the

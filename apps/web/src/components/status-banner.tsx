@@ -1,4 +1,4 @@
-import type { CoxStatus, SystemState } from "@eox/app-api";
+import type { CoxOrigin, CoxStatus, SystemState } from "@eox/app-api";
 import { CircleAlert, CircleCheck, CirclePause } from "lucide-react";
 import { formatUtcTime, formatWhole } from "@/lib/format";
 import { Countdown } from "./countdown";
@@ -13,9 +13,7 @@ const states: Record<SystemState, { label: string; tone: string; Icon: typeof Ci
 
 const verdicts = { match: "matches", mismatch: "mismatch", pending: "checking" };
 
-const sources = { sample: "Sample data, not from the API", fixture: "Fixture data from the app API" };
-
-export function StatusBanner({ status, source }: { status: CoxStatus; source: "sample" | "fixture" | "live" }) {
+export function StatusBanner({ status, origin }: { status: CoxStatus; origin: CoxOrigin }) {
   const state = states[status.state];
   const mismatch = status.monitor?.verdict === "mismatch";
 
@@ -44,7 +42,7 @@ export function StatusBanner({ status, source }: { status: CoxStatus; source: "s
         <span className={mismatch ? "text-down" : undefined}>
           Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{status.monitor ? verdicts[status.monitor.verdict] : "no verdict yet"}</span>
         </span>
-        {source !== "live" && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">{sources[source]}</span>}
+        {origin === "fixture" && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Fixture data: synthetic assets, not market prices</span>}
       </div>
       <p className="mx-auto w-full max-w-7xl px-4 pb-2 pt-1 text-xs text-muted sm:px-6">
         Solana devnet · Test collateral (tUSDC has no real value) · MVP-0 is a test mechanism · Prices attested by the operator from exchange data

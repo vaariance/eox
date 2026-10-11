@@ -3,7 +3,6 @@ import type { ClassValuation, CoxDeployment, CoxStatus, PriceVenue, Publication,
 export const PRICE_DIGITS = 8;
 export const SCALE_DIGITS = 12;
 export const CRYPTO_CLASS = "CRYPTO";
-export const SAMPLE_SOURCE = "apps/web sample data";
 const DEFAULT_DECIMALS = 0;
 const BATCH_SECONDS = 60;
 
