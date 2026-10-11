@@ -53,7 +53,7 @@ export function TradeChart({ bars, candles = false, digits, label, lines = [], m
   const last = values[values.length - 1];
   const start = compare ?? values[0];
   const rising = last >= start;
-  const stroke = rising ? "var(--up)" : "var(--down)";
+  const stroke = candles ? (rising ? "var(--up)" : "var(--down)") : "var(--accent)";
   const included = [...(candles ? bars.flatMap((bar) => [bar.high, bar.low]) : values), ...lines.map((line) => line.value)];
   const rawLow = Math.min(...included);
   const rawHigh = Math.max(...included);
@@ -99,8 +99,9 @@ export function TradeChart({ bars, candles = false, digits, label, lines = [], m
         >
           <defs>
             <linearGradient id={gradient} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={stroke} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.5" />
+              <stop offset="55%" stopColor="var(--glow)" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="var(--glow)" stopOpacity="0" />
             </linearGradient>
           </defs>
           {ticks.map((tick) => (
