@@ -39,6 +39,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   const size = (ratio: number) => formatChange(Math.abs(ratio)).slice(1);
   const holding = portfolio?.positions.find((item) => item.classId === asset.assetId);
   const heldUnits = holding ? toNumber(holding.units, SCALE_DIGITS) : 0;
+  const holdings = portfolio ? portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS), locked: toNumber(position.locked, SCALE_DIGITS) })) : null;
   const involved = (classId: string | null) => classId === asset.assetId;
 
   return (
@@ -98,7 +99,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
           />
         </div>
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={classes.filter((item) => item.id !== asset.assetId)} nextBatch={status.currentBatch} />
+          <TradeForm claim={claim} others={classes.filter((item) => item.id !== asset.assetId)} holdings={holdings} nextBatch={status.currentBatch} />
           <section className="rounded-card border border-line bg-surface p-4 shadow-card">
             <h2 className="text-sm font-medium">Your position</h2>
             {holding ? (

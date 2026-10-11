@@ -97,3 +97,19 @@ export function tradeAge(minutes: number): string {
   if (minutes === 0) return "traded in the cutoff minute";
   return `last trade ${minutes} min before the cutoff`;
 }
+
+export interface Holding {
+  classId: string;
+  units: number;
+  locked: number;
+}
+
+export function unlockedProblem(holdings: readonly Holding[] | null, classId: string, wanted: number): string | null {
+  if (holdings === null) return null;
+  const holding = holdings.find((item) => item.classId === classId);
+  if (!holding || holding.units === 0) return `You hold no ${classId} units.`;
+  const free = holding.units - holding.locked;
+  if (wanted <= free) return null;
+  if (holding.locked > 0) return `Only ${free.toFixed(2)} of your ${classId} units are free. ${holding.locked.toFixed(2)} are locked in another request.`;
+  return `You hold ${free.toFixed(2)} ${classId} units.`;
+}

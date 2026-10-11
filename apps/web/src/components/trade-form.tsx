@@ -5,7 +5,7 @@ import { useState } from "react";
 import { COLLATERAL } from "@/lib/config";
 import type { Batch } from "@eox/app-api";
 import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import type { ClassView } from "@/lib/view";
+import { type ClassView, type Holding, unlockedProblem } from "@/lib/view";
 import { Countdown } from "./countdown";
 import { WalletAction } from "./wallet-action";
 
@@ -19,13 +19,15 @@ const operations: { id: Operation; label: string }[] = [
 
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-export function TradeForm({ claim, others, nextBatch }: { claim: ClassView; others: ClassView[]; nextBatch: Batch | null }) {
+export function TradeForm({ claim, others, holdings, nextBatch }: { claim: ClassView; others: ClassView[]; holdings: Holding[] | null; nextBatch: Batch | null }) {
   const [operation, setOperation] = useState<Operation>("deposit");
   const [amount, setAmount] = useState("250");
   const [target, setTarget] = useState(others[0].id);
   const parsed = Number(amount);
   const valid = Number.isFinite(parsed) && parsed > 0;
   const destination = others.find((item) => item.id === target) ?? others[0];
+  const sameClass = operation === "switch" && destination.id === claim.id;
+  const unitsProblem = valid && operation !== "deposit" ? unlockedProblem(holdings, claim.id, parsed) : null;
 
   const sourceValue = claim.unitValue ?? 1;
   const destinationValue = destination.unitValue ?? 1;
@@ -77,6 +79,8 @@ export function TradeForm({ claim, others, nextBatch }: { claim: ClassView; othe
           <label htmlFor="trade-amount" className="mb-1 block text-xs text-muted">{amountLabel}</label>
           <input id="trade-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
           {!valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
+          {unitsProblem && <p role="alert" className="mt-1 text-xs text-down">{unitsProblem}</p>}
+          {sameClass && <p role="alert" className="mt-1 text-xs text-down">Choose a different class to switch into.</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

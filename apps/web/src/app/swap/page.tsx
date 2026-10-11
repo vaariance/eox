@@ -6,7 +6,7 @@ import { SCALE_DIGITS, classViews, decimalsOf, latestOf, toNumber } from "@/lib/
 export default async function SwapPage() {
   const [deployment, portfolio, publications, status] = await Promise.all([getDeployment(), getPortfolio(), getPublications(), getStatus()]);
   const classes = classViews(latestOf(publications), decimalsOf(deployment));
-  const holdings = (portfolio?.positions ?? []).map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS) }));
+  const holdings = portfolio ? portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS), locked: toNumber(position.locked, SCALE_DIGITS) })) : null;
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6">

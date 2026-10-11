@@ -3,14 +3,16 @@ import { AssetChart } from "@/components/asset-chart";
 import { Change } from "@/components/change";
 import { PriceSource } from "@/components/price-source";
 import { TradeForm } from "@/components/trade-form";
-import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
+import { getAssets, getCrypto, getDeployment, getPortfolio, getPublications, getStatus } from "@/lib/data";
 import { formatAmount } from "@/lib/format";
-import { CRYPTO_CLASS, changeSince, classViews, decimalsOf, findClass, latest, latestOf, levelSeries, priceOf, priceSeries } from "@/lib/view";
+import { CRYPTO_CLASS, SCALE_DIGITS, changeSince, classViews, decimalsOf, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, toNumber } from "@/lib/view";
 
 const HOUR = 3600;
 
 export default async function CryptoPage() {
   const [assets, crypto, deployment, publications, status] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications(), getStatus()]);
+  const portfolio = await getPortfolio();
+  const holdings = portfolio ? portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS), locked: toNumber(position.locked, SCALE_DIGITS) })) : null;
   const current = latestOf(publications);
   const classes = classViews(current, decimalsOf(deployment));
   const claim = findClass(classes, CRYPTO_CLASS);
@@ -88,7 +90,7 @@ export default async function CryptoPage() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={classes.filter((item) => item.id !== CRYPTO_CLASS)} nextBatch={status.currentBatch} />
+          <TradeForm claim={claim} others={classes.filter((item) => item.id !== CRYPTO_CLASS)} holdings={holdings} nextBatch={status.currentBatch} />
           <p className="px-1 text-xs text-muted">
             A CRYPTO position follows the benchmark. It is not cash and it is not risk-free: its unit value can fall.
           </p>

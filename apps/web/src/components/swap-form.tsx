@@ -5,19 +5,14 @@ import { useState } from "react";
 import { COLLATERAL, SWAP_CHARGE_BPS } from "@/lib/config";
 import type { Batch } from "@eox/app-api";
 import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import type { ClassView } from "@/lib/view";
+import { type ClassView, type Holding, unlockedProblem } from "@/lib/view";
 import { Countdown } from "./countdown";
 import { WalletAction } from "./wallet-action";
 
 const CASH = "collateral";
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-interface Holding {
-  classId: string;
-  units: number;
-}
-
-export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[]; holdings: Holding[]; nextBatch: Batch | null }) {
+export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[]; holdings: Holding[] | null; nextBatch: Batch | null }) {
   const [from, setFrom] = useState(CASH);
   const [to, setTo] = useState("CRYPTO");
   const [amount, setAmount] = useState("250");
@@ -29,7 +24,8 @@ export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[
   const valid = Number.isFinite(parsed) && parsed > 0;
   const same = from === to;
   const operation = from === CASH ? "Buy" : to === CASH ? "Redeem" : "Switch";
-  const held = from === CASH ? null : (holdings.find((item) => item.classId === from)?.units ?? 0);
+  const held = from === CASH || holdings === null ? null : (holdings.find((item) => item.classId === from)?.units ?? 0);
+  const unitsProblem = valid && from !== CASH && !same ? unlockedProblem(holdings, from, parsed) : null;
   const gross = valid && !same ? (parsed * valueOf(from)) / valueOf(to) : null;
   const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;
   const estimate = gross === null ? null : gross - (charge ?? 0);
@@ -56,6 +52,7 @@ export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[
             </select>
           </div>
           {!valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
+          {unitsProblem && <p role="alert" className="mt-1 text-xs text-down">{unitsProblem}</p>}
         </div>
 
         <div className="flex justify-center">
@@ -74,7 +71,7 @@ export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[
               ))}
             </select>
           </div>
-          {same && <p className="mt-1 text-xs text-down">Choose two different sides.</p>}
+          {same && <p role="alert" className="mt-1 text-xs text-down">Choose two different sides. A switch cannot end in the class it started from.</p>}
         </div>
 
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
