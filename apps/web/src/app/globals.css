@@ -1,24 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f6f4ee;
-  --surface: #ffffff;
-  --surface-2: #ece9e1;
-  --bar: rgb(246 244 238 / 0.78);
-  --line: rgb(28 27 24 / 0.09);
-  --ink: #1d1d1f;
-  --muted: #65625b;
-  --accent: #1f5f4a;
+  --bg: #09090a;
+  --surface: #121214;
+  --surface-2: #1c1c1f;
+  --bar: rgb(15 15 17 / 0.78);
+  --line: rgb(255 255 255 / 0.1);
+  --ink: #f4f4f5;
+  --muted: #9a9ba1;
+  --accent: #f2622e;
   --accent-ink: #ffffff;
-  --up: #1a7f43;
-  --down: #c9281c;
-  --warn: #8a5a00;
-  --radius: 20px;
-  --r-control: 12px;
-  --r-pill: 999px;
-  --card-shadow: 0 1px 2px rgb(28 27 24 / 0.04), 0 10px 30px rgb(28 27 24 / 0.06);
-  --title: 2.125rem;
-  color-scheme: light;
+  --glow: #7c3aed;
+  --up: #3ecf8e;
+  --down: #f0616d;
+  --warn: #e5a843;
+  --radius: 14px;
+  --r-control: 10px;
+  --r-pill: 10px;
+  --card-shadow: 0 0 0 0 transparent;
+  --title: 1.75rem;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -39,8 +40,8 @@
   --radius-pill: var(--r-pill);
   --shadow-card: var(--card-shadow);
   --text-title: var(--title);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+  --font-sans: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 body {

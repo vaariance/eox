@@ -7,7 +7,7 @@ import { Check, Copy, LogOut, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { shortAddress } from "@/lib/address";
 
-const primary = "flex h-10 cursor-pointer items-center gap-2 rounded-pill bg-accent px-4 text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90";
+const primary = "flex h-10 cursor-pointer items-center gap-2 whitespace-nowrap rounded-pill bg-accent px-3 text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90 sm:px-4";
 const row = "flex h-11 w-full cursor-pointer items-center gap-3 rounded-control px-3 text-left text-sm transition-colors duration-150 hover:bg-surface-2";
 
 export function WalletButton() {
@@ -81,7 +81,7 @@ export function WalletButton() {
     <>
       <button type="button" onClick={open} className={primary}>
         <Wallet size={16} aria-hidden="true" />
-        {address ? <span className="num">{shortAddress(address)}</span> : mounted && connecting ? "Connecting" : "Connect wallet"}
+        {address ? <span className="num">{shortAddress(address)}</span> : mounted && connecting ? "Connecting" : <>Connect<span className="hidden sm:inline"> wallet</span></>}
       </button>
 
       <dialog
@@ -130,7 +130,6 @@ export function WalletButton() {
               ))
             )}
             {error && <p role="alert" className="px-3 py-2 text-xs text-down">{error}</p>}
-            <p className="px-3 pb-1 pt-2 text-xs text-muted">COX runs on Solana devnet with test collateral. Your keys stay in your wallet.</p>
           </div>
         )}
       </dialog>

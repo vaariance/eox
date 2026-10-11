@@ -1,17 +1,19 @@
 "use client";
 
 import type { CoxStatus } from "@eox/app-api";
+import { ArrowDownToLine, Clock, Undo2, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { shortAddress } from "@/lib/address";
 import { COLLATERAL } from "@/lib/config";
 import { costBasis, paidFor } from "@/lib/basis";
 import { direction, formatAmount, formatSigned, formatWhole } from "@/lib/format";
-import { CRYPTO_CLASS, type ClassView, toNumber, unitDigits } from "@/lib/view";
+import { type ClassView, nameOf, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { useOpenBatch } from "./open-batch";
 import { RequestList } from "./request-list";
 import { SendButton } from "./send-button";
+import { Figure, StatCard } from "./stat-card";
 
 export function PortfolioView({ classes, status, decimals }: { classes: ClassView[]; status: CoxStatus; decimals: number }) {
   const { portfolio, owner, live, loading } = useAccount();
@@ -32,9 +34,9 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
   const tone = (value: number | null) => (value === null ? "text-muted" : { up: "text-up", down: "text-down", flat: "text-muted" }[direction(value)]);
   const payable = portfolio?.payable ?? "0";
   const cards = [
-    { label: "Worth now, about", value: redeemable, note: total === null ? "Your units at the latest unit values" : `Gain or loss so far: ${formatSigned(total, 6)} ${COLLATERAL.symbol}` },
-    { label: "Pending buys", value: toNumber(portfolio?.pending ?? "0", decimals), note: "Still yours until the batch executes" },
-    { label: "Refundable", value: toNumber(portfolio?.refundable ?? "0", decimals), note: "From rejected, expired or cancelled buys" },
+    { label: "Worth now, about", icon: Wallet, value: redeemable, note: total === null ? null : `Gain or loss so far: ${formatSigned(total, 6)} ${COLLATERAL.symbol}` },
+    { label: "Pending buys", icon: Clock, value: toNumber(portfolio?.pending ?? "0", decimals), note: null },
+    { label: "Refundable", icon: Undo2, value: toNumber(portfolio?.refundable ?? "0", decimals), note: null },
   ];
   const who = !live
     ? "This is fixture data, so it shows a demo wallet."
@@ -51,22 +53,16 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
       <div>
         <h1 className="font-display text-title font-semibold tracking-tight">Portfolio</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          {who} Your return comes from unit values, not from the reference charts.
+          {who}
           {portfolio && portfolio.appliedSequence !== null && ` Up to date with publication #${formatWhole(portfolio.appliedSequence)}.`}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.label} className="rounded-card border border-line bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">{card.label}</div>
-            <div className="num mt-2 text-2xl">{formatAmount(card.value, 4)} <span className="text-xs text-muted">{COLLATERAL.symbol}</span></div>
-            <div className="mt-1 text-xs text-muted">{card.note}</div>
-          </div>
+          <StatCard key={card.label} icon={card.icon} title={card.label} value={<Figure text={formatAmount(card.value, 4)} unit={COLLATERAL.symbol} />} caption={card.note} />
         ))}
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">Ready to withdraw</div>
-          <div className="num mt-2 text-2xl">{formatAmount(toNumber(payable, decimals))} <span className="text-xs text-muted">{COLLATERAL.symbol}</span></div>
+        <StatCard icon={ArrowDownToLine} title="Ready to withdraw" value={<Figure text={formatAmount(toNumber(payable, decimals))} unit={COLLATERAL.symbol} />}>
           <div className="mt-3 flex flex-col gap-2">
             <SendButton
               intent={BigInt(payable) > 0n ? { operation: "withdraw", amount: payable } : null}
@@ -76,7 +72,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
               hideSuccess
             />
           </div>
-        </div>
+        </StatCard>
       </div>
 
       <section className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
@@ -101,7 +97,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
               {rows.map((row) => (
                 <tr key={row.classId} onClick={(event) => !(event.target as HTMLElement).closest("button, a, [role=status]") && router.push(`/portfolio/${row.classId}`)} className="cursor-pointer border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-surface-2">
                   <th scope="row" className="px-4 py-3 text-left font-medium">
-                    <Link href={`/portfolio/${row.classId}`} className="underline-offset-4 hover:underline">{row.classId}</Link>
+                    <Link href={`/portfolio/${row.classId}`} className="underline-offset-4 hover:underline">{nameOf(row.classId)}</Link>
                   </th>
                   <td className="num px-4 py-3 text-right">{formatAmount(row.units, 4)}</td>
                   <td className="num px-4 py-3 text-right">{formatAmount(row.locked, 4)}</td>
@@ -113,7 +109,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
                     <span className="inline-flex flex-col items-end gap-1">
                       <SendButton
                         intent={row.free !== null && expiryBatch !== null ? { operation: "redeem", fromClass: row.classId, units: row.free, minimumProceeds: "0", expiryBatch } : null}
-                        describe={`Cash out your ${row.classId} position to ${COLLATERAL.symbol}`}
+                        describe={`Cash out your ${nameOf(row.classId)} position to ${COLLATERAL.symbol}`}
                         label="Cash out"
                         connectLabel="Cash out"
                         className="h-9 rounded-pill border border-line px-3 text-xs"

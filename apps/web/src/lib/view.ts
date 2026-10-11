@@ -7,6 +7,11 @@ export function unitDigits(decimals: number): number {
   return SCALE_DIGITS + decimals;
 }
 export const CRYPTO_CLASS = "CRYPTO";
+export const CRYPTO_NAME = "$CRYPTO";
+
+export function nameOf(classId: string): string {
+  return classId === CRYPTO_CLASS ? CRYPTO_NAME : classId;
+}
 const DEFAULT_DECIMALS = 0;
 const BATCH_SECONDS = 60;
 
@@ -114,11 +119,11 @@ export function holdingsOf(portfolio: Portfolio | null, decimals: number): Holdi
 export function unlockedProblem(holdings: readonly Holding[] | null, classId: string, wanted: number): string | null {
   if (holdings === null) return null;
   const holding = holdings.find((item) => item.classId === classId);
-  if (!holding || holding.units === 0) return `You hold no ${classId} units.`;
+  if (!holding || holding.units === 0) return `You hold no ${nameOf(classId)} units.`;
   const free = holding.units - holding.locked;
   if (wanted <= free) return null;
-  if (holding.locked > 0) return `Only ${free.toFixed(2)} of your ${classId} units are free. ${holding.locked.toFixed(2)} are locked in another request.`;
-  return `You hold ${free.toFixed(2)} ${classId} units.`;
+  if (holding.locked > 0) return `Only ${free.toFixed(2)} of your ${nameOf(classId)} units are free. ${holding.locked.toFixed(2)} are locked in another request.`;
+  return `You hold ${free.toFixed(2)} ${nameOf(classId)} units.`;
 }
 
 export interface ValuePoint extends Point {

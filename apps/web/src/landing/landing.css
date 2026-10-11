@@ -1,0 +1,17 @@
+@stylex;
+
+html:has([data-site]) {
+  background: #09090a;
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+html:has([data-site]) body {
+  background: #09090a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has([data-site]) {
+    scroll-behavior: auto;
+  }
+}

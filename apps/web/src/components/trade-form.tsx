@@ -1,7 +1,6 @@
 "use client";
 
 import type { Batch } from "@eox/app-api";
-import { Info } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { COLLATERAL } from "@/lib/config";
@@ -44,7 +43,7 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
   const fromValue = (buying ? crypto : claim).unitValue ?? 1;
   const toValue = cashing ? 1 : ((buying ? claim : crypto).unitValue ?? 1);
   const estimate = valid ? (parsed * fromValue) / toValue : null;
-  const receives = buying ? `${claim.id} units` : cashing ? COLLATERAL.symbol : "CRYPTO";
+  const receives = buying ? `${claim.id} units` : cashing ? COLLATERAL.symbol : "$CRYPTO";
   const needsCrypto = buying && live && owner !== null && available === 0;
 
   return (
@@ -63,25 +62,17 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
         ))}
       </div>
 
-      <p className="mb-3 text-xs text-muted">
-        {buying
-          ? `You pay with CRYPTO and get ${claim.id} units, a share of the ${claim.id} class.`
-          : cashing
-            ? `You give ${claim.id} units and get ${COLLATERAL.symbol}, ready to withdraw on the Portfolio page.`
-            : `You give ${claim.id} units and get CRYPTO back.`}
-      </p>
-
       <form className="flex flex-col gap-3" onSubmit={(event) => event.preventDefault()}>
         <div>
           <div className="mb-1 flex items-center justify-between text-xs text-muted">
-            <label htmlFor="trade-amount">{buying ? "You pay (CRYPTO)" : `You give (${claim.id} units)`}</label>
+            <label htmlFor="trade-amount">{buying ? "You pay ($CRYPTO)" : `You give (${claim.id} units)`}</label>
             {available !== null && <span className="num">Available {formatAmount(available)}</span>}
           </div>
           <input id="trade-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
           {!valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
           {needsCrypto && (
             <p className="mt-1 text-xs text-muted">
-              You have no CRYPTO yet. <Link href="/swap" className="text-accent underline">Swap USDC for CRYPTO</Link> first.
+              You have no $CRYPTO yet. <Link href="/swap" className="text-accent underline">Swap USDC for $CRYPTO</Link> first.
             </p>
           )}
         </div>
@@ -115,12 +106,8 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
           </div>
         </dl>
 
-        <p className="flex gap-2 rounded-control bg-surface-2 p-3 text-xs text-muted">
-          <Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-          Your request is queued and fills at the unit values fixed by the next publication, so the amount you receive is an estimate. You can cancel until the batch closes.
-        </p>
 
-        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} CRYPTO` : cashing ? `Cash out ${amount} ${claim.id} units to ${COLLATERAL.symbol}` : `Sell ${amount} ${claim.id} units for CRYPTO`} intent={planned.intent} label={buying ? `Buy ${claim.id}` : cashing ? `Cash out ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? null : unitsProblem)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : cashing ? `Cash out ${amount} ${claim.id} units to ${COLLATERAL.symbol}` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={buying ? `Buy ${claim.id}` : cashing ? `Cash out ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? null : unitsProblem)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

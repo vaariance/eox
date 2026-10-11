@@ -1,7 +1,7 @@
 "use client";
 
 import type { Batch } from "@eox/app-api";
-import { ArrowDownUp, Info } from "lucide-react";
+import { ArrowDownUp } from "lucide-react";
 import { useState } from "react";
 import { COLLATERAL, SWAP_CHARGE_BPS } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
@@ -40,8 +40,8 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
   const gross = valid ? (buying ? parsed / unitValue : parsed * unitValue) : null;
   const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;
   const estimate = gross === null ? null : gross - (charge ?? 0);
-  const give = buying ? COLLATERAL.symbol : "CRYPTO";
-  const get = buying ? "CRYPTO" : COLLATERAL.symbol;
+  const give = buying ? COLLATERAL.symbol : "$CRYPTO";
+  const get = buying ? "$CRYPTO" : COLLATERAL.symbol;
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 shadow-card">
@@ -49,7 +49,7 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
         <div className="rounded-control bg-surface-2 p-3">
           <div className="mb-2 flex items-center justify-between text-xs text-muted">
             <label htmlFor="swap-amount">You give</label>
-            {held !== null && <span className="num">You hold {formatAmount(held)} CRYPTO</span>}
+            {held !== null && <span className="num">You hold {formatAmount(held)} $CRYPTO</span>}
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
             <input id="swap-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
@@ -88,12 +88,6 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
           )}
         </dl>
 
-        <p className="flex gap-2 rounded-control bg-surface-2 p-3 text-xs text-muted">
-          <Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <span>
-            A swap is queued and fills at the next publication, so the amount you get is an estimate. Swapping back leaves {COLLATERAL.symbol} ready to withdraw on the Portfolio page.
-          </span>
-        </p>
 
         <SendButton describe={`Swap ${amount} ${give} for ${get}`} intent={planned.intent} label="Swap" connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>

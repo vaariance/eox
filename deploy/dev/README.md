@@ -11,6 +11,31 @@ The supplied defaults target project `colosseum-eox`, instance `eox-dev`, zone
 contract. Database and service endpoints bind to localhost; use SSH tunnels for
 operator access.
 
+## Service domains
+
+| Hostname | Destination |
+| --- | --- |
+| `rpc.getrelative.trade` | Existing token-protected Solana RPC Worker; append the client's existing token path |
+| `api.getrelative.trade` | Live Cloud Run app API |
+| `fixture-api.getrelative.trade` | Synthetic Cloud Run fixture API |
+| `signer.getrelative.trade` | Authenticated Cloud Run signer |
+| `vm.getrelative.trade` | Compute Engine VM connection hostname, DNS only |
+
+Cloud Run aliases use the Cloudflare Worker in `deploy/domains`. Deploy its
+routes with `wrangler deploy --config deploy/domains/wrangler.toml`. Requests
+require the Worker secrets `LIVE_API_ORIGIN`, `FIXTURE_API_ORIGIN` and
+`SIGNER_ORIGIN`, containing the deployment's HTTPS origin URLs. Set them before
+deploying; do not put their values in tracked files. Requests
+and responses stream through without caching; authentication headers are
+preserved. Existing Google and variance.space service URLs remain available.
+The signer's Google identity-token audience is supplied privately at deployment
+and remains unchanged when calling its alias.
+
+The VM hostname does not expose its localhost services. Continue using SSH
+tunnels for evidence, monitor and VM API access. Publisher and archiver are
+background processes with no HTTP endpoint. These aliases do not automatically
+change application configuration to use the new hostnames.
+
 ## Services
 
 | Unit | Endpoint or role |

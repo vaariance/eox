@@ -1,0 +1,13 @@
+name = "relative-service-gateway"
+main = "gateway.mjs"
+compatibility_date = "2026-10-11"
+account_id = "f1e022c6d9e3a80eeb1bd8b7e4b28385"
+workers_dev = false
+routes = [
+  { pattern = "api.getrelative.trade", custom_domain = true },
+  { pattern = "fixture-api.getrelative.trade", custom_domain = true },
+  { pattern = "signer.getrelative.trade", custom_domain = true },
+]
+
+[observability]
+enabled = true

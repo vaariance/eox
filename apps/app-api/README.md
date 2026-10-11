@@ -20,7 +20,7 @@ APP_API_PORT=8791 \
 pnpm --filter @eox/app-api-server start
 ```
 
-The public demonstration endpoint is <https://cox-app-api-529206295845.us-central1.run.app>. It serves synthetic fixture data, not market data. The public live endpoint is <https://cox-app-api-live-529206295845.europe-west1.run.app>: Solana devnet pool 0 with test collateral only, one always-on Cloud Run instance, history rebuilt from the publisher's archive bucket on start, and transaction requests limited per client. Check `deployment.origin` on every integration rather than inferring the source from an endpoint's name.
+The public demonstration endpoint is <https://fixture-api.getrelative.trade>. It serves synthetic fixture data, not market data. The public live endpoint is <https://api.getrelative.trade>: Solana devnet pool 0 with test collateral only, one always-on Cloud Run instance, history rebuilt from the publisher's archive bucket on start, and transaction requests limited per client. Check `deployment.origin` on every integration rather than inferring the source from an endpoint's name.
 
 ## Configuration
 

@@ -1,10 +1,10 @@
 {
   "schema": "cox.publisher-build/v1",
   "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
-  "status": "prepared-upgrade-not-deployed",
+  "status": "deployed-fee-upgrade",
   "storage": "one-batch-one-publication-per-pool",
-  "batchSchemaVersion": 2,
-  "publicationSchemaVersion": 2,
-  "sbfBuildSha256": "fd557e30dc1476d33076a83d7a2497753f03f6fedac0b4f9e11283e61e1e6172",
-  "idlSha256": "ad23feca7134c914baa38b771945e71cdf0109f8370dbce4cc3e5ea3433527da"
+  "batchSchemaVersion": 3,
+  "publicationSchemaVersion": 3,
+  "sbfBuildSha256": "865dcb315e2b9359294df8640c9d6aa04b3f9c308e2f1b74ff5a8db0e36a9b3c",
+  "idlSha256": "0c0da22338aedbddbaa495f48c46e762b59d5a1a81ef7143ad818e572d91f493"
 }

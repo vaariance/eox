@@ -4,7 +4,7 @@ import type { CoxRequest, CoxStatus, RequestState } from "@eox/app-api";
 import { CircleCheck, CircleX, Clock, Undo2 } from "lucide-react";
 import { COLLATERAL } from "@/lib/config";
 import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import { CRYPTO_CLASS, batchCutoff, toNumber, unitDigits } from "@/lib/view";
+import { CRYPTO_CLASS, batchCutoff, nameOf, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { SendButton } from "./send-button";
 
@@ -28,8 +28,8 @@ function operationLabel(request: CoxRequest): string {
 }
 
 function subject(request: CoxRequest): string {
-  if (request.fromClass && request.toClass) return `${request.fromClass} → ${request.toClass}`;
-  return request.toClass ?? request.fromClass ?? "";
+  if (request.fromClass && request.toClass) return `${nameOf(request.fromClass)} → ${nameOf(request.toClass)}`;
+  return nameOf(request.toClass ?? request.fromClass ?? "");
 }
 
 function size(request: CoxRequest, decimals: number): string {

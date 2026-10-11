@@ -18,6 +18,12 @@ pnpm --filter @eox/cox-publisher start --config /etc/cox-publisher/dev.json
 
 The default [`config/dev.json`](config/dev.json) is a disabled template. Disabled startup exits before acquiring a lock or contacting the network. `--once` runs one processing tick for controlled verification.
 
+Templates use the branded signer address. If the deployed signer uses a
+different identity-token audience, store that audience in the private runtime
+JSON and set `COX_SIGNER_AUDIENCE` to the same value. Set `COX_SIGNER_URL` when
+retaining a different trusted signer endpoint. These environment values pin the
+accepted configuration and must remain outside Git.
+
 ## Configuration
 
 Configuration is strict JSON: every declared field is required and unknown fields are rejected.

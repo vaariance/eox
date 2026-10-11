@@ -1,6 +1,6 @@
 # COX web app
 
-A Next.js interface for exploring the CRYPTO benchmark, asset performance, publications, portfolios and trading requests on Solana devnet. It reads the versioned COX app API and uses the connected wallet to authorize live trading requests.
+A Next.js interface for exploring the CRYPTO benchmark, asset performance, portfolios and trading requests on Solana devnet. It reads the versioned COX app API and uses the connected wallet to authorize live trading requests.
 
 The default API serves synthetic fixture data. Fixture pages are labelled and trading controls are disabled. Live mode uses the configured deployment's test collateral; it does not imply mainnet availability or real USDC support.
 
@@ -12,13 +12,13 @@ Install workspace dependencies from the repository root, then run:
 pnpm --filter @eox/web dev
 ```
 
-Open <http://localhost:3100>. The default fixture API is hosted remotely, so a local API is optional. If the configured API is unavailable, the app displays an error and retry control rather than substituting built-in prices.
+Open <http://localhost:3100> for the landing page, or <http://localhost:3100/markets> for the app. The default fixture API is hosted remotely, so a local API is optional. If the configured API is unavailable, the app displays an error and retry control rather than substituting built-in prices.
 
 ## Configuration
 
 | Variable | Purpose |
 | --- | --- |
-| `COX_API_URL` | Server-side base URL for a `cox.app-api/v1` API. Defaults to the live devnet API, `https://cox-app-api-live-529206295845.europe-west1.run.app`. The fixture API is `https://cox-app-api-529206295845.us-central1.run.app`. For a local fixture API, use `http://127.0.0.1:8790`. |
+| `COX_API_URL` | Server-side base URL for a `cox.app-api/v1` API. Defaults to the live devnet API, `https://api.getrelative.trade`. The fixture API is `https://fixture-api.getrelative.trade`. For a local fixture API, use `http://127.0.0.1:8790`. |
 | `COX_DEMO_WALLET` | Portfolio wallet used with fixture data. Defaults to the first fixture wallet; ignored in live mode. |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Browser wallet-adapter RPC. Defaults to public Solana devnet. This value is exposed to browsers; use only an endpoint intended for public client access. |
 
@@ -71,9 +71,7 @@ fresh class has a unit value of 1. Requests are still sent in exact quanta.
 
 The Faucet page links to Solana's devnet SOL faucet and Circle's devnet USDC
 faucet, shows the connected wallet's address to paste there, and reads its
-devnet SOL and USDC balances (`COX_RPC_URL`, default public devnet). The
-navigation no longer links to Publications; the page is still at
-`/publications`.
+devnet SOL and USDC balances (`COX_RPC_URL`, default public devnet).
 
 ## Gain or loss
 
