@@ -733,3 +733,11 @@ another agent needs to know.
 - **Rules for agents:** The displayed unit is a web-app convention only; the API, the program and `packages/cox` still count units at 10^12. The app presents CRYPTO as what the user pays with, but it is the CRYPTO claim class: its value in USDC can change once other classes hold backing.
 - **Open:** A switch (Buy or Sell) has not been signed by a real wallet yet.
 - **Refs:** `apps/web/README.md` (Swap, buy and sell), the three commits before this entry.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app: full exit path, position trading view, candles
+
+- **Area:** `apps/web`.
+- **What:** Since the previous entry a real wallet has completed the whole journey on pool 1 through the deployed app: swap in, buy (switch from CRYPTO), cash out and withdraw. Added: Cash out (redeem straight from any class to USDC) on asset pages and Portfolio rows; cost, worth and gain or loss per position from the wallet's filled requests (`src/lib/basis.ts`, average cost); a snackbar when an order is placed; a position page at `/portfolio/<class>` laid out as a trading screen with bought-at and sold-at prices (`src/lib/trades.ts`); charts with a crosshair, entry line, trade markers, candlesticks, bar intervals and ranges up to 1M. The server now keeps the last 1,440 publications in memory and fetches only newer ones, starting from `latestSequence − 1440`.
+- **Rules for agents:** Cost and gain or loss are a web-app calculation, not a figure from the program or the app API. Candles are built from one value per publication, so they are not exchange OHLC. The 1W and 1M ranges show at most 24 hours.
+- **Open:** Joel: a compact history route (for example one value per class and asset per publication, or pre-grouped bars) so the app can show a week or a month without downloading every publication; and a deposited basis in the portfolio.
+- **Refs:** `apps/web/README.md`.
