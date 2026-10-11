@@ -120,7 +120,7 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
           Your request is queued and fills at the unit values fixed by the next publication, so the amount you receive is an estimate. You can cancel until the batch closes.
         </p>
 
-        <SendButton intent={planned.intent} label={buying ? `Buy ${claim.id}` : cashing ? `Cash out ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? null : unitsProblem)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} CRYPTO` : cashing ? `Cash out ${amount} ${claim.id} units to ${COLLATERAL.symbol}` : `Sell ${amount} ${claim.id} units for CRYPTO`} intent={planned.intent} label={buying ? `Buy ${claim.id}` : cashing ? `Cash out ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? null : unitsProblem)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

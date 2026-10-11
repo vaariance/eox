@@ -95,7 +95,7 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
           </span>
         </p>
 
-        <SendButton intent={planned.intent} label="Swap" connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={`Swap ${amount} ${give} for ${get}`} intent={planned.intent} label="Swap" connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

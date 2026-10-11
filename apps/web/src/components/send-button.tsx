@@ -3,6 +3,8 @@
 import type { Submission, UnsignedTransaction } from "@eox/app-api";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
+import { CircleCheck, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { buildTransaction, submissionState, submitSigned } from "@/app/actions";
 import { COLLATERAL } from "@/lib/config";
@@ -12,6 +14,7 @@ import { useAccount } from "./account";
 
 const POLL_MS = 2000;
 const POLLS = 45;
+const TOAST_MS = 10000;
 
 type Phase =
   | { step: "idle" }
@@ -62,14 +65,16 @@ interface SendButtonProps {
   className: string;
   quiet?: boolean;
   hideSuccess?: boolean;
+  describe?: string;
 }
 
-export function SendButton({ intent, label, connectLabel, problem = null, className, quiet = false, hideSuccess = false }: SendButtonProps) {
+export function SendButton({ intent, label, connectLabel, problem = null, className, quiet = false, hideSuccess = false, describe }: SendButtonProps) {
   const { live, owner, refresh } = useAccount();
   const { signTransaction } = useWallet();
   const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
   const alive = useRef(true);
+  const [toast, setToast] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -78,6 +83,12 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
       alive.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(false), TOAST_MS);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const wallet = mounted ? owner : null;
   const ready = live && wallet !== null && intent !== null && problem === null && phase.step !== "working";
@@ -110,6 +121,7 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
       const submitted = await submitSigned(encode(signed.serialize()));
       if (!submitted.ok) return setPhase({ step: "failed", message: explain(submitted.code, submitted.message, intent) });
       setPhase({ step: "sent", built: built.value, submission: submitted.value });
+      if (describe) setToast(true);
       void track(built.value, submitted.value);
     } catch (error) {
       setPhase({ step: "failed", message: declined(error) });
@@ -127,13 +139,40 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
       {wallet && !live && !quiet && <p className="text-xs text-muted">This page shows fixture data, so nothing can be sent from it.</p>}
       {wallet && live && problem && phase.step === "idle" && !quiet && <p role="alert" className="text-xs text-down">{problem}</p>}
       {phase.step === "failed" && <p role="alert" className="text-xs text-down">{phase.message}</p>}
-      {phase.step === "sent" && (bad || !hideSuccess) && (
+      {phase.step === "sent" && (bad || (!hideSuccess && !describe)) && (
         <p role="status" className={`text-xs ${bad ? "text-down" : "text-up"}`}>
           {summary(phase.built, phase.submission)}{" "}
           <a href={`https://explorer.solana.com/tx/${phase.submission.signature}?cluster=devnet`} target="_blank" rel="noreferrer" className="underline">
             View the transaction
           </a>
         </p>
+      )}
+      {describe && toast && phase.step === "sent" && (
+        <div role="status" aria-live="polite" className="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+          <div className="flex w-full max-w-md items-start gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
+            <CircleCheck size={18} className={`mt-0.5 shrink-0 ${bad ? "text-down" : "text-up"}`} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">{bad ? "Order not placed" : "Order placed"}</p>
+              <p className="mt-0.5 text-sm">{describe}</p>
+              <p className={`mt-1 text-xs ${bad ? "text-down" : "text-muted"}`}>
+                {phase.submission.state === "failed"
+                  ? `Refused: ${phase.submission.error ?? "no reason given"}`
+                  : phase.submission.state === "expired"
+                    ? "It was not picked up in time. Nothing moved."
+                    : phase.built.targetBatch
+                      ? `Fills in batch #${formatWhole(phase.built.targetBatch.batch)}, which closes at ${formatUtcTime(phase.built.targetBatch.cutoff)}.`
+                      : "It fills at the next publication."}
+              </p>
+              <p className="mt-2 flex gap-4 text-xs">
+                <Link href="/portfolio" onClick={() => setToast(false)} className="font-medium text-accent underline">View portfolio</Link>
+                <a href={`https://explorer.solana.com/tx/${phase.submission.signature}?cluster=devnet`} target="_blank" rel="noreferrer" className="text-muted underline">View transaction</a>
+              </p>
+            </div>
+            <button type="button" aria-label="Dismiss" onClick={() => setToast(false)} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-ink">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
