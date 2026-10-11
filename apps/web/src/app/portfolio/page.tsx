@@ -28,8 +28,8 @@ export default async function PortfolioPage() {
   const redeemable = rows.reduce((sum, row) => sum + (row.redeemable ?? 0), 0);
   const cards = [
     { label: "Redeemable now, about", value: redeemable, note: "Your units at the latest unit values" },
-    { label: "Pending deposits", value: toNumber(portfolio.pending, decimals), note: "Still yours until the batch executes" },
-    { label: "Refundable", value: toNumber(portfolio.refundable, decimals), note: "From rejected, expired or cancelled deposits" },
+    { label: "Pending buys", value: toNumber(portfolio.pending, decimals), note: "Still yours until the batch executes" },
+    { label: "Refundable", value: toNumber(portfolio.refundable, decimals), note: "From rejected, expired or cancelled buys" },
   ];
 
   return (

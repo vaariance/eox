@@ -28,5 +28,5 @@ Every page reads through `src/lib/data.ts`, which returns the types from
 "redeemable, about" figures are a holder's units multiplied by the latest
 published class state and are labelled as approximate.
 
-Not connected yet: the portfolio of the connected wallet, and sending deposit,
-switch, redeem, cancel and withdraw requests. Both wait for the live app API.
+Not connected yet: the portfolio of the connected wallet, and sending buy
+(deposit), switch, redeem, cancel and withdraw requests. Both wait for the live app API.

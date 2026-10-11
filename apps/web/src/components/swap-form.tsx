@@ -28,7 +28,7 @@ export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[
   const parsed = Number(amount);
   const valid = Number.isFinite(parsed) && parsed > 0;
   const same = from === to;
-  const operation = from === CASH ? "Deposit" : to === CASH ? "Redeem" : "Switch";
+  const operation = from === CASH ? "Buy" : to === CASH ? "Redeem" : "Switch";
   const held = from === CASH ? null : (holdings.find((item) => item.classId === from)?.units ?? 0);
   const gross = valid && !same ? (parsed * valueOf(from)) / valueOf(to) : null;
   const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;

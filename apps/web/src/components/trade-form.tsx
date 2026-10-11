@@ -12,7 +12,7 @@ import { WalletAction } from "./wallet-action";
 type Operation = "deposit" | "switch" | "redeem";
 
 const operations: { id: Operation; label: string }[] = [
-  { id: "deposit", label: "Deposit" },
+  { id: "deposit", label: "Buy" },
   { id: "switch", label: "Switch" },
   { id: "redeem", label: "Redeem" },
 ];
@@ -59,7 +59,7 @@ export function TradeForm({ claim, others, nextBatch }: { claim: ClassView; othe
       </div>
 
       <p className="mb-3 text-xs text-muted">
-        You put {COLLATERAL.name} into the {claim.id} class and get units, a share of that class. You do not buy {claim.id === "CRYPTO" ? "the coins" : claim.id}.
+        Buying puts {COLLATERAL.name} into the {claim.id} class and gives you units, a share of that class. You do not receive {claim.id === "CRYPTO" ? "the coins" : `${claim.id} coins`}.
       </p>
 
       <form className="flex flex-col gap-3" onSubmit={(event) => event.preventDefault()}>

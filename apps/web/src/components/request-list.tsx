@@ -14,6 +14,8 @@ const states: Record<RequestState, { label: string; tone: string; Icon: typeof C
   refunded: { label: "Refunded", tone: "text-muted", Icon: Undo2, note: null },
 };
 
+const operations = { deposit: "Buy", switch: "Switch", redeem: "Redeem" };
+
 function subject(request: CoxRequest): string {
   if (request.fromClass && request.toClass) return `${request.fromClass} → ${request.toClass}`;
   return request.toClass ?? request.fromClass ?? "";
@@ -60,8 +62,8 @@ export function RequestList({ requests, status, decimals }: { requests: CoxReque
                 <state.Icon size={14} aria-hidden="true" />
                 {state.label}
               </span>
-              <span className="w-40 capitalize">
-                {request.operation} <span className="normal-case text-muted">{subject(request)}</span>
+              <span className="w-40">
+                {operations[request.operation]} <span className="text-muted">{subject(request)}</span>
               </span>
               <span className="num w-36">{size(request, decimals)}</span>
               <span className="num w-60 text-muted">{when(request, status)}</span>
