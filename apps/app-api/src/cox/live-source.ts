@@ -1,5 +1,5 @@
 import anchor, { type Program } from "@coral-xyz/anchor";
-import { CoxReader, committedRequest, decodeAccount, discriminator, type Pool, type Registry, type Request } from "@cox/client";
+import { checkedPublication, CoxReader, committedRequest, decodeAccount, discriminator, type Batch, type Pool, type Registry, type Request } from "@cox/client";
 import { PublicKey, type AccountInfo, type Connection } from "@solana/web3.js";
 import {
   batchFor,
@@ -16,7 +16,8 @@ import {
   type RequestState,
   type VaultReconciliation,
 } from "@eox/app-api";
-import { classIds, parseManifest, toPublication, type Manifest } from "./chain.js";
+import { batchOf, classIds, parseManifest, toPublication, type ChainPublication, type Manifest } from "./chain.js";
+import { PublicationArchiveMissing, type PublicationArchive } from "./publication-archive.js";
 import { PublicationLog } from "./publication-log.js";
 import type { CoxSource } from "./source.js";
 
@@ -35,6 +36,7 @@ export interface LiveCoxSourceOptions {
   network: string;
   logPath: string;
   pollMs?: number;
+  archive?: PublicationArchive | null;
   onError?: (error: unknown) => void;
 }
 
@@ -42,6 +44,9 @@ interface ChainView {
   registry: Registry;
   pool: Pool;
   vault: bigint;
+  publication: ChainPublication | null;
+  batch: Batch | null;
+  slot: number;
   reconciliation: VaultReconciliation | null;
 }
 
@@ -118,11 +123,18 @@ export class LiveCoxSource implements CoxSource {
   async tick(): Promise<void> {
     const view = await this.readView();
     this.view = view;
-    if (!view.pool.initialized) return;
-    const last = Number(view.pool.sequence.toString());
-    while (this.log.nextSequence <= last) await this.index(BigInt(this.log.nextSequence));
-    const latest = this.log.all.at(-1);
-    this.view = { ...view, reconciliation: latest && latest.identity.sequence === last ? this.reconcile(view, latest.identity.sequence) : null };
+    const latest = view.publication;
+    if (!view.pool.initialized || !latest) return;
+    const last = Number(latest.sequence.toString());
+    if (last !== Number(view.pool.sequence.toString())) throw new Error("InconsistentRead");
+    while (this.log.nextSequence < last) {
+      const archive = this.options.archive;
+      if (!archive) throw new PublicationArchiveMissing(`publications ${this.log.nextSequence} to ${last - 1} are only in the publisher archive, which is not configured`);
+      const archived = archive.read(BigInt(this.log.nextSequence));
+      this.append(archived.publication, null, archived.slot);
+    }
+    if (this.log.nextSequence === last) this.append(latest, batchOf(latest, view.batch), view.slot);
+    this.view = { ...view, reconciliation: this.log.all.at(-1)?.identity.sequence === last ? this.reconcile(view, last) : null };
   }
 
   async pool(): Promise<Pool> {
@@ -132,8 +144,10 @@ export class LiveCoxSource implements CoxSource {
   private async readView(): Promise<ChainView> {
     const program = this.options.program;
     const registryKey = this.reader.pdas.registry();
-    const { value } = await this.options.connection.getMultipleAccountsInfoAndContext([registryKey, this.poolKey, this.vaultKey], "finalized");
-    const [registryInfo, poolInfo, vaultInfo] = value;
+    const publicationKey = this.reader.pdas.publication(this.poolKey);
+    const batchKey = this.reader.pdas.batch(this.poolKey);
+    const { context, value } = await this.options.connection.getMultipleAccountsInfoAndContext([registryKey, this.poolKey, this.vaultKey, publicationKey, batchKey], "finalized");
+    const [registryInfo, poolInfo, vaultInfo, publicationInfo, batchInfo] = value;
     if (!registryInfo || !poolInfo) throw new Error("CoxAccountNotFound");
     const registry = decodeAccount(program, "registry", registryInfo);
     const pool = decodeAccount(program, "pool", poolInfo);
@@ -141,7 +155,10 @@ export class LiveCoxSource implements CoxSource {
       throw new Error("PoolIdentityMismatch");
     }
     if (!vaultInfo || !vaultInfo.data.subarray(0, 32).equals(this.collateralMint.toBuffer())) throw new Error("VaultIdentityMismatch");
-    return { registry, pool, vault: tokenAmount(vaultInfo), reconciliation: null };
+    const publication = publicationInfo ? checkedPublication(program.programId, this.poolKey, decodeAccount(program, "publication", publicationInfo)) : null;
+    const batch = batchInfo ? decodeAccount(program, "batch", batchInfo) : null;
+    if (batch && !batch.pool.equals(this.poolKey)) throw new Error("BatchIdentityMismatch");
+    return { registry, pool, vault: tokenAmount(vaultInfo), publication, batch, slot: context.slot, reconciliation: null };
   }
 
   private reconcile(view: ChainView, sequence: number): VaultReconciliation {
@@ -149,30 +166,20 @@ export class LiveCoxSource implements CoxSource {
     return { sequence, vault: view.vault.toString(), ledger: ledger.toString(), covered: view.vault >= ledger };
   }
 
-  private async index(sequence: bigint): Promise<void> {
-    const publication = await this.reader.publication(this.options.poolId, sequence);
-    const batch = await this.reader.batch(this.options.poolId, big(publication.batch));
-    if (batch.phase !== 2) throw new Error("PublicationBatchNotCommitted");
+  private append(publication: ChainPublication, batch: Batch | null, slot: number): void {
     const previous = this.log.all.at(-1) ?? null;
     const previousDigest = previous ? Buffer.from(previous.identity.stateDigest!, "hex") : Buffer.alloc(32);
     if (!Buffer.from(publication.state.previousState).equals(previousDigest)) throw new Error("PublicationPredecessorMismatch");
     if (!Buffer.from(publication.manifestDigest).equals(Buffer.from(this.manifest.digest, "hex"))) throw new Error("PublicationManifestMismatch");
-    const finalization = await this.finalization(this.reader.pdas.publication(this.poolKey, sequence));
     const value = toPublication(publication, batch, {
       program: this.options.program.programId.toBase58(),
       poolId: this.options.poolId.toString(),
       manifest: this.manifest,
       predecessorBatch: previous?.identity.batch ?? null,
-      finalization,
+      finalization: { transaction: null, slot },
     });
     this.log.append(value);
     for (const listener of this.listeners) listener(value);
-  }
-
-  private async finalization(address: PublicKey): Promise<{ transaction: string | null; slot: number | null }> {
-    const signatures = await this.options.connection.getSignaturesForAddress(address, { limit: 1000 }, "finalized");
-    const creator = signatures.filter((s) => s.err === null).at(-1);
-    return creator ? { transaction: creator.signature, slot: creator.slot } : { transaction: null, slot: null };
   }
 
   async deployment(): Promise<CoxDeployment> {
