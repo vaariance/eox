@@ -2,6 +2,7 @@ name = "cox-rpc-proxy"
 main = "src/worker.ts"
 compatibility_date = "2026-09-01"
 workers_dev = true
+account_id = "f1e022c6d9e3a80eeb1bd8b7e4b28385"
 
 [observability]
 enabled = true
