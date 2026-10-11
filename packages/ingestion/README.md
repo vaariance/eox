@@ -1,50 +1,67 @@
-# @eox/ingestion (Joel)
+# COX price archiver
 
-The COX price archiver, its digests and the feed-check report. Exchange access
-goes only through `@eox/price-feeds`; storage through `@eox/evidence-store`.
+`@eox/ingestion` collects one-minute prices for the 30-asset COX roster, preserves source evidence and writes canonical snapshots to PostgreSQL. It accesses exchanges through [price-feeds](../price-feeds/README.md) and persists data through [evidence-store](../evidence-store). It does not publish to Solana or compute market references.
 
-```bash
-pnpm --filter @eox/ingestion cox:archiver          # the per-minute loop (systemd cox-archiver on the dev VM)
-pnpm --filter @eox/ingestion cox:feed-check [days] # the J1 feed report
-pnpm --filter @eox/ingestion test                  # needs the local Postgres on port 5433
+## Run
+
+Install workspace dependencies and apply the evidence-store migrations before starting:
+
+```sh
+DATABASE_URL=postgres://localhost/cox \
+COX_USER_AGENT='COX/1.0 (contact: ops@example.com)' \
+COX_ARCHIVER_STATE_DIR=./state \
+pnpm --filter @eox/ingestion cox:archiver
 ```
 
-The EOX economic-indicator pipelines (OECD, BIS, IMF PortWatch) were removed on
-2026-10-10. Their code and documentation are at the `eox-archive` tag; their data
-stays in the database read-only.
+Replace the example contact with an address monitored by the operator.
 
-## COX price archiver
+| Variable | Purpose | Default |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL evidence store | Required |
+| `COX_USER_AGENT` | Venue request identity and operator contact | Required |
+| `COX_ARCHIVER_STATE_DIR` | Persistent listing-check state | Required |
+| `COX_CATCH_UP_MINUTES` | Maximum recent recovery window, 0–60 minutes | `3` |
+| `COX_BYBIT_ENABLED` | Set `true` to enable Bybit where permitted and reachable | Disabled |
+| `COX_COINBASE_ENABLED` | Set `false` to disable Coinbase | Enabled |
 
-`src/cox/archiver.ts` (systemd `cox-archiver` on the dev VM) archives every
-one-minute cutoff for the 30 COX assets (`product.md` J1, `SYSTEM.md` v2.3
-§3.2 and §5.1). It runs six seconds after each minute: for each asset it calls
-`resolveCutoffPrice` from `@eox/price-feeds`, stores every venue response in
-`source_payloads` and `venue_responses`, every fallback step in
-`venue_attempts`, and the chosen price in `price_observations`, then writes the
-cutoff's `snapshots` row in canonical order. Venue failures, unresolved or
-inadmissible assets, a snapshot finished after cutoff + 30 s and listing changes
-are recorded in `incidents`. After a restart it catches up at most
-`COX_CATCH_UP_MINUTES` (default 3) missed cutoffs in order; older ones are
-recorded as `archive_late`, never invented.
+Use one archiver instance per database and roster. Preserve the state directory between restarts. The systemd deployment is documented in the [deployment guide](../../deploy/dev/README.md).
 
-| Variable | Meaning |
-|---|---|
-| `DATABASE_URL` | evidence store |
-| `COX_USER_AGENT` | sent to every venue; must name COX and a contact |
-| `COX_ARCHIVER_STATE_DIR` | holds the last listing check |
-| `COX_BYBIT_ENABLED` | `true` only where Bybit is reachable and permitted |
-| `COX_COINBASE_ENABLED` | `false` disables Coinbase |
+## Collection cycle
 
-Price and snapshot digests follow `COX/WIRE/V1` (`packages/cox/SPEC.md` §3) in
-`src/cox/digest.ts`; `test/cox-digest.test.ts` checks them byte for byte against
-the P1 wire vectors. A digest exists only for a complete admissible snapshot (one
-price for every roster asset, none rejected). Snapshots recorded before migration
-`011` carry an unlabelled provisional digest (`digest_encoding` null) and must
-not be compared with `COX/WIRE/V1`. Kraken and Coinbase closes must match
-`^(0|[1-9][0-9]*)(\.[0-9]{1,8})?$` exactly; even a ninth trailing zero is
-`excess_decimals`.
+The loop starts six seconds after each minute boundary. For each cutoff it resolves every asset in canonical order, preserving:
 
-Feed check: `pnpm --filter @eox/ingestion cox:feed-check [days]` prints, per
-asset, the share of inadmissible cutoffs (fails above 0.1%), the share resolved
-by each venue and step and the longest trade age, and per venue the archived
-responses and rate-limited attempts. Cutoffs the archiver itself finished late (`archive_late`: restarts, deploys, catch-up) are counted separately and excluded from the per-asset shares, because they say nothing about the venues.
+- Exact source responses in `source_payloads` and `venue_responses`.
+- Every fallback attempt in `venue_attempts`.
+- Selected prices and their evidence in `price_observations`.
+- A final `snapshots` row identifying the completed cutoff.
+
+Venue failures, unresolved or rejected assets, collection completed after cutoff +30 seconds, and listing changes are recorded as incidents. A delayed archive is evidence of collection timing; it is not a price from a different observation time.
+
+After restart, the loop catches up recent cutoffs in order within the configured window. Older missed cutoffs become `archive_late` incidents; prices are not invented to fill gaps. Listing metadata is checked daily and saved in the private state directory. Structured logs report cutoff outcomes and venue metrics.
+
+## Commitments and precision
+
+Price and snapshot digests follow `COX/WIRE/V1`, defined in the [COX specification](../cox/SPEC.md). `src/cox/digest.ts` is tested against shared methodology wire vectors. A canonical snapshot digest is emitted only when every roster asset has an admissible price.
+
+Snapshots archived before migration `011` contain an unlabelled provisional digest. Treat them as historical records rather than canonical COX commitments.
+
+Kraken and Coinbase closes must match `^(0|[1-9][0-9]*)(\.[0-9]{1,8})?$` exactly. A ninth fractional digit is rejected, including a trailing zero. Bybit conversions use the separately specified USDT/USD rounding policy.
+
+## Feed report
+
+```sh
+pnpm --filter @eox/ingestion cox:feed-check 7
+```
+
+The optional argument is the lookback in days. The report summarizes each asset's inadmissible share, venue and fallback usage, longest trade age, venue response counts and rate-limited attempts. It fails the per-asset availability criterion above 0.1% inadmissible cutoffs. Cutoffs marked `archive_late` are reported separately and excluded from venue shares.
+
+A report describes the data actually collected in its window; choosing seven days does not establish that seven complete days exist.
+
+## Verification
+
+```sh
+pnpm --filter @eox/ingestion build
+pnpm --filter @eox/ingestion test
+```
+
+Database integration tests require the local test PostgreSQL service on port 5433. Consumers read completed snapshots through the [evidence API](../../apps/evidence-api/README.md).

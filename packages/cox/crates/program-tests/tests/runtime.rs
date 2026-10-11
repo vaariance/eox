@@ -11,6 +11,7 @@ fn test_collateral_uses_real_classic_spl_transfers() {
     assert_eq!(h.token_balance(h.bob_token), COLLATERAL + 1_234_567);
 }
 
+use anchor_lang::AccountSerialize;
 use cox::{accounts as a, instruction as i, Publication, Request};
 use cox_math::SCALE;
 use solana_sdk::signature::Signer;
@@ -38,8 +39,7 @@ fn full_trading_journey_real_custody_and_receipt_root() {
     let units = 100_000_000u128 * SCALE as u128;
     assert_eq!(position.classes[0].units, units);
     assert_eq!(p.pool_state().active, 100_000_000);
-    let batch =
-        p.h.read::<cox::Batch>(pda(&[b"batch", p.pool.as_ref(), &1u64.to_le_bytes()]));
+    let batch = p.h.read::<cox::Batch>(pda(&[b"batch", p.pool.as_ref()]));
     let mut receipt_bytes = cox_math::digest("COX/RECEIPTS/V1", &[]).unwrap().to_vec();
     receipt_bytes.extend_from_slice(deposit.as_ref());
     receipt_bytes.push(0);
@@ -49,8 +49,7 @@ fn full_trading_journey_real_custody_and_receipt_root() {
         batch.receipt_root,
         cox_math::artifact_digest(&receipt_bytes)
     );
-    let publication: Publication =
-        p.h.read(pda(&[b"publication", p.pool.as_ref(), &1u64.to_le_bytes()]));
+    let publication: Publication = p.h.read(pda(&[b"publication", p.pool.as_ref()]));
     assert_eq!(
         publication.state_digest,
         cox_math::artifact_digest(&publication.state_preimage)
@@ -217,6 +216,25 @@ fn thirty_price_publication_packet_and_compute_measurement() {
     p.publish(1, vec![100_000_000; 30]);
     p.finish();
     p.assert_owners(&[p.h.alice.pubkey(), p.h.bob.pubkey()]);
+    let batch_key = pda(&[b"batch", p.pool.as_ref()]);
+    let publication_key = pda(&[b"publication", p.pool.as_ref()]);
+    let mut batch_bytes = Vec::new();
+    p.h.read::<cox::Batch>(batch_key)
+        .try_serialize(&mut batch_bytes)
+        .unwrap();
+    let mut publication_bytes = Vec::new();
+    p.h.read::<Publication>(publication_key)
+        .try_serialize(&mut publication_bytes)
+        .unwrap();
+    assert!(batch_bytes.len() <= 8192);
+    assert!(publication_bytes.len() <= 8192);
+    println!(
+        "30-asset serialized bytes: batch={}, publication={}; LiteSVM reserved lamports={}",
+        batch_bytes.len(),
+        publication_bytes.len(),
+        p.h.svm.get_account(&batch_key).unwrap().lamports
+            + p.h.svm.get_account(&publication_key).unwrap().lamports
+    );
     let publish =
         p.h.measurements
             .iter()
@@ -240,14 +258,8 @@ fn thirty_price_publication_packet_and_compute_measurement() {
                 ("pool", p.pool),
                 ("position", p.position(p.h.alice.pubkey())),
                 ("request", p.request(0)),
-                (
-                    "batch",
-                    pda(&[b"batch", p.pool.as_ref(), &1u64.to_le_bytes()]),
-                ),
-                (
-                    "publication",
-                    pda(&[b"publication", p.pool.as_ref(), &1u64.to_le_bytes()]),
-                ),
+                ("batch", pda(&[b"batch", p.pool.as_ref()])),
+                ("publication", pda(&[b"publication", p.pool.as_ref()])),
             ],
         );
     }
@@ -549,4 +561,115 @@ fn future_unit_reservations_survive_current_batch_materialization() {
     assert_eq!(position.classes[0].locked, 0);
     assert_eq!(position.payable, 70_000_000);
     p.assert_owners(&[p.h.alice.pubkey()]);
+}
+
+#[test]
+fn reusable_accounts_bound_rent_reset_batches_and_preserve_lazy_balances() {
+    let mut p = PoolHarness::new(2);
+    let batch_key = pda(&[b"batch", p.pool.as_ref()]);
+    let publication_key = pda(&[b"publication", p.pool.as_ref()]);
+    let initial_batch = p.h.svm.get_account(&batch_key).unwrap();
+    let initial_publication = p.h.svm.get_account(&publication_key).unwrap();
+    assert_eq!(initial_batch.data.len(), 8192);
+    assert_eq!(initial_publication.data.len(), 8192);
+    p.h.time(ORIGIN + 1);
+    p.deposit(false, 0, 10_000_000, 0, 20, true);
+    p.deposit(true, 1, 2_000_000, u128::MAX, 20, true);
+    p.h.time(ORIGIN + 60);
+    p.publish(1, vec![100_000_000; 2]);
+    let accepted = p.h.svm.get_account(&batch_key).unwrap().data;
+    p.try_publish(1, vec![100_000_000; 2], false);
+    assert_eq!(accepted, p.h.svm.get_account(&batch_key).unwrap().data);
+    p.finish();
+    let completed: cox::Batch = p.h.read(batch_key);
+    assert_eq!(completed.schema_version, 2);
+    assert_eq!(completed.phase, 2);
+    assert_eq!(completed.accepted_deposits, 10_000_000);
+    assert_eq!(completed.executed, 1);
+    assert_eq!(completed.rejected, 1);
+    let alice: cox::Position = p.h.read(p.position(p.h.alice.pubkey()));
+    assert!(alice.staged);
+    for batch_id in 2..=4 {
+        p.h.time(ORIGIN + batch_id * 60);
+        p.try_publish_sequence(batch_id, vec![100_000_000; 2], Some(batch_id - 1), false);
+        assert!(p.pool_state().stage.is_none());
+        p.publish(batch_id, vec![100_000_000; 2]);
+        let reset = p.batch_state();
+        assert_eq!(p.batch(), batch_key);
+        assert_eq!(reset.phase, 0);
+        assert_eq!(reset.accepted_deposits, 0);
+        assert_eq!(reset.new_payable, 0);
+        assert_eq!(reset.executed, 0);
+        assert_eq!(reset.rejected, 0);
+        assert!(!reset.safety_changed);
+        assert!(reset.burns.iter().all(|value| *value == 0));
+        assert!(reset.mints.iter().all(|value| *value == 0));
+        assert!(reset.incoming.iter().all(|value| *value == 0));
+        assert!(reset.blocked.iter().all(|value| !value));
+        assert_eq!(
+            reset.receipt_root,
+            cox_math::digest("COX/RECEIPTS/V1", &[]).unwrap()
+        );
+        assert_eq!(
+            reset.staged_root,
+            cox_math::digest("COX/STAGE/V1", &[]).unwrap()
+        );
+        p.finish();
+        let publication: Publication = p.h.read(publication_key);
+        assert_eq!(publication.schema_version, 2);
+        assert_eq!(publication.sequence, batch_id);
+        assert_eq!(publication.state_digest, p.pool_state().state_digest);
+        assert_eq!(
+            publication.state_digest,
+            cox_math::artifact_digest(&publication.state_preimage)
+        );
+        for (key, original) in [
+            (batch_key, &initial_batch),
+            (publication_key, &initial_publication),
+        ] {
+            let account = p.h.svm.get_account(&key).unwrap();
+            assert_eq!(account.lamports, original.lamports);
+            assert_eq!(account.data.len(), original.data.len());
+        }
+        assert!(p
+            .h
+            .svm
+            .get_account(&pda(&[b"batch", p.pool.as_ref(), &batch_id.to_le_bytes()]))
+            .is_none());
+        assert!(p
+            .h
+            .svm
+            .get_account(&pda(&[
+                b"publication",
+                p.pool.as_ref(),
+                &batch_id.to_le_bytes()
+            ]))
+            .is_none());
+    }
+    assert!(
+        p.h.read::<cox::Position>(p.position(p.h.alice.pubkey()))
+            .staged
+    );
+    assert_eq!(
+        p.materialize(p.h.alice.pubkey()).classes[0].units,
+        10_000_000u128 * SCALE as u128
+    );
+    p.h.time(ORIGIN + 241);
+    p.redeem(false, 0, 10_000_000u128 * SCALE as u128, 0, 20, true);
+    p.h.time(ORIGIN + 300);
+    p.publish(5, vec![100_000_000; 2]);
+    p.finish();
+    assert_eq!(p.h.read::<cox::Batch>(batch_key).new_payable, 10_000_000);
+    p.h.time(ORIGIN + 360);
+    p.publish(6, vec![100_000_000; 2]);
+    assert_eq!(p.batch_state().new_payable, 0);
+    p.finish();
+    p.withdraw(false, 10_000_000, true);
+    p.refund(1, true, true);
+    assert_eq!(p.h.token_balance(p.h.alice_token), COLLATERAL);
+    assert_eq!(p.h.token_balance(p.h.bob_token), COLLATERAL);
+    assert_eq!(p.pool_state().active, 0);
+    assert_eq!(p.pool_state().pending, 0);
+    assert_eq!(p.pool_state().payable, 0);
+    p.assert_vault();
 }

@@ -1,12 +1,15 @@
 # COX P1 mechanism and protocol specification
 
-Version 0.3 · 10 October 2026 · **P3 implementation ABI; devnet test collateral only**
+Version 0.4 · 11 October 2026 · **Rolling storage ABI; devnet test collateral only**
 
-Authority: SYSTEM.md v2.4, product.md v12 and COX Paper 3 v0.1. This document
+Authority: SYSTEM.md v2.4, product.md v13 and COX Paper 3 v0.1. This document
 records P1 rules and the P3 implementation ABI; it does not change SYSTEM.md or claim
 sign-off. All `MVP-0` outputs are test-mechanism claim values, not promised
 reference returns. P2's Rust crate supplies the calculations; compiled-program
-verification and deployment evidence are separate P3 deliverables.
+verification and deployment evidence are separate P3 deliverables. Version 0.4
+records Peter's approved bounded-storage change: one reusable batch and one
+latest publication per pool. This revision is not evidence that the upgrade is
+deployed, and does not amend SYSTEM.md or claim its sign-off.
 
 ## 1. Deliverables and activation boundary
 
@@ -282,14 +285,21 @@ refund/cancel remains available. Admin unpause is required to resume.
 
 ## 8. Account schema contract
 
-Draft implementation ABI below is `COX/WIRE/V1`; it must be reflected exactly
-in P3 IDL and reader fixtures. No program IDs, PDA addresses or deployed IDL
-exist yet. All public keys are bytes32. All accounts start with
-`SHA256("account:"+Name)[0..8]`, then schema_version:u16=1, bump:u8.
+The commitment encoding remains `COX/WIRE/V1`; account storage has the rolling
+ABI described below. The generated IDL and fixtures must match the built
+program. The deployment manifest separately identifies the deployed build.
+All public keys are bytes32. All accounts start with
+`SHA256("account:"+Name)[0..8]`, then schema_version:u16, bump:u8.
+Batch and Publication use schema version 2; every other account remains version 1.
 Vectors are length-prefixed. Fixed arrays use N from the immutable manifest.
 Account owner must be the cox program; validate discriminator, length, PDA,
 pool linkage and version before reading. Untrusted caller fields never supply
 an authority or ledger balance.
+
+The table retains the P1 field outline. Section 11's implementation additions
+and generated IDL define the actual payloads; StagePage below is a superseded
+draft and is not an implemented account. The fixed Batch/Publication addresses
+and their schema version 2 apply to the rolling-storage implementation.
 
 | Account (PDA seeds in order) | Payload fields in serialization order |
 | --- | --- |
@@ -298,9 +308,9 @@ an authority or ledger balance.
 | Pool (`"pool"`, pool_id:u64LE) | pool_id:u64, registry:pubkey, methodology:pubkey, collateral_mint:pubkey, vault:pubkey, origin:u64, last_batch:u64, sequence:u64, state_digest:bytes32, benchmark:i128, vec<origin_price:u64>, vec<last_price:u64>, vec<reference:i128>, vec<Class>, active:u64, pending:u64, payable:u64, residual:u64, next_request_nonce:u64, stage:option<pubkey> |
 | Position (`"position"`, pool32, owner32) | pool:pubkey, owner:pubkey, applied_sequence:u64, vec<units:u128,locked:u128>, payable:u64, refundable:u64 |
 | Request (`"request"`, pool32, nonce:u64LE) | pool:pubkey, owner:pubkey, nonce:u64, target_batch:u64, expiry_batch:u64, operation:u8, from:u8, to:u8, amount:u64, units:u128, minimum_units:u128, minimum_proceeds:u64, status:u8, eligible_batch:u64 |
-| Batch (`"batch"`, pool32, batch_id:u64LE) | pool:pubkey, batch_id:u64, cutoff:u64, predecessor_sequence:u64, predecessor_digest:bytes32, snapshot_digest:bytes32, vec<PriceWire>, benchmark:i128, vec<reference:i128>, vec<fixed_backing:u64,fixed_units:u128>, vec<burns:u128,mints:u128>, accepted_deposits:u64, new_payable:u64, transfer_residual:u64, executed:u32, rejected:u32, closed_queue_end:u64, cursor:u64, staged_root:bytes32, receipt_root:bytes32, accepted_at:u64, status:u8 |
+| Batch (`"batch"`, pool32) | pool:pubkey, batch_id:u64, cutoff:u64, predecessor_sequence:u64, predecessor_digest:bytes32, snapshot_digest:bytes32, vec<PriceWire>, benchmark:i128, vec<reference:i128>, vec<fixed_backing:u64,fixed_units:u128>, vec<burns:u128,mints:u128>, accepted_deposits:u64, new_payable:u64, transfer_residual:u64, executed:u32, rejected:u32, closed_queue_end:u64, cursor:u64, staged_root:bytes32, receipt_root:bytes32, accepted_at:u64, status:u8 |
 | StagePage (`"stage"`, batch32, page:u32LE) | batch:pubkey, page:u32, vec<request:pubkey,receipt_status:u8,minted:u128,proceeds:u64>, page_digest:bytes32 |
-| Publication (`"publication"`, pool32, sequence:u64LE) | state preimage from §3, vec<venue:u8,step:u8,trade_age:u16>, committed_at:u64 |
+| Publication (`"publication"`, pool32) | state preimage from §3, vec<venue:u8,step:u8,trade_age:u16>, committed_at:u64 |
 
 Class = backing:u64, units:u128. No separate class account. Vault is a classic
 SPL Token account owned by pool PDA, exact mint, no transfer-fee/hook/rebasing
@@ -475,8 +485,9 @@ ordinary unsafe requests cannot force the accepted batch to reprice or abort.
 
 ### Actual account additions and receipt storage
 
-All accounts retain schema version 1 and their draft PDA seeds. The actual
-IDL includes these additions to the draft fields:
+Batch and Publication use schema version 2 and fixed per-pool seeds, without
+batch ID or sequence in the address. All other accounts retain schema version 1
+and their existing seeds. The actual IDL includes these additions to the draft fields:
 
 | Account | Added fields or implementation changes |
 | --- | --- |
@@ -535,3 +546,42 @@ Joel must correct, the monitor handoff and the legacy callers retained until
 their replacements land. Local test results, build measurements and the
 deployment manifest must provide the evidence of completion; this ABI section
 does not substitute for those results.
+
+### Rolling storage and publication history
+
+Each pool has one 8,192-byte Batch account and one 8,192-byte Publication
+account. They are allocated once and reused. A new `publish` may overwrite
+only a committed batch; it cannot replace accepted work in any unfinished
+phase. `finalize` replaces the latest Publication only after the complete
+batch commits. Batch ID and sequence remain checked payload fields, including
+all existing predecessor, replay and publication-time checks.
+
+The latest Publication remains available while the next batch executes.
+Readers must obtain a coherent finalized view and verify pool linkage, schema,
+sequence, state-preimage hash and decoded state identity. A requested historical
+sequence is never silently answered with the current account's contents.
+
+Before submitting another publication, the publisher must durably archive the
+current finalized Publication's complete account bytes, full state preimage,
+account-byte SHA-256, state digest, snapshot digest, methodology digest,
+program/pool identity, sequence and batch. The archive binds these bytes to the
+observed finalized chain context. It is separate from Joel's input-price
+archive. Persisting only a digest or the `PublicationCommitted` event is
+insufficient to reconstruct publication history. Archive failure or a conflicting
+record blocks the next publication; restarting must not bypass this gate.
+Historical API and monitor consumers read verified archived publications;
+direct on-chain readers expose only the latest committed publication. The
+program cannot prove an off-chain archive write, so this is a mandatory
+publisher operating rule, not an on-chain durability guarantee.
+
+At the devnet rent quote checked on 11 October 2026, each 8,192-byte account
+requires 42,265,600 lamports: 84,531,200 lamports (0.0845312 SOL) for the pair
+once per pool. Rent must be requoted when deploying. This excludes the program,
+registry, methodology, pool, vault, mint, user position/request accounts and
+transaction fees; their costs are not bounded by this pair's allocation.
+
+Live activation requires compiled-program rolling-storage tests, publisher
+archive/restart tests, archive backup and restore verification, Joel's signer
+validation updated for fixed seeds/schema 2, and Godwin's latest/history reader
+integration. A program upgrade and its actual build hash must be recorded
+separately before these changes are described as deployed.

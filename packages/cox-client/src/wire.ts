@@ -1,6 +1,7 @@
-import { createHash } from "node:crypto";
+import { Buffer } from "buffer";
+import { sha256 as hash } from "@noble/hashes/sha256";
 
-export const sha256 = (bytes: Uint8Array): Buffer => createHash("sha256").update(bytes).digest();
+export const sha256 = (bytes: Uint8Array): Buffer => Buffer.from(hash(bytes));
 export function integer(value: bigint, width: number, signed = false): Buffer {
   const bits = BigInt(width * 8);
   const bound = 1n << (signed ? bits - 1n : bits);

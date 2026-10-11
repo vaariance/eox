@@ -269,6 +269,19 @@ pub mod cox {
         reconcile(p, &ctx.accounts.vault)?;
         require!(!ctx.accounts.registry.paused, CoxError::Paused);
         require!(p.stage.is_none(), CoxError::BatchBusy);
+        let previous_batch = &ctx.accounts.batch;
+        if p.initialized {
+            require!(
+                previous_batch.schema_version == 2
+                    && previous_batch.pool == p.key()
+                    && previous_batch.phase == 2
+                    && previous_batch.batch_id == p.last_batch
+                    && previous_batch.sequence == p.sequence,
+                CoxError::InvalidAccount
+            );
+        } else {
+            require!(previous_batch.schema_version == 0, CoxError::InvalidAccount);
+        }
         let t = now()?;
         let cutoff = add(
             p.origin,
@@ -369,7 +382,7 @@ pub mod cox {
             )
         };
         let b = &mut ctx.accounts.batch;
-        b.schema_version = 1;
+        b.schema_version = 2;
         b.bump = ctx.bumps.batch;
         b.pool = p.key();
         b.batch_id = batch_id;
@@ -387,6 +400,12 @@ pub mod cox {
         b.mints = vec![0; n];
         b.incoming = vec![0; n];
         b.blocked = vec![false; n];
+        b.accepted_deposits = 0;
+        b.new_payable = 0;
+        b.executed = 0;
+        b.rejected = 0;
+        b.phase = 0;
+        b.safety_changed = false;
         b.transfer_residual = transfer_residual;
         b.closed_queue_end = p.next_request_nonce;
         b.queue_start = p.queue_start;
@@ -619,6 +638,22 @@ pub mod cox {
         let p = &mut ctx.accounts.pool;
         reconcile(p, &ctx.accounts.vault)?;
         require!(!ctx.accounts.registry.paused, CoxError::Paused);
+        let previous_publication = &ctx.accounts.publication;
+        if p.initialized {
+            require!(
+                previous_publication.schema_version == 2
+                    && previous_publication.pool == p.key()
+                    && previous_publication.sequence == p.sequence
+                    && previous_publication.batch == p.last_batch
+                    && previous_publication.state_digest == p.state_digest,
+                CoxError::InvalidAccount
+            );
+        } else {
+            require!(
+                previous_publication.schema_version == 0,
+                CoxError::InvalidAccount
+            );
+        }
         let b = &mut ctx.accounts.batch;
         require!(
             b.phase == 1 && b.cursor == b.closed_queue_end,
@@ -689,7 +724,7 @@ pub mod cox {
         p.state_digest = math::artifact_digest(&state);
         b.phase = 2;
         let publication = &mut ctx.accounts.publication;
-        publication.schema_version = 1;
+        publication.schema_version = 2;
         publication.bump = ctx.bumps.publication;
         publication.pool = p.key();
         publication.sequence = p.sequence;
@@ -1149,7 +1184,7 @@ pub struct Publish<'info> {
     pub pool: Account<'info, Pool>,
     #[account(seeds=[b"methodology",methodology.digest.as_ref()],bump=methodology.bump)]
     pub methodology: Account<'info, Methodology>,
-    #[account(init,payer=payer,space=8192,seeds=[b"batch",pool.key().as_ref(),batch_id.to_le_bytes().as_ref()],bump)]
+    #[account(init_if_needed,payer=payer,space=8192,seeds=[b"batch",pool.key().as_ref()],bump)]
     pub batch: Account<'info, Batch>,
     #[account(token::authority=pool,token::mint=pool.collateral_mint)]
     pub vault: Account<'info, TokenAccount>,
@@ -1161,7 +1196,7 @@ pub struct Process<'info> {
     pub registry: Account<'info, Registry>,
     #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
     pub pool: Box<Account<'info, Pool>>,
-    #[account(mut,seeds=[b"batch",pool.key().as_ref(),batch.batch_id.to_le_bytes().as_ref()],bump=batch.bump,has_one=pool)]
+    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=batch.schema_version==2 @ CoxError::InvalidAccount)]
     pub batch: Box<Account<'info, Batch>>,
     #[account(mut,seeds=[b"request",pool.key().as_ref(),request.nonce.to_le_bytes().as_ref()],bump=request.bump,has_one=pool)]
     pub request: Account<'info, Request>,
@@ -1176,7 +1211,7 @@ pub struct BatchOnly<'info> {
     pub registry: Account<'info, Registry>,
     #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
     pub pool: Account<'info, Pool>,
-    #[account(mut,seeds=[b"batch",pool.key().as_ref(),batch.batch_id.to_le_bytes().as_ref()],bump=batch.bump,has_one=pool)]
+    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=batch.schema_version==2 @ CoxError::InvalidAccount)]
     pub batch: Account<'info, Batch>,
     #[account(token::authority=pool,token::mint=pool.collateral_mint)]
     pub vault: Account<'info, TokenAccount>,
@@ -1189,11 +1224,11 @@ pub struct Finalize<'info> {
     pub registry: Account<'info, Registry>,
     #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,has_one=methodology,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
     pub pool: Box<Account<'info, Pool>>,
-    #[account(mut,seeds=[b"batch",pool.key().as_ref(),batch.batch_id.to_le_bytes().as_ref()],bump=batch.bump,has_one=pool)]
+    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=batch.schema_version==2 @ CoxError::InvalidAccount)]
     pub batch: Box<Account<'info, Batch>>,
     #[account(seeds=[b"methodology",methodology.digest.as_ref()],bump=methodology.bump)]
     pub methodology: Account<'info, Methodology>,
-    #[account(init,payer=payer,space=8192,seeds=[b"publication",pool.key().as_ref(),batch.sequence.to_le_bytes().as_ref()],bump)]
+    #[account(init_if_needed,payer=payer,space=8192,seeds=[b"publication",pool.key().as_ref()],bump)]
     pub publication: Box<Account<'info, Publication>>,
     #[account(token::authority=pool,token::mint=pool.collateral_mint)]
     pub vault: Account<'info, TokenAccount>,

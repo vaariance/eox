@@ -4,15 +4,21 @@ import { ArrowDownUp, Info } from "lucide-react";
 import { useState } from "react";
 import { COLLATERAL, SWAP_CHARGE_BPS } from "@/lib/config";
 import type { Batch } from "@eox/app-api";
-import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import { type ClassView, type Holding, unlockedProblem } from "@/lib/view";
-import { Countdown } from "./countdown";
-import { WalletAction } from "./wallet-action";
+import { formatAmount } from "@/lib/format";
+import { planRequest } from "@/lib/requests";
+import { type ClassView, holdingsOf, unlockedProblem } from "@/lib/view";
+import { useAccount } from "./account";
+import { TargetBatch, useOpenBatch } from "./open-batch";
+import { SendButton } from "./send-button";
 
 const CASH = "collateral";
+const VALID_FOR_BATCHES = 3;
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[]; holdings: Holding[] | null; nextBatch: Batch | null }) {
+export function SwapForm({ classes, nextBatch, decimals }: { classes: ClassView[]; nextBatch: Batch | null; decimals: number }) {
+  const { portfolio } = useAccount();
+  const holdings = holdingsOf(portfolio);
+  const open = useOpenBatch(nextBatch);
   const [from, setFrom] = useState(CASH);
   const [to, setTo] = useState("CRYPTO");
   const [amount, setAmount] = useState("250");
@@ -26,6 +32,16 @@ export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[
   const operation = from === CASH ? "Buy" : to === CASH ? "Redeem" : "Switch";
   const held = from === CASH || holdings === null ? null : (holdings.find((item) => item.classId === from)?.units ?? 0);
   const unitsProblem = valid && from !== CASH && !same ? unlockedProblem(holdings, from, parsed) : null;
+  const planned = planRequest({
+    operation: from === CASH ? "deposit" : to === CASH ? "redeem" : "switch",
+    fromClass: from === CASH ? null : from,
+    toClass: to === CASH ? null : to,
+    amount,
+    minimum: "",
+    validForBatches: VALID_FOR_BATCHES,
+    targetBatch: open.batch?.batch ?? null,
+    collateralDecimals: decimals,
+  });
   const gross = valid && !same ? (parsed * valueOf(from)) / valueOf(to) : null;
   const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;
   const estimate = gross === null ? null : gross - (charge ?? 0);
@@ -81,7 +97,11 @@ export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Target batch</dt>
-            <dd className="num">{nextBatch ? <>#{formatWhole(nextBatch.batch)} · {formatUtcTime(nextBatch.cutoff)} · closes in <Countdown /></> : "No open batch"}</dd>
+            <dd className="num"><TargetBatch batch={open.batch} seconds={open.seconds} /></dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted">Stays valid for</dt>
+            <dd className="num">{VALID_FOR_BATCHES} batches, no minimum</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">You receive</dt>
@@ -100,7 +120,7 @@ export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[
           This is an estimate, not a quote. A swap is queued and executes at the unit values fixed by the next publication. You hold a share of a class, not the underlying coin.
         </p>
 
-        <WalletAction needsWallet="Connect wallet to swap" className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton intent={same ? null : planned.intent} label={`Queue ${operation.toLowerCase()}`} connectLabel="Connect wallet to swap" problem={same ? "Choose two different sides." : (planned.problem ?? unitsProblem)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

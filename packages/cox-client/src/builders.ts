@@ -1,10 +1,11 @@
-import anchor, { type Program } from "@coral-xyz/anchor";
+import { Buffer } from "buffer";
+import { BN, type Program } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import { addresses } from "./pdas.ts";
 import { bytes32 } from "./wire.ts";
 
 const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-const bn = (value: bigint) => new anchor.BN(value.toString());
+const bn = (value: bigint) => new BN(value.toString());
 export interface ManifestConfig { version: string; roster: number[]; origin: bigint; bybit: boolean; feedCheckDigest: Uint8Array }
 export interface PublishPrice { priceE8: bigint; venue: 0 | 1 | 2; step: 1 | 2 | 3 | 4; candleStart: bigint; tradeAgeMinutes: number }
 export interface PoolKeys { pool: PublicKey; vault: PublicKey }
@@ -67,14 +68,14 @@ export class CoxInstructions {
   withdraw(keys: Omit<OwnerKeys, "request">, amount: bigint) { return this.build("withdraw", { amount: bn(amount) }, { ...keys, registry: this.pdas.registry(), tokenProgram: TOKEN_PROGRAM }); }
   publish(keys: PoolKeys & { payer: PublicKey; runtime: PublicKey; methodology: PublicKey }, batchId: bigint, sequence: bigint, predecessor: Uint8Array, prices: readonly PublishPrice[], snapshot: Uint8Array, archiveTime: bigint) {
     return this.build("publish", { batchId: bn(batchId), sequence: bn(sequence), predecessor: [...bytes32(predecessor)], prices: prices.map(price => ({ ...price, priceE8: bn(price.priceE8), candleStart: bn(price.candleStart) })), snapshot: [...bytes32(snapshot)], archiveTime: bn(archiveTime) },
-      { ...keys, registry: this.pdas.registry(), batch: this.pdas.batch(keys.pool, batchId), systemProgram: SystemProgram.programId });
+      { ...keys, registry: this.pdas.registry(), batch: this.pdas.batch(keys.pool), systemProgram: SystemProgram.programId });
   }
   evaluate(keys: ProcessKeys) { return this.build("evaluate", {}, { ...keys, registry: this.pdas.registry() }); }
   safety(keys: ProcessKeys) { return this.build("safety", {}, { ...keys, registry: this.pdas.registry() }); }
   execute(keys: ProcessKeys) { return this.build("execute", {}, { ...keys, registry: this.pdas.registry() }); }
   sealEvaluation(keys: PoolKeys & { batch: PublicKey }) { return this.build("sealEvaluation", {}, { ...keys, registry: this.pdas.registry() }); }
-  finalize(keys: PoolKeys & { batch: PublicKey; methodology: PublicKey; payer: PublicKey }, sequence: bigint) {
-    return this.build("finalize", {}, { ...keys, registry: this.pdas.registry(), publication: this.pdas.publication(keys.pool, sequence), systemProgram: SystemProgram.programId });
+  finalize(keys: PoolKeys & { batch: PublicKey; methodology: PublicKey; payer: PublicKey }) {
+    return this.build("finalize", {}, { ...keys, registry: this.pdas.registry(), publication: this.pdas.publication(keys.pool), systemProgram: SystemProgram.programId });
   }
   materializePosition(keys: PoolKeys & { position: PublicKey }) { return this.build("materializePosition", {}, { ...keys }); }
   readReference(pool: PublicKey, classIndex: number) { return this.build("readReference", { class: classIndex }, { pool }); }

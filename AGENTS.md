@@ -472,6 +472,54 @@ another agent needs to know.
 - **Open:** P4 publisher; Joel's authoritative archive-byte correction, feed check and signer binding; Godwin's monitor/UI integration. Legacy readers/math and P4 transport closure remain retained.
 - **Refs:** `packages/cox/deploy/deployed-devnet.json`, `packages/cox/INTEGRATION.md`, `packages/cox/results/p3-verification.md`.
 
+### 2026-10-11 · Peter (Codex) · P4 publisher locally verified, runtime disabled
+
+- **Area:** `apps/cox-publisher`, `deploy/dev/cox-publisher.service`, workspace lockfile, COX integration handoff.
+- **What:** Implemented exact P1 archive admission, all persistent batch phases, finalized account reads, KMS-only signing, verified signature/message bytes and reconcile-before-rebuild recovery. Publisher tests pass (64), client (9), methodology (13), Rust workspace (20) and compiled SBF custody/lifecycle (15); strict TypeScript and frozen-lock dependency policy pass. Added disabled config and Linux service template. Joel's `3559f2e` archive hash correction is incorporated; the historical mismatch is resolved.
+- **Rules for agents:** Do not enable or describe this publisher as running until registry, sealed methodology, test pool, authorized VM caller and funded signer are ready. Preserve its journal across restarts. Finish accepted batches without a deadline; never reprice or filter a snapshot to change its roster. Service and CLI must use the same OS lock with `--no-fork`. No local runtime private key exists. Bybit in the disabled template follows Joel's J3 decision; sealed policy must match.
+- **Open:** Dev-VM installation, authorized metadata caller identity, on-chain setup and live publication/recovery/capacity proof. P4's running-service milestone and P5 remain incomplete. No commit or push performed.
+- **Refs:** `apps/cox-publisher/README.md`, `apps/cox-publisher/VERIFICATION.md`, `packages/cox/INTEGRATION.md`.
+
+### 2026-10-11 · Peter (Codex) · Remaining Peter-owned EOX dependencies retired
+
+- **Area:** `apps/oracle-worker`, `packages/oracle`, tracked `packages/methodology`, obsolete root commands and lock importers.
+- **What:** After verifying P4 carry-over and Joel's caller replacements, removed the remaining 43 tracked legacy files and five root commands. Verified remote `eox-archive` points to `e60ad4035c9431a9eee493a57dd2cdbeb4f4afa9` before deletion. No executable legacy imports remain; ignored inventory is unchanged (21,371 entries).
+- **Rules for agents:** Papers and ignored sealed research remain preserved; do not recursively delete the old directories. Joel's archived `apps/app-api/fixtures/oracle-preview.json` remains provenance only. No Joel/Godwin component was modified to force deletion. Keep cleanup separate from the P4 implementation commit and this append-only log in its own commit. This supersedes retained-caller descriptions in the 2026-10-10 cleanup entry and 2026-10-11 deployment entry.
+- **Open:** Commit approval; running P4 remains separate.
+- **Refs:** `packages/cox/research/deletion-audit.md`, `packages/cox/INTEGRATION.md`.
+
+### 2026-10-11 · Peter (Codex) · Root commands follow the COX replacement
+
+- **Area:** root `package.json` and `README.md`.
+- **What:** Peter corrected the omission of replacement root shortcuts during EOX cleanup. Added COX aggregate checks/tests and commands for methodology, Rust CLI, client, publisher, compiled program, deployment, archiver and feed check. Removed the remaining root demo/economic-ingestion shortcuts whose package targets were already retired. Documented the compiled artifact and runtime prerequisites.
+- **Rules for agents:** When retiring a workflow, update its root commands and documentation to the working replacement in the same change; do not only remove the old shortcuts. Keep runtime starts and deployment outside aggregate checks/tests. Deployment still requires its approved commit/build, and publisher activation remains separate.
+- **Refs:** `README.md`, `package.json`, `apps/cox-publisher/README.md`, `packages/cox/deploy/README.md`.
+- **Verification:** Root `cox:check` passes; root `cox:test` passes all 121 tests; `cox:publisher --once` exits disabled. Local verification used the existing test dependencies without pnpm's automatic install. Root execution also exposed mismatched Anchor snapshot references in the client/publisher lock importers; corrected them to the existing pinned snapshot without changing versions. No runtime activation, deployment or commit occurred.
+
+### 2026-10-11 · Peter (Codex) · Dedicated publisher identity and smoke-test funding
+
+- **Area:** `apps/cox-publisher/src/identity.ts`, publisher entry point/tests/docs, `packages/cox/deploy/runtime-funding-devnet.json`.
+- **What:** Peter supplied Joel's J4 handoff: only `cox-publisher@colosseum-eox.iam.gserviceaccount.com` may call the signer as oracle-operator; binding stays disabled until actual pool/vault/mint/sealed-methodology addresses are supplied. Updated authentication to use VM metadata access credentials followed by IAM `generateIdToken` for that dedicated identity, signer audience and `includeEmail: true`. Publisher tests pass (67), strict types pass. Transferred 1 devnet SOL from the deployment wallet to the verified runtime; observed finalized balance is 1 SOL.
+- **Rules for agents:** No caller key file and no direct VM identity token for signer requests. Do not enable the signer or publisher from this funding alone. Local identity tests do not claim a live VM invocation. This supersedes the direct-metadata identity adapter described in the earlier 2026-10-11 P4 verification entry.
+- **Open:** Registry/methodology/test-pool setup and account retention before sustained publishing; commit approval remains pending.
+- **Refs:** `apps/cox-publisher/README.md`, `apps/cox-publisher/VERIFICATION.md`, `packages/cox/deploy/runtime-funding-devnet.json`; Joel's signer README on `origin/main`.
+
+### 2026-10-11 · Peter (Codex) · Runtime rent reviewed before continuous activation
+
+- **Area:** Existing COX Batch/Publication allocations and runtime operating budget.
+- **What:** Verified Joel's estimate against devnet RPC: each 8,192-byte account requires 42,265,600 lamports; the current pair locks 0.0845312 SOL per accepted publication, 121.724928 SOL for 1,440 publications, excluding fees. No closure exists. This is separate from pool collateral. Completed-batch reclamation appears compatible with lazy balances, but must refund the original payer and update historical batch readers. Publication pruning changes the promised history contract and requires a full verifiable archive.
+- **Rules for agents:** No retention policy has been approved, implemented or deployed by this review. Do not close publication accounts merely because a batch finalized; current history readers require them. Do not describe 1 SOL smoke-test funding as a P5 24-hour budget.
+- **Open:** Choose and review retention/archive design before unrestricted continuous activation. Closing batches alone halves future allocation growth but does not bound publication storage.
+- **Refs:** `packages/cox/programs/cox/src/lib.rs` Batch/Finalize accounts and materialization; `packages/cox-client/src/readers.ts`; `apps/cox-publisher/VERIFICATION.md`.
+
+### 2026-10-11 · Peter (Codex) · Bounded publication storage approved and locally verified
+
+- **Area:** COX program, client, publisher, IDL/fixtures/measurements, SPEC v0.4 and product v13.
+- **What:** Peter approved one latest publication and one reusable batch per pool. Implemented fixed seeds `[batch, pool]` and `[publication, pool]`, schema 2 for those two accounts, full batch reset and guarded reuse. The publisher archives complete publication bytes immutably before subsequent signing/rebroadcast, checks predecessor linkage and halts on history gaps, conflicts or disk failure. Root checks pass; 137 COX tests pass (16 compiled custody/lifecycle, 77 publisher, 11 client, 13 methodology, 20 Rust workspace). Current devnet pair rent is 0.0845312 SOL once at the quoted rate; other accounts/fees are additional.
+- **Rules for agents:** The upgrade is prepared, not deployed. Preserve latest sequence/batch IDs in account data; do not derive their addresses with those IDs anymore. Live historical reads throw `CoxHistoryNotRetained`; use verified full publication archives for past sequences. Local syncing is not backup; verify backup/restore before activation. Publisher startup pins the required new build and refuses the old deployment. Keep six runtime instructions and existing key/identity; Joel must update signer PDA/schema validation before enabling it. No active legacy-pool migration is supported.
+- **Open:** Commit/upgrade approval, verified deployment, Joel/Godwin integration handoff, archive backup/restore and on-chain setup. No commit, deployment, external message or activation performed. This implements and supersedes the pending retention design in the earlier 2026-10-11 runtime rent review entry.
+- **Refs:** `packages/cox/ROLLING-STORAGE-HANDOFF.md`, `packages/cox/ROLLING-STORAGE-PLAN.md`, `packages/cox/deploy/publisher-build.json`, `apps/cox-publisher/VERIFICATION.md`.
+
 ### 2026-10-11 · Godwin (Claude Code) · Web app reads cox.app-api/v1; 30 assets, swap page, network switcher
 
 - **Area:** `apps/web`.
@@ -537,6 +585,54 @@ another agent needs to know.
 - **Rules for agents:** Godwin: use this URL as `baseUrl` for `createCoxApiClient` in `apps/web`. It serves synthetic data (`SYNA`, `SYNB`), never market data. The VM's `cox-app-api` on `127.0.0.1:8790` is the same fixture for local tunnels. The live COX source (J5) will get its own deployment once the pool is active.
 - **Refs:** commits `91a22ba`..`adbda5f`, `apps/app-api/README.md`.
 
+### 2026-10-11 · Godwin (Claude Code) · Web app defaults to the public fixture API
+
+- **Area:** `apps/web`.
+- **What:** Following Joel's 2026-10-11 "Public COX fixture API for the web app" entry, `createCoxApiClient` in `apps/web` now defaults to `https://cox-app-api-529206295845.us-central1.run.app`; `COX_API_URL` overrides it. On fixture data the portfolio page shows the first fixture wallet unless `COX_DEMO_WALLET` is set. Checked with no local API running: every page loads from the public service and shows the fixture label. `dev` and `main` were at the same commit (`e63328a`) before this change, and `pnpm install --frozen-lockfile` passes again after Joel's lockfile repair.
+- **Rules for agents:** The public service is fixture data; the web app still cannot send requests or show the connected wallet's portfolio until the live app API (J5) exists. Requests to the API are made on the server side of the Next.js app, so the browser does not depend on the service's CORS setting.
+- **Open:** Joel: J5. On macOS `apps/app-api` "COX fixture provenance" fails because `packages/cox-methodology/src/vectors.ts` hashes to `9dfa71b4…`, not the fixture's recorded `ea87c088…`; line endings are a likely cause, not confirmed.
+- **Refs:** commit `34213fb`, `apps/web/README.md`.
+
+### 2026-10-11 · Peter (Codex) · Reusable-storage upgrade finalized on devnet
+
+- **Area:** COX devnet program and `packages/cox/deploy/deployed-devnet.json`.
+- **What:** With Peter's deployment approval, rebuilt commit `d591412073d24ce5bd1886bd936bd9705cc2bb39` and passed all 16 compiled lifecycle/custody tests. Upgraded the existing program at finalized slot 509800571 using Peter's supplied Helius endpoint. Downloaded executable matches SHA-256 `fd557e30dc1476d33076a83d7a2497753f03f6fedac0b4f9e11283e61e1e6172`; separate upgrade authority verified. Failed upload buffers were recovered or consumed by successful deployment; the saved retry buffer is absent. No RPC credential is stored in tracked artifacts.
+- **Rules for agents:** This supersedes the prepared/not-deployed status in the earlier bounded-publication-storage entry. Batch and Publication now use fixed pool-derived addresses and schema 2. Keep the signer and publisher disabled until initialization and Joel's updated validation are complete. Registry remains absent; no methodology, mint or pool was initialized by deployment. Existing uncommitted specification/handoff documents were left untouched.
+- **Open:** On-chain setup, Joel's signer integration, archive backup/restore and live publisher verification. Deployment record and this entry await their own commit approval.
+- **Refs:** `packages/cox/deploy/deployed-devnet.json`; devnet transaction `5xZ231zy95kuCivGjyTG4Tf2mRXaudF8hR2o6TwdfLUXjhBUdoJQ5PT4Az91YiVZnqTLzofW4Mp9jurb2HGbbteq`.
+
+### 2026-10-11 · Peter (Codex) · Registry and test collateral initialized
+
+- **Area:** COX devnet setup and `packages/cox/deploy/initialized-devnet.json`.
+- **What:** At Peter's request, initialized registry `9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC` using the separate admin and upgrade signatures and existing KMS runtime public key. Created classic SPL test mint `5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X`: six decimals, admin mint authority, no freeze authority, zero supply. Both transactions and account contents verified at finalized commitment.
+- **Rules for agents:** Reuse these verified identities; do not initialize another registry or create a replacement mint merely to retry setup. Peter identified `hello@wades.io` as the Google account for VM access; use it explicitly rather than assuming the CLI's default account. Methodology, pool and vault remain absent and publisher remains disabled. Do not fabricate a feed-check digest or seal the draft manifest.
+- **Open:** Local Google authentication, retrieval and verification of Joel's actual feed report, timed methodology/pool setup and signer integration. No additional commit or external message performed.
+- **Refs:** `packages/cox/deploy/initialized-devnet.json`, `packages/cox-client/src/builders.ts`.
+
+### 2026-10-11 · Peter (Codex) · Live feed report retrieved; methodology sealing deferred
+
+- **Area:** Read-only dev-VM/evidence API review and `packages/cox/deploy/initialized-devnet.json`.
+- **What:** Peter refreshed authentication for `hello@wades.io`; VM access works and `cox-archiver` is active. Ran Joel's existing seven-day report at 2026-10-11 05:53 UTC: only 549 on-time snapshots exist, with 548 admissible and 11 late snapshots excluded. Fourteen assets each have one failure (1/549, above 0.1%). Evidence API confirms all fourteen failures share cutoff 1791670860: request-budget exhaustion and unavailable USDT/USD conversion prevented resolution; it was not labelled archive_late. Report SHA-256 is recorded in the setup artifact; source observations were not modified.
+- **Rules for agents:** A seven-day query interval is not proof of seven days of collected history. Do not seal the draft, silently waive product.md J1, drop fourteen assets from this short sample, or locally filter the 30-asset archive. Registry and test mint remain available; methodology, pool and vault remain pending. Do not assign Peter Joel's feed/archiver implementation work.
+- **Open:** Complete the actual seven-day feed evaluation and resolve any resulting failures before selecting the sealed roster and scheduling its origin. No signer activation or external message occurred.
+- **Refs:** `product.md` J1, `packages/ingestion/src/cox/feed-check.ts`, `packages/cox/deploy/initialized-devnet.json`; local `.cox/feed-check-seven-days.md` and `.cox/feed-failed-cutoffs.jsonl`.
+
+### 2026-10-11 · Peter (Codex) · Provisional devnet methodology sealed and pool 0 created
+
+- **Area:** COX devnet accounts, `packages/cox/deploy` methodology, setup, disabled publisher config and signer handoff artifacts.
+- **What:** Peter explicitly requested proceeding because data is arriving, superseding the sealing deferral in the earlier live-feed-report entry for this devnet test. Retained all 30 assets and Bybit; committed the exact short-sample report SHA-256 without claiming it passed. Uploaded canonical bytes in bounded chunks, sealed methodology `Hk37dxaRjEzcngRoXRCc9N4bkqKRMCDofqTFEQ7CWyMw` (digest `78dfc58ef66c40c92faf09d2fc46226947760d95f29416fbd357e5dc31a944cb`), and created pool 0 `Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb` and vault `6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8`. All setup transactions finalized; methodology bytes/roster/origin, registry links, classic SPL mint/vault ownership and zero collateral/units verified. Disabled publisher configuration passes the actual configuration/ready validators.
+- **Rules for agents:** Origin is 2026-10-11 08:00 UTC / 09:00 Lagos (1791705600). Pool account exists but its first publication has not initialized reference prices. Batch 0 must meet the existing origin acceptance window; missing it requires new methodology/pool, not late batch 1. Do not describe the provisional feed report as a seven-day pass or drop assets under the deferred gate for this test. Runtime remains KMS-only; admin and upgrade roles remain separate. Signer must use fixed Batch/Publication PDAs and schema 2; those accounts are absent until first creation. Do not activate from this handoff alone.
+- **Open:** Joel's signer rebinding/enabling, publisher VM installation and archive operations, and live publication verification. No external handoff message or service activation performed; new setup artifacts remain uncommitted.
+- **Refs:** `packages/cox/deploy/initialized-devnet.json`, `methodology-devnet.json`, `feed-check-devnet.md`, `publisher-devnet.json`, `signer-allowlist.json`, `joel-pool-handoff.md`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app deployed on Vercel
+
+- **Area:** `apps/web`; Vercel project `cox-web` in Godwin's team `gef`.
+- **What:** At Godwin's request the web app is deployed at <https://cox-web.vercel.app> from `dev` at `f75d046`, with root directory `apps/web`, Next.js built with webpack and Node 24. It reads the public fixture API and shows the fixture label on every page; all six pages were checked on the deployed site. It was the project's first deployment, which Vercel makes the production deployment.
+- **Rules for agents:** The site is public and shows synthetic fixture data only. It is deployed by hand from Godwin's machine with the Vercel CLI; pushing to GitHub does not redeploy it, because the project is not connected to the repository. Do not point it at a live API or add secrets to it without Godwin.
+- **Open:** Whether to connect the Vercel project to the GitHub repository so each push gets a preview.
+- **Refs:** `apps/web/README.md`.
+
 ### 2026-10-11 · Joel (Claude Code) · J5 live app API and signer bound to pool 0
 
 - **Area:** `apps/app-api`, `packages/app-api`, `apps/signer`, `deploy/dev`.
@@ -567,3 +663,19 @@ another agent needs to know.
 - **Rules for agents:** `deploy/dev/setup.sh` does not know about `cox-monitor` and must not install or remove it; redeploy it only with `apps/cox-monitor/deploy/deploy.sh`. Verdicts are still `scope: "archive"`, keyed by cutoff, and say nothing about on-chain publications. The venue check is off on the VM (`MONITOR_VENUE_CHECK` unset), so every verdict's `venues` stays `pending`; it has still never run against a live venue.
 - **Open:** Joel: a `MONITOR_USER_AGENT` contact address so the venue check can be switched on within the `SYSTEM.md` §10.1 monitor budget, and whether the live app API should read `127.0.0.1:8792`. Peter: comparing publications needs the monitor to read the pool; safety-pass vectors are still needed.
 - **Refs:** `apps/cox-monitor/README.md` (Running on the dev VM), commits `bc4ac99`..`7289771`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app sends requests through the live app API
+
+- **Area:** `apps/web`.
+- **What:** Part of `product.md` G4, using Joel's J5 routes. On a live API the Buy, Switch, Redeem, Cancel, Refund and Withdraw buttons ask the app API for the unsigned transaction (`buildDeposit`, `buildSwitch`, `buildRedeem`, `buildCancel`, `buildRefund`, `buildWithdraw`), the connected wallet signs it, and the signed bytes go back through `submitTransaction` and are tracked with `submission`. The browser refuses to sign unless the connected wallet is the fee payer and the only signer. Form input becomes exact integers and an inclusive expiry batch in `src/lib/requests.ts` (8 tests). The portfolio, positions and requests shown are the connected wallet's. Before the first publication every page keeps its layout and shows a dash for missing values. Checked against a local `APP_API_SOURCE=cox-live` server on devnet pool 0 with no publication yet: all six pages load.
+- **Rules for agents:** The web app still builds no transaction and imports no `@cox/client`, as in Godwin's 2026-10-11 "In-browser request building removed from the web app" entry. No request has been signed by a real wallet or filled by a publication yet, so do not describe trading as working. <https://cox-web.vercel.app> still serves fixture data and was not redeployed.
+- **Open:** Joel: a public address for the live app API, so the Vercel site can use it; the portfolio still has no deposited basis. Peter: how a tester gets test tUSDC (mint `5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X`).
+- **Refs:** `apps/web/README.md` (Sending requests), commits `ee0ad47`..`9712073`.
+
+### 2026-10-11 · Peter (Codex) · Public-facing README rewrite
+
+- **Area:** All 18 existing repository `README.md` files.
+- **What:** At Peter's request, rewrote the root guide around COX and organized component guides around purpose, setup, configuration, interfaces, testing and limitations. Removed personal assignments, handoffs, phase checklists and stale development communication. Matched commands and capabilities to current source; preserved explicit devnet/test-collateral, fixture/live, delayed execution, custody, signer and history boundaries.
+- **Rules for agents:** Keep READMEs useful to external readers. Record team coordination and implementation history here rather than in public usage guides. Do not equate service installation with live wallet acceptance or archive-only monitor verdicts with verified publications. Current app API history gap recovery remains a documented limitation.
+- **Open:** Review and commit approval. This documentation pass made no source or runtime changes; concurrent staged changes remain untouched.
+- **Refs:** Root `README.md`, package/app READMEs, `deploy/dev/README.md`.

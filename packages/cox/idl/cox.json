@@ -381,11 +381,6 @@
               {
                 "kind": "account",
                 "path": "pool"
-              },
-              {
-                "kind": "account",
-                "path": "batch.batch_id",
-                "account": "Batch"
               }
             ]
           }
@@ -539,11 +534,6 @@
               {
                 "kind": "account",
                 "path": "pool"
-              },
-              {
-                "kind": "account",
-                "path": "batch.batch_id",
-                "account": "Batch"
               }
             ]
           }
@@ -835,11 +825,6 @@
               {
                 "kind": "account",
                 "path": "pool"
-              },
-              {
-                "kind": "account",
-                "path": "batch.batch_id",
-                "account": "Batch"
               }
             ]
           }
@@ -899,11 +884,6 @@
               {
                 "kind": "account",
                 "path": "pool"
-              },
-              {
-                "kind": "account",
-                "path": "batch.sequence",
-                "account": "Batch"
               }
             ]
           }
@@ -1431,10 +1411,6 @@
               {
                 "kind": "account",
                 "path": "pool"
-              },
-              {
-                "kind": "arg",
-                "path": "batch_id"
               }
             ]
           }
@@ -2216,11 +2192,6 @@
               {
                 "kind": "account",
                 "path": "pool"
-              },
-              {
-                "kind": "account",
-                "path": "batch.batch_id",
-                "account": "Batch"
               }
             ]
           }
@@ -2372,11 +2343,6 @@
               {
                 "kind": "account",
                 "path": "pool"
-              },
-              {
-                "kind": "account",
-                "path": "batch.batch_id",
-                "account": "Batch"
               }
             ]
           }

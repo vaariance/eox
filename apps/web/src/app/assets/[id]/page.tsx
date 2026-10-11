@@ -3,44 +3,46 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AssetChart } from "@/components/asset-chart";
 import { Change } from "@/components/change";
+import { FirstPublication } from "@/components/first-publication";
+import { MyPosition } from "@/components/my-position";
 import { PriceSource } from "@/components/price-source";
 import { RequestList } from "@/components/request-list";
 import { TradeForm } from "@/components/trade-form";
-import { getAssets, getCrypto, getDeployment, getPortfolio, getPublications, getStatus } from "@/lib/data";
+import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { formatAmount, formatChange, formatPrice } from "@/lib/format";
-import { SCALE_DIGITS, changeSince, classViews, decimalsOf, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries, toNumber } from "@/lib/view";
+import { changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
+const EMPTY = "—";
+
+function NoChart() {
+  return (
+    <section className="flex h-80 items-center justify-center rounded-card border border-line bg-surface p-4 text-sm text-muted shadow-card">
+      The chart starts with the first publication.
+    </section>
+  );
+}
 
 export default async function AssetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [assets, crypto, deployment, portfolio, publications, status] = await Promise.all([
-    getAssets(),
-    getCrypto(),
-    getDeployment(),
-    getPortfolio(),
-    getPublications(),
-    getStatus(),
-  ]);
+  const [assets, crypto, deployment, publications, status] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications(), getStatus()]);
   const asset = assets.find((item) => item.assetId === id);
   if (!asset) notFound();
 
   const decimals = decimalsOf(deployment);
-  const current = latestOf(publications);
-  const classes = classViews(current, decimals);
+  const current = currentOf(publications);
+  const classes = classViews(current, assets, decimals);
   const claim = findClass(classes, asset.assetId);
+  const others = classes.filter((item) => item.id !== asset.assetId);
+
   const price = priceSeries(publications, asset.assetId);
   const reference = referenceSeries(publications, asset.assetId);
   const level = levelSeries(publications);
-  const priceHour = changeSince(price, HOUR);
-  const cryptoHour = changeSince(level, HOUR);
-  const referenceHour = changeSince(reference, HOUR);
+  const priceHour = current ? changeSince(price, HOUR) : 0;
+  const cryptoHour = current ? changeSince(level, HOUR) : 0;
+  const referenceHour = current ? changeSince(reference, HOUR) : 0;
   const verb = (ratio: number) => (ratio >= 0 ? "rose" : "fell");
   const size = (ratio: number) => formatChange(Math.abs(ratio)).slice(1);
-  const holding = portfolio?.positions.find((item) => item.classId === asset.assetId);
-  const heldUnits = holding ? toNumber(holding.units, SCALE_DIGITS) : 0;
-  const holdings = portfolio ? portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS), locked: toNumber(position.locked, SCALE_DIGITS) })) : null;
-  const involved = (classId: string | null) => classId === asset.assetId;
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,28 +54,32 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
 
       <div>
         <h1 className="font-display text-title font-semibold tracking-tight">
-          {asset.assetId} <span className="text-base font-normal text-muted">{asset.name} against {crypto.label}</span>
+          {asset.assetId} <span className="text-base font-normal text-muted">{asset.name !== asset.assetId && `${asset.name} `}against {crypto.label}</span>
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          Last hour: {asset.assetId} {verb(priceHour)} {size(priceHour)}, CRYPTO {verb(cryptoHour)} {size(cryptoHour)}, so the reference {verb(referenceHour)} {size(referenceHour)}.
-        </p>
+        {current && (
+          <p className="mt-1 text-sm text-muted">
+            Last hour: {asset.assetId} {verb(priceHour)} {size(priceHour)}, CRYPTO {verb(cryptoHour)} {size(cryptoHour)}, so the reference {verb(referenceHour)} {size(referenceHour)}.
+          </p>
+        )}
       </div>
+
+      {!current && <FirstPublication status={status} />}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between text-xs text-muted">
             <span>Price (USD)</span>
-            <span className="flex items-center gap-1">1h <Change ratio={priceHour} /></span>
+            {current && <span className="flex items-center gap-1">1h <Change ratio={priceHour} /></span>}
           </div>
-          <div className="num mt-2 text-2xl">{formatPrice(latest(price))}</div>
-          <div className="mt-1 text-xs text-muted"><PriceSource price={priceOf(current, asset.assetId)} detailed /></div>
+          <div className="num mt-2 text-2xl">{current ? formatPrice(latest(price)) : EMPTY}</div>
+          <div className="mt-1 text-xs text-muted">{current ? <PriceSource price={priceOf(current, asset.assetId)} detailed /> : "No price published yet"}</div>
         </div>
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between text-xs text-muted">
             <span>COX reference</span>
-            <span className="flex items-center gap-1">1h <Change ratio={referenceHour} /></span>
+            {current && <span className="flex items-center gap-1">1h <Change ratio={referenceHour} /></span>}
           </div>
-          <div className="num mt-2 text-2xl">{formatAmount(latest(reference), 4)}</div>
+          <div className="num mt-2 text-2xl">{current ? formatAmount(latest(reference), 4) : EMPTY}</div>
           <div className="mt-1 text-xs text-muted">Against CRYPTO, starts at 100</div>
         </div>
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
@@ -85,36 +91,22 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-6">
-          <AssetChart
-            series={[
-              { id: "reference", label: "COX reference", points: reference, digits: 4, baseline: 100 },
-              { id: "price", label: "Price", points: price, digits: latest(price) >= 1 ? 2 : latest(price) >= 0.01 ? 4 : 6 },
-              { id: "crypto", label: "CRYPTO", points: level, digits: 4, baseline: 100 },
-            ]}
-          />
-          <RequestList
-            requests={(portfolio?.requests ?? []).filter((request) => involved(request.fromClass) || involved(request.toClass))}
-            status={status}
-            decimals={decimals}
-          />
+          {current ? (
+            <AssetChart
+              series={[
+                { id: "reference", label: "COX reference", points: reference, digits: 4, baseline: 100 },
+                { id: "price", label: "Price", points: price, digits: latest(price) >= 1 ? 2 : latest(price) >= 0.01 ? 4 : 6 },
+                { id: "crypto", label: "CRYPTO", points: level, digits: 4, baseline: 100 },
+              ]}
+            />
+          ) : (
+            <NoChart />
+          )}
+          <RequestList classId={asset.assetId} status={status} decimals={decimals} />
         </div>
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={classes.filter((item) => item.id !== asset.assetId)} holdings={holdings} nextBatch={status.currentBatch} />
-          <section className="rounded-card border border-line bg-surface p-4 shadow-card">
-            <h2 className="text-sm font-medium">Your position</h2>
-            {holding ? (
-              <dl className="mt-3 flex flex-col gap-2 text-sm">
-                <div className="flex justify-between"><dt className="text-muted">Units</dt><dd className="num">{formatAmount(heldUnits)}</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Locked in requests</dt><dd className="num">{formatAmount(toNumber(holding.locked, SCALE_DIGITS))}</dd></div>
-                <div className="flex justify-between border-t border-line pt-2">
-                  <dt className="text-muted">Redeemable now, about</dt>
-                  <dd className="num">{claim.unitValue === null ? "n/a" : `${formatAmount(heldUnits * claim.unitValue)} tUSDC`}</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="mt-3 text-sm text-muted">{portfolio ? `You hold no ${asset.assetId} units.` : "Connect a wallet to see your position."}</p>
-            )}
-          </section>
+          <TradeForm claim={claim} others={others} nextBatch={status.currentBatch} decimals={decimals} />
+          <MyPosition classId={asset.assetId} unitValue={claim.unitValue} />
         </div>
       </div>
     </div>

@@ -1,121 +1,102 @@
-# app-api (Joel)
+# COX application API
 
-## COX: `cox.app-api/v1` (`product.md` J3 and J5)
+HTTP service for COX deployment information, publications, portfolios and wallet-signed transactions. It serves the `cox.app-api/v1` contract from either a deterministic fixture or a Solana devnet pool. It holds no wallet private key and does not calculate market references.
 
-```bash
-APP_API_SOURCE=cox-fixture pnpm --filter @eox/app-api-server start   # http://127.0.0.1:8790; APP_API_CORS_ORIGIN=* to allow browsers
-APP_API_SOURCE=cox-live COX_RPC_URLS="https://api.devnet.solana.com" APP_API_STATE_DIR=./state   APP_API_PORT=8791 pnpm --filter @eox/app-api-server start             # live devnet pool 0
+## Run locally
+
+Install workspace dependencies from the repository root, then start the fixture:
+
+```sh
+pnpm --filter @eox/app-api-server start
 ```
 
-Live settings: `COX_RPC_URLS` (ordered https URLs separated by whitespace;
-every one must answer with the network's genesis hash at start-up, and a call
-moves to the next on a network error, 15 s timeout, HTTP 429 or 5xx; logs name
-hosts only, never the query string with its key), `COX_NETWORK` (`solana-devnet`), `COX_POOL_ID` (default `0`), `COX_IDL_PATH` (default
-`packages/cox/idl/cox.json`), `COX_POLL_MS` (default 5000). Until the pool
-exists with a sealed methodology the service logs and checks again every 30 s.
+The default address is `http://127.0.0.1:8790`. For a devnet source:
 
-**Public fixture URL:** `https://cox-app-api-529206295845.us-central1.run.app`
-(Cloud Run `cox-app-api`, us-central1, open to anyone, CORS `*`, read-only,
-fixture data only). Use it as `baseUrl`; `/health` answers `{"status":"ok"}`.
-The service account `cox-app-api` holds no permissions. Redeploy after a change
-with the image from `apps/app-api/Dockerfile`.
+```sh
+APP_API_SOURCE=cox-live \
+COX_RPC_URLS=https://api.devnet.solana.com \
+APP_API_STATE_DIR=./state \
+APP_API_PORT=8791 \
+pnpm --filter @eox/app-api-server start
+```
 
-Fixture wallets for `/v1/wallets/:owner/portfolio`:
+The public demonstration endpoint is <https://cox-app-api-529206295845.us-central1.run.app>. It serves synthetic fixture data, not market data. Check `deployment.origin` on every integration rather than inferring the source from an endpoint's name.
 
-| Wallet | What it shows |
+## Configuration
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `APP_API_SOURCE` | `cox-fixture` or `cox-live` | `cox-fixture` |
+| `APP_API_HOST`, `APP_API_PORT` | Listening interface and port | `127.0.0.1`, `8790` |
+| `APP_API_CORS_ORIGIN` | Browser origin, or `*`; unset disables CORS headers | Unset |
+| `COX_RPC_URLS` | Ordered, whitespace-separated HTTPS RPC URLs | Required for live mode |
+| `APP_API_STATE_DIR` | Persistent publication and submission storage | Required for live mode |
+| `COX_NETWORK` | Supported network | `solana-devnet` |
+| `COX_POOL_ID` | Pool identifier | `0` |
+| `COX_IDL_PATH` | Program IDL | `packages/cox/idl/cox.json` |
+| `COX_POLL_MS` | Indexer interval, at least 1,000 ms | `5000` |
+
+Every RPC endpoint must pass the devnet genesis check at startup. Network failures, 15-second timeouts, HTTP 429 and HTTP 5xx trigger failover. Store authenticated URLs privately. A missing pool or unsealed methodology delays startup and is checked again every 30 seconds.
+
+## HTTP contract
+
+Successful JSON responses contain `{ schemaVersion, deployment, status, data }`. Errors contain `{ schemaVersion, error: { code, message } }`. `/health` returns `{ "status": "ok" }`; this is process health, not a publication-readiness verdict.
+
+All fixed-point quantities are decimal integer strings. Prices use USD × 10⁸; benchmark levels and references use 10¹²; a reference of 100 is `"100000000000000"`. Position units contain 10¹² quanta per unit. Collateral amounts use the mint's base units. Use `BigInt` for arithmetic.
+
+| Route | Result |
 |---|---|
-| `HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU` | two filled requests (deposit, redemption) and one queued deposit; a payable |
-| `7TKNJWWpjcVWsnwo9TJvJyBMFLDwvgpKdDxPqmfw87cp` | a deposit and a switch, holding two classes |
-| `GBZafz1m5qSDc3br2zEa2YG4hvQqj5DESk694byEwcNa` | a CRYPTO-class deposit |
-| `3vdUxQYrGNUPyK1QNDkeyXDDfHvgTE3JQZjKZ6pUr4rX` | a deposit rejected on its condition; refundable |
-| `HEkyBsK77wJPKjd4WS3d2auyJZqdwmVJt9w1SE2Uq9jZ` | a deposit expired over the missed batch; refundable |
+| `GET /v1/deployment` | Network, program, pool, test collateral and methodology identity |
+| `GET /v1/status` | Publication age, missed cutoffs, execution state and vault reconciliation |
+| `GET /v1/assets`, `GET /v1/assets/:id` | Asset roster, venue symbols and latest published prices |
+| `GET /v1/crypto` | Benchmark composition and exact weights |
+| `GET /v1/publications/latest` | Latest indexed publication |
+| `GET /v1/publications/:sequence` | Publication by sequence |
+| `GET /v1/publications?after=&limit=` | Publications strictly after the cursor; default limit 100, maximum 500 |
+| `GET /v1/publications/stream` | Server-sent events; resume with `Last-Event-ID` |
+| `GET /v1/wallets/:owner/portfolio` | Committed positions, locked units, payables, refunds and requests |
+| `POST /v1/transactions/deposit` | Build with `{ owner, toClass, amount, minimumUnits, expiryBatch }` |
+| `POST /v1/transactions/switch` | Build with `{ owner, fromClass, toClass, units, minimumUnits, expiryBatch }` |
+| `POST /v1/transactions/redeem` | Build with `{ owner, fromClass, units, minimumProceeds, expiryBatch }` |
+| `POST /v1/transactions/cancel`, `POST /v1/transactions/refund` | Build with `{ owner, requestId }` |
+| `POST /v1/transactions/withdraw` | Build with `{ owner, amount }` |
+| `POST /v1/transactions/submit` | Relay `{ transaction }`, containing signed base64 transaction bytes |
+| `GET /v1/transactions/:signature` | Track a transaction submitted through this API |
 
-Use `createCoxApiClient` from `@eox/app-api`. Every response is
-`{ schemaVersion: "cox.app-api/v1", deployment, status, data }`; `status` is
-recomputed per request. Integers are decimal strings: prices USD × 10⁸, benchmark
-and references at scale 10¹² (a reference of 100 is `"100000000000000"`), unit
-quanta at 10¹² per unit, collateral in base units.
+Omitting the publication cursor starts from sequence 0. An empty page preserves the cursor. SSE events contain the publication and its sequence; the server sends a heartbeat every 15 seconds. Transaction request bodies are limited to 8 KiB.
 
-| Request | Data |
-|---|---|
-| `GET /v1/deployment` | origin (`fixture` or `live`), network, program, pool, test collateral, `COX/TRANSFER/MVP-0`, methodology label and draft/sealed status |
-| `GET /v1/status` | latest publication sequence and batch, age, missed cutoffs, `fresh`/`delayed`/`halted`/`incident`/`paused`, whether a batch is executing, monitor verdict, current batch with its cutoff and +55 s acceptance deadline |
-| `GET /v1/assets`, `/v1/assets/:id` | class index, venue symbols and the latest published price with venue, step and trade age |
-| `GET /v1/crypto` | label and exact `1/N` weights |
-| `GET /v1/publications/latest`, `/v1/publications/:sequence` | identity (sequence **and** scheduled batch, predecessor, missed batches, digests), prices, benchmark and references with gross returns, each class's pre-revaluation, fixed and final backing and units with its transfer factor, flows, ledger (`active`, `pending`, `refundable`, `payable`, `residual`, `vault`) |
-| `GET /v1/publications?after=&limit=`, `/v1/publications/stream` | paged and resumable (SSE `Last-Event-ID`) publications from sequence 0 |
-| `GET /v1/wallets/:owner/portfolio` | positions (units, locked), payable, refundable, pending, and every request with its target and expiry batch, state and receipt |
-| `POST /v1/transactions/deposit` | `{ owner, toClass, amount, minimumUnits, expiryBatch }` → unsigned transaction (live only) |
-| `POST /v1/transactions/switch` | `{ owner, fromClass, toClass, units, minimumUnits, expiryBatch }` |
-| `POST /v1/transactions/redeem` | `{ owner, fromClass, units, minimumProceeds, expiryBatch }` |
-| `POST /v1/transactions/cancel`, `/refund` | `{ owner, requestId }` |
-| `POST /v1/transactions/withdraw` | `{ owner, amount }` |
-| `POST /v1/transactions/submit` | `{ transaction }`: the wallet-signed bytes, base64; relayed unchanged |
-| `GET /v1/transactions/:signature` | `submitted`, `confirmed`, `finalized`, `failed` or `expired`, with the signed bytes as submitted |
+Errors include `NO_PUBLICATION`, `PUBLICATION_NOT_FOUND`, `UNKNOWN_ASSET`, `UNKNOWN_CLASS`, `UNKNOWN_WALLET`, `INVALID_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `INTERNAL_ERROR`, `NOT_LIVE`, `TRANSACTION_REJECTED` and `TRANSACTION_NOT_FOUND`. Builders on the fixture return HTTP 409 `NOT_LIVE`; a rejected simulation returns HTTP 422 `TRANSACTION_REJECTED`.
 
-Errors: `NO_PUBLICATION`, `PUBLICATION_NOT_FOUND`, `UNKNOWN_ASSET`,
-`UNKNOWN_CLASS`, `UNKNOWN_WALLET`, `INVALID_REQUEST`, `NOT_FOUND`,
-`METHOD_NOT_ALLOWED`, `INTERNAL_ERROR`, `NOT_LIVE` (409, builders on the
-fixture), `TRANSACTION_REJECTED` (422, the program refused it in simulation; the
-message carries the program's error), `TRANSACTION_NOT_FOUND`.
+## Wallet transaction flow
 
-The API never computes references or claim values. The fixture
-(`fixtures/cox-fixture.json`) is produced by Peter's P1 oracle
-(`packages/cox-methodology/src/vectors.ts`: `reference`, `revalue`, `batch`) over a
-connected timeline of two synthetic assets (`SYNA`, `SYNB`) and CRYPTO: deposits
-into empty classes, MVP-0 redistribution, a switch, a redemption, a failed
-condition, a missed batch and an expiry, with one deposit still queued. Prices and
-wallets are synthetic. The timeline is anchored so its latest publication is the
-latest minute. Regenerate with `npx tsx scripts/cox-fixture.ts` after the oracle
-changes; a test fails if the file differs from what the oracle produces.
+1. Request an unsigned transaction from a live source.
+2. Inspect the decoded instructions, network, mint, amounts and expiry. The wallet must be the sole signer and fee payer.
+3. Sign with the user's wallet, then submit the exact signed bytes.
+4. Track the signature and the request receipt separately. Transaction confirmation acknowledges submission; a later committed publication determines the fill.
 
-### The live source
+Builders simulate before returning a version 0 transaction. The program assigns eligibility from its clock when submission lands; the returned target batch is an estimate. The request nonce is pool-global, so simultaneous builds can conflict and a failed nonce must be rebuilt. After an ambiguous submission result, check the original signature and request before creating another deposit.
 
-`APP_API_SOURCE=cox-live` reads the deployed `cox` program through Peter's
-`@cox/client` readers and the released IDL; it signs nothing and holds no key.
+Submission verifies signatures, restricts instructions to the supported COX request operations plus associated-token and compute-budget programs, and relays the signed bytes unchanged. Redemption creates a payable; withdrawal is a separate wallet action. The devnet collateral is a test token, not real USDC.
 
-- **Publications.** Every publication is its own account (`"publication"`, pool,
-  sequence), so the indexer reads sequences `0..pool.sequence` at `finalized`,
-  checks each one's state digest, manifest and predecessor digest against the
-  previous one, reads its batch account (must be committed) for the fixed
-  valuation and flows, and appends it to `publications-<pool>.jsonl` in the state
-  directory. That log is append-only, refuses another program or pool, and drops
-  a partly written last line after a crash. `finalization.transaction` is the
-  oldest successful transaction that touched the publication account.
-- **Values.** Prices, references, class balances and the ledger come from the
-  committed state preimage; nothing is recalculated. `gross`,
-  `benchmarkGross` and `transferFactor` are `null` (not stored on chain).
-  `ledger.refundable` is `null` live: the pool's `pending` includes refundable
-  deposits and the split is only held per position. `flowResidual` is
-  fixed backing + accepted deposits − new payables − final active backing,
-  the same identity `finalize` adds to the residual.
-- **Reconciliation.** Each tick reads the registry, pool and vault in one
-  `getMultipleAccounts` call. `status.reconciliation` compares the vault's token
-  balance with active + pending + payable + residual. `covered` is
-  `vault ≥ ledger`, the program's own invariant (a surplus such as a direct token
-  transfer is swept into the residual by the next value-moving instruction); a
-  shortfall sets `status.state` to `incident`.
-- **Portfolios.** The position is the committed view from `CoxReader` (staged
-  credits stay hidden until their sequence commits); requests are the pool's
-  request accounts with that owner (`getProgramAccounts` by owner). `requestId` is
-  the request account address. Request states follow SPEC §8 codes 0–7,
-  including `safety-rejected`. A read that crosses a publication is retried.
-- **Transactions.** Builders read the pool's next request nonce at `confirmed`,
-  derive the position, request and token accounts, add an idempotent
-  associated-token-account creation where the program pays out to the wallet
-  (switch, redeem, refund, withdraw), and simulate the transaction before
-  returning it. The wallet is the only signer and fee payer; the result is a
-  base64 version 0 transaction for the wallet to sign. Two wallets that build
-  against the same nonce race: one lands, the other fails and must rebuild.
-  `targetBatch` is the batch open when it was built; the program assigns the
-  batch from its clock when the transaction lands.
-- **Submission.** `submit` verifies every required signature, accepts only COX
-  request instructions plus the associated token and compute budget programs,
-  forwards the exact bytes to the RPC and records them in
-  `submissions-<pool>.json`; a repeated submit returns the stored record.
-- **Monitor.** `status.monitor` stays `null`: Godwin's monitor currently gives
-  archive-scope verdicts per cutoff, not a recomputation of a publication.
+## Live state and history
 
-The EOX reference API (countries, WORLD, pairs, devnet `eox-oracle` indexer and
-its Rust fixture generator) was removed on 2026-10-10 and is kept at the
-`eox-archive` tag.
+The source reads finalized program accounts through [the COX client](../../packages/cox-client/README.md). Staged position and request changes remain hidden until commitment. Vault reconciliation compares token balance with active + pending + payable + residual; a surplus remains covered until a financial instruction records it as residual.
+
+Publications are stored in an append-only `publications-<pool>.jsonl` log, bound to the program and pool. A partial final line is discarded after a crash. Signed submissions use `submissions-<pool>.json`. Preserve both files across deployments.
+
+**History limitation:** the current indexer requests successive sequences from on-chain readers. The program reuses its latest publication and batch accounts, so a sequence overwritten before indexing cannot be recovered by this service from chain alone. Complete restart and gap recovery require an external publication-history source; that recovery is not implemented here.
+
+Live `gross`, `benchmarkGross` and `transferFactor` fields are `null` because they are not stored on chain. `ledger.refundable` is also `null`: the pool combines refundable deposits with pending funds, while individual portfolios expose the split. `status.monitor` is `null`; an archive consistency check is not a publication verification.
+
+## Fixture and verification
+
+The fixture uses two synthetic assets, `SYNA` and `SYNB`, plus CRYPTO. Its connected timeline covers deposits, revaluation, switching, redemption, conditions, missed batches, expiry and a queued request. Its timestamps advance to the current minute; the amounts remain synthetic.
+
+Example portfolio owner: `HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU`.
+
+```sh
+pnpm --filter @eox/app-api-server build
+pnpm --filter @eox/app-api-server test
+```
+
+To regenerate fixture output after a methodology change, run `npx tsx scripts/cox-fixture.ts` from this directory. See the [typed API client](../../packages/app-api/README.md) and [deployment guide](../../deploy/dev/README.md).

@@ -55,6 +55,34 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.5)(lightningcss@1.33.0)(supports-color@8.1.1)(terser@5.51.2)
 
+  apps/cox-publisher:
+    dependencies:
+      '@coral-xyz/anchor':
+        specifier: 0.31.1
+        version: 0.31.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      '@cox/client':
+        specifier: workspace:*
+        version: link:../../packages/cox-client
+      '@cox/methodology':
+        specifier: workspace:*
+        version: link:../../packages/cox-methodology
+      '@eox/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
+      '@solana/web3.js':
+        specifier: ^1.98.0
+        version: 1.99.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      tsx:
+        specifier: ^4.16.0
+        version: 4.23.15
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+
   apps/evidence-api:
     dependencies:
       '@eox/evidence-store':
@@ -79,25 +107,6 @@ importers:
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.5)(lightningcss@1.33.0)(supports-color@8.1.1)(terser@5.51.2)
-
-  apps/oracle-worker:
-    dependencies:
-      '@coral-xyz/anchor':
-        specifier: 0.31.1
-        version: 0.31.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
-      '@solana/web3.js':
-        specifier: ^1.98.0
-        version: 1.99.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.5
-      tsx:
-        specifier: ^4.16.0
-        version: 4.23.15
-      typescript:
-        specifier: ^5.5.0
-        version: 5.9.3
 
   apps/rpc-proxy:
     devDependencies:
@@ -181,6 +190,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.5)(lightningcss@1.33.0)(supports-color@8.1.1)(terser@5.51.2)
 
   packages/app-api:
     devDependencies:
@@ -196,9 +208,15 @@ importers:
       '@coral-xyz/anchor':
         specifier: 0.31.1
         version: 0.31.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      '@noble/hashes':
+        specifier: 1.8.0
+        version: 1.8.0
       '@solana/web3.js':
         specifier: ^1.98.0
         version: 1.99.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      buffer:
+        specifier: 6.0.3
+        version: 6.0.3
     devDependencies:
       '@types/bn.js':
         specifier: ^5.2.0
@@ -206,6 +224,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.5
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
@@ -261,18 +282,6 @@ importers:
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.5)(lightningcss@1.33.0)(supports-color@8.1.1)(terser@5.51.2)
-
-  packages/methodology:
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.5
-      tsx:
-        specifier: ^4.16.0
-        version: 4.23.15
-      typescript:
-        specifier: ^5.5.0
-        version: 5.9.3
 
   packages/price-feeds:
     devDependencies:

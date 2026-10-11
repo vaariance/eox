@@ -1,6 +1,20 @@
 # COX product direction and work plan
 
-Version 12 · 10 October 2026 · Next-publication eligibility and asynchronous fills
+Version 14 · 11 October 2026 · CRYPTO benchmark entry and exit
+
+Version 14 records Peter's app flow: the swap SDK handles collateral → CRYPTO
+benchmark units and CRYPTO benchmark units → collateral. Moving between CRYPTO
+and individual asset positions happens afterward inside the trading app using
+the existing switch instruction. Swaps retain future-publication execution and
+separate withdrawal of finalized proceeds. The current collateral is the devnet
+test mint; this does not enable genuine USDC or change the deployed program.
+
+Version 13 records Peter's approved storage decision: retain one latest
+publication and one reusable execution batch per pool on chain. Preserve full
+publication history in a verified durable archive before the next publication.
+This changes storage, not trading calculations or next-publication eligibility.
+The rolling-storage upgrade and its integrations require verification before
+activation; this brief does not claim deployment or change SYSTEM.md sign-off.
 
 Version 12 records Peter's rule: trades become eligible from the next valid
 publication and never execute when created. Fill time is not guaranteed;
@@ -304,12 +318,33 @@ authorities, test collateral mint and vault, classes, request accounts,
 publication cannot start until the batch is fully executed; no hard fill deadline), `cancel`,
 `withdraw`, halted-mode refunds, read-only simulated readers. Vault equality
 asserted in every value-moving instruction. Publish program ID, IDL and the
-permitted runtime instruction list to Joel.
+permitted runtime instruction list to Joel. Reuse a fixed batch account and
+latest-publication account per pool; never overwrite an unfinished batch.
+Keep batch IDs, sequences and predecessor checks in their payloads. Batch and
+publication accounts use schema 2 and fixed per-pool addresses; all other
+account schemas remain unchanged. On-chain history exposes the latest
+publication; earlier publications come from the verified archive.
+
+**Swap SDK — Peter.** `@cox/client/swap` supplies the benchmark-only entry/exit
+flow, on-chain quote estimates, unsigned wallet transactions, committed balances
+and request status, cancellation/refund and withdrawal. Godwin integrates it into
+the app. Asset switches use the existing low-level builders inside the trading
+app. Quotes do not guarantee the next publication's output or fill time.
 
 **P4 — Publisher.** `apps/cox-publisher`: for each cutoff, read the archived
 snapshot from J2, submit exactly those values and their digest in `publish`,
 crank `execute` to completion, reconcile on restart, never publish a cutoff
-twice. Signs only through the signer.
+twice. Signs only through the signer. Before another publication, durably store
+the previous finalized publication's complete bytes and verified hashes,
+identity and finalized chain context. Archive failure stops new publications.
+Keep this publication archive separate from J2's price-input archive. Verify
+archive backup and restore before live activation. Joel updates signer account
+validation for the fixed addresses; Godwin updates latest/history consumers.
+
+The two 8 KB rolling accounts cost approximately 0.085 devnet SOL once per pool
+at the current rent quote, rather than each minute. Initialization of other
+accounts, user accounts and transaction fees require separate funding. Requote
+rent before deployment; do not treat 0.085 SOL as the entire operating budget.
 
 **P5 — End-to-end verification.** Run the devnet MVP for 24 hours with live
 exchange prices and scripted users; record publications, misses, incidents,

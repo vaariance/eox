@@ -326,6 +326,15 @@ impl PoolHarness {
         self.try_publish(batch_id, values, true)
     }
     pub fn try_publish(&mut self, batch_id: u64, values: Vec<u64>, success: bool) {
+        self.try_publish_sequence(batch_id, values, None, success);
+    }
+    pub fn try_publish_sequence(
+        &mut self,
+        batch_id: u64,
+        values: Vec<u64>,
+        sequence_override: Option<u64>,
+        success: bool,
+    ) {
         let cutoff = ORIGIN + batch_id * 60;
         let state = self.pool_state();
         let sequence = if state.initialized {
@@ -333,6 +342,7 @@ impl PoolHarness {
         } else {
             0
         };
+        let sequence = sequence_override.unwrap_or(sequence);
         let prices = values
             .iter()
             .map(|value| PriceWire {
@@ -363,7 +373,7 @@ impl PoolHarness {
         let snapshot =
             cox_math::artifact_digest(&cox_math::snapshot_bytes(cutoff, &full, &roster).unwrap());
         let runtime = self.h.runtime.insecure_clone();
-        let batch = pda(&[b"batch", self.pool.as_ref(), &batch_id.to_le_bytes()]);
+        let batch = pda(&[b"batch", self.pool.as_ref()]);
         self.h.send(
             "publish",
             &[Harness::instruction(
@@ -466,7 +476,6 @@ impl PoolHarness {
         self.assert_vault();
     }
     pub fn finalize(&mut self) {
-        let sequence = self.batch_state().sequence;
         let admin = self.h.admin.insecure_clone();
         self.h.send(
             "finalize",
@@ -477,11 +486,7 @@ impl PoolHarness {
                     pool: self.pool,
                     batch: self.batch(),
                     methodology: self.methodology,
-                    publication: pda(&[
-                        b"publication",
-                        self.pool.as_ref(),
-                        &sequence.to_le_bytes(),
-                    ]),
+                    publication: pda(&[b"publication", self.pool.as_ref()]),
                     vault: self.vault,
                     system_program: system_program::ID,
                 },

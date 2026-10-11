@@ -4,12 +4,12 @@ import { Info } from "lucide-react";
 import { useState } from "react";
 import { COLLATERAL } from "@/lib/config";
 import type { Batch } from "@eox/app-api";
-import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import { type ClassView, type Holding, unlockedProblem } from "@/lib/view";
-import { Countdown } from "./countdown";
-import { WalletAction } from "./wallet-action";
-
-type Operation = "deposit" | "switch" | "redeem";
+import { formatAmount } from "@/lib/format";
+import { type Operation, planRequest } from "@/lib/requests";
+import { type ClassView, holdingsOf, unlockedProblem } from "@/lib/view";
+import { useAccount } from "./account";
+import { TargetBatch, useOpenBatch } from "./open-batch";
+import { SendButton } from "./send-button";
 
 const operations: { id: Operation; label: string }[] = [
   { id: "deposit", label: "Buy" },
@@ -19,15 +19,32 @@ const operations: { id: Operation; label: string }[] = [
 
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-export function TradeForm({ claim, others, holdings, nextBatch }: { claim: ClassView; others: ClassView[]; holdings: Holding[] | null; nextBatch: Batch | null }) {
+const labels: Record<Operation, string> = { deposit: "Queue buy", switch: "Queue switch", redeem: "Queue redeem" };
+
+export function TradeForm({ claim, others, nextBatch, decimals }: { claim: ClassView; others: ClassView[]; nextBatch: Batch | null; decimals: number }) {
+  const { portfolio } = useAccount();
+  const holdings = holdingsOf(portfolio);
+  const open = useOpenBatch(nextBatch);
   const [operation, setOperation] = useState<Operation>("deposit");
   const [amount, setAmount] = useState("250");
+  const [minimum, setMinimum] = useState("");
+  const [validFor, setValidFor] = useState(3);
   const [target, setTarget] = useState(others[0].id);
   const parsed = Number(amount);
   const valid = Number.isFinite(parsed) && parsed > 0;
   const destination = others.find((item) => item.id === target) ?? others[0];
   const sameClass = operation === "switch" && destination.id === claim.id;
   const unitsProblem = valid && operation !== "deposit" ? unlockedProblem(holdings, claim.id, parsed) : null;
+  const planned = planRequest({
+    operation,
+    fromClass: operation === "deposit" ? null : claim.id,
+    toClass: operation === "deposit" ? claim.id : operation === "switch" ? destination.id : null,
+    amount,
+    minimum,
+    validForBatches: validFor,
+    targetBatch: open.batch?.batch ?? null,
+    collateralDecimals: decimals,
+  });
 
   const sourceValue = claim.unitValue ?? 1;
   const destinationValue = destination.unitValue ?? 1;
@@ -85,11 +102,11 @@ export function TradeForm({ claim, others, holdings, nextBatch }: { claim: Class
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="trade-condition" className="mb-1 block text-xs text-muted">{conditionLabel}</label>
-            <input id="trade-condition" inputMode="decimal" placeholder="Optional" className={field} />
+            <input id="trade-condition" inputMode="decimal" placeholder="Optional" value={minimum} onChange={(event) => setMinimum(event.target.value)} className={field} />
           </div>
           <div>
             <label htmlFor="trade-expiry" className="mb-1 block text-xs text-muted">Expires after</label>
-            <select id="trade-expiry" defaultValue="3" className={`${field} cursor-pointer`}>
+            <select id="trade-expiry" value={validFor} onChange={(event) => setValidFor(Number(event.target.value))} className={`${field} cursor-pointer`}>
               <option value="1">1 batch</option>
               <option value="3">3 batches</option>
               <option value="10">10 batches</option>
@@ -100,7 +117,7 @@ export function TradeForm({ claim, others, holdings, nextBatch }: { claim: Class
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted">Target batch</dt>
-            <dd className="num">{nextBatch ? <>#{formatWhole(nextBatch.batch)} · {formatUtcTime(nextBatch.cutoff)} · closes in <Countdown /></> : "No open batch"}</dd>
+            <dd className="num"><TargetBatch batch={open.batch} seconds={open.seconds} /></dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Last unit value</dt>
@@ -121,7 +138,7 @@ export function TradeForm({ claim, others, holdings, nextBatch }: { claim: Class
           This is an estimate, not a quote. Your request is queued and executes at the unit value fixed by the next publication. You can cancel until the batch closes.
         </p>
 
-        <WalletAction needsWallet="Connect wallet to continue" className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton intent={planned.intent} label={labels[operation]} connectLabel="Connect wallet to continue" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );
