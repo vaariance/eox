@@ -13,7 +13,6 @@ const DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 const U64_MAX = (1n << 64n) - 1n;
 const UNIT_LIMIT = 10n ** 24n;
 const COLLATERAL_LIMIT = 10n ** 11n;
-export const CRYPTO_CLASS = 0;
 export const COLLATERAL_DECIMALS = 6;
 export const CRYPTO_UNIT_DECIMALS = 12;
 export const DEVNET_TEST_COLLATERAL = new PublicKey("5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X");
@@ -77,6 +76,7 @@ export class CoxSwapSdk {
     this.pdas = addresses(program.programId);
     this.poolKey = this.pdas.pool(options.poolId);
   }
+  private cryptoClass(pool: Pool): number { return pool.classes.length - 1; }
   private async context(owner?: PublicKey) {
     const connection = this.program.provider.connection;
     check(await connection.getGenesisHash() === DEVNET_GENESIS, "SwapNetworkMismatch");
@@ -153,13 +153,13 @@ export class CoxSwapSdk {
   async market() {
     const context = await this.context();
     return { pool: this.poolKey, collateralMint: this.options.collateralMint, collateralDecimals: COLLATERAL_DECIMALS,
-      cryptoUnitDecimals: CRYPTO_UNIT_DECIMALS, cryptoClass: CRYPTO_CLASS, testOnly: true as const,
+      cryptoUnitDecimals: CRYPTO_UNIT_DECIMALS, cryptoClass: this.cryptoClass(context.pool), testOnly: true as const,
       benchmarkLabel: `CRYPTO (pilot, ${context.methodology.roster.length} assets)`, initialized: context.pool.initialized,
       paused: context.registry.paused, halted: context.halted, earliestBatchEstimate: this.earliestBatch(context), sequence: number(context.pool.sequence), batch: number(context.pool.lastBatch) };
   }
   async balances(owner: PublicKey) {
     const { position, pool } = await this.context(owner);
-    const crypto = position?.classes[CRYPTO_CLASS];
+    const crypto = position?.classes[this.cryptoClass(pool)];
     const units = crypto ? number(crypto.units) : 0n;
     const locked = crypto ? number(crypto.locked) : 0n;
     check(locked <= units, "SwapPositionMismatch");
@@ -179,7 +179,7 @@ export class CoxSwapSdk {
     this.trading(context);
     const buying = direction === "collateral-to-crypto";
     const result = await new CoxSimulations(this.program, owner).quote(this.poolKey, buying ? 0 : 2,
-      buying ? 255 : CRYPTO_CLASS, buying ? CRYPTO_CLASS : 255, buying ? input : 0n, buying ? 0n : input);
+      buying ? 255 : this.cryptoClass(context.pool), buying ? this.cryptoClass(context.pool) : 255, buying ? input : 0n, buying ? 0n : input);
     check(result.sequence.eq(context.pool.sequence), "SwapReadChangedRetry");
     return { direction, input, estimatedOutput: number(buying ? result.minted : result.proceeds),
       observedSequence: number(result.sequence), collateralMint: this.options.collateralMint, testOnly: true,
@@ -193,18 +193,18 @@ export class CoxSwapSdk {
     check(await this.token(input.tokenAccount, input.owner) >= input.amount, "SwapInsufficientCollateral");
     const request = this.reservation(context, input.expiryBatch);
     return this.plan("buy-crypto", input.owner, context.pool,
-      this.builder.deposit(this.keys(input, request.nonce), CRYPTO_CLASS, input.amount, input.minimumUnits, input.expiryBatch), request);
+      this.builder.deposit(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.amount, input.minimumUnits, input.expiryBatch), request);
   }
   async prepareSell(input: SellCrypto): Promise<SwapPlan> {
     uint(input.units, UNIT_LIMIT, true); uint(input.minimumProceeds, U64_MAX);
     const context = await this.context(input.owner);
     this.trading(context);
-    const crypto = context.position?.classes[CRYPTO_CLASS];
+    const crypto = context.position?.classes[this.cryptoClass(context.pool)];
     check(!!crypto && number(crypto.units) - number(crypto.locked) >= input.units, "SwapInsufficientUnlockedUnits");
     await this.token(input.tokenAccount, input.owner);
     const request = this.reservation(context, input.expiryBatch);
     return this.plan("sell-crypto", input.owner, context.pool,
-      this.builder.redeem(this.keys(input, request.nonce), CRYPTO_CLASS, input.units, input.minimumProceeds, input.expiryBatch), request);
+      this.builder.redeem(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.units, input.minimumProceeds, input.expiryBatch), request);
   }
   private async ownedRequest(owner: PublicKey, nonce: bigint, pool: Pool) {
     uint(nonce, U64_MAX);
@@ -212,7 +212,7 @@ export class CoxSwapSdk {
     check(!!info, "SwapRequestNotFound");
     const value = decodeAccount(this.program, "request", info);
     check(value.pool.equals(this.poolKey) && value.owner.equals(owner) && number(value.nonce) === nonce, "SwapRequestOwnerMismatch");
-    check((value.operation === 0 && value.to === CRYPTO_CLASS) || (value.operation === 2 && value.from === CRYPTO_CLASS), "SwapRequestNotBenchmark");
+    check((value.operation === 0 && value.to === this.cryptoClass(pool)) || (value.operation === 2 && value.from === this.cryptoClass(pool)), "SwapRequestNotBenchmark");
     return committedRequest(value, pool);
   }
   async request(owner: PublicKey, nonce: bigint) {
