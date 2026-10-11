@@ -717,3 +717,11 @@ another agent needs to know.
 - **Rules for agents:** `product.md` G3 asks for the test-collateral, MVP-0 and operator-attested labels on every trading screen; they were removed from the banner by Godwin's decision for the demo, so do not assume the app still shows them. The pool's collateral is still the test mint `5rpGrekf…wV3X`, not Circle's devnet USDC `4zMMC9sr…ncDU`, so USDC from the Faucet page cannot be deposited into pool 0.
 - **Open:** Peter: whether a pool on Circle's devnet USDC will be created, or the test mint handed to testers. No request has been signed by a real wallet yet.
 - **Refs:** `apps/web/README.md`, commits `d6c57a2`..`a76dcbf` and the three that follow.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app on pool 1 and devnet USDC; Swap page back on the app API
+
+- **Area:** `apps/web`.
+- **What:** Following Joel's 2026-10-11 "Signer and live APIs moved to pool 1 (devnet USDC)" entry, the web app labels the collateral `USDC` (Circle's devnet USDC), and the Faucet page reads the wallet's devnet SOL and USDC. The Swap page (collateral ↔ CRYPTO only) now uses the app API's `buildDeposit` and `buildRedeem` with class `CRYPTO`, and `apps/web` no longer depends on `@cox/client`. A dry run against the public live API prepared a 1 USDC deposit into CRYPTO for pool 1 and was refused only because the test owner had no USDC account. Supersedes Godwin's 2026-10-11 "Swap page uses @cox/client/swap" entry.
+- **Rules for agents:** Do not use `@cox/client/swap` for the benchmark until it is fixed: its `CRYPTO_CLASS` is 0, which is the first asset's class (BTC), while `packages/cox/SPEC.md` §3, the program (`h.push(SCALE)` last) and the app API put CRYPTO at index N (30). Its `DEVNET_TEST_COLLATERAL` is also pool 0's mint. An empty class mints one unit per collateral base unit, so the app estimates an empty class at 10^-6 USDC per unit.
+- **Open:** Peter: fix `CRYPTO_CLASS` and its tests in `packages/cox-client/src/swap.ts` (he confirmed to Godwin that CRYPTO is the last index). No request has been signed by a real wallet yet.
+- **Refs:** `apps/web/README.md` (Swap page), commits `d1e605f`..`0d6bf73`.
