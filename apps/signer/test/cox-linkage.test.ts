@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { Keypair, PublicKey, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import type { CoxLinkage, SolanaProgramBinding } from "../src/config.js";
@@ -73,4 +74,22 @@ test("finalize needs the pool's batch and publication accounts, which may not ex
 
 test("a linkage naming another pool than its id is refused", async () => {
   await refused(checkCoxLinkage(binding, { ...linkage(), pool: otherPool.toBase58() }, tx("seal_evaluation", [registry, pool, batch, vault]), fetch), /is not pool 0/);
+});
+
+test("accepts the fee upgrade's compiled schema 2 request and refuses unknown request schemas", async () => {
+  const fixtures = JSON.parse(readFileSync(new URL("../../../packages/cox/fixtures/fee-accounts.json", import.meta.url), "utf8")) as { accounts: { name: string; address: string; dataHex: string }[] };
+  const compiled = fixtures.accounts.find((a) => a.name === "request")!;
+  const data = Buffer.from(compiled.dataHex, "hex");
+  assert.equal(data.readUInt16LE(8), 2);
+  const address = new PublicKey(compiled.address);
+  const holder = new PublicKey(data.subarray(43, 75));
+  const holderPosition = pda(Buffer.from("position"), pool.toBuffer(), holder.toBuffer());
+  chain.set(address.toBase58(), { owner: program, data });
+  await checkCoxLinkage(binding, linkage(), tx("execute", [registry, pool, batch, address, holderPosition, vault]), fetch);
+  const future = Buffer.from(data);
+  future.writeUInt16LE(3, 8);
+  chain.set(address.toBase58(), { owner: program, data: future });
+  await refused(checkCoxLinkage(binding, linkage(), tx("execute", [registry, pool, batch, address, holderPosition, vault]), fetch), /unsupported schema 3/);
+  chain.set(address.toBase58(), { owner: program, data: data.subarray(0, 60) });
+  await refused(checkCoxLinkage(binding, linkage(), tx("execute", [registry, pool, batch, address, holderPosition, vault]), fetch), /not a request account/);
 });

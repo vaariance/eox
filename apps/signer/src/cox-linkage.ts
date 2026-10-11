@@ -16,6 +16,7 @@ const INSTRUCTION = Object.fromEntries(
   ["publish", "evaluate", "safety", "seal_evaluation", "execute", "finalize"].map((name) => [discriminator("global", name), name]),
 ) as Record<string, string>;
 const REQUEST = discriminator("account", "Request");
+const REQUEST_SCHEMAS = new Set([1, 2]);
 
 const deny = (message: string): never => {
   throw new PolicyRejection("TARGET_NOT_BOUND", message);
@@ -40,7 +41,9 @@ export async function checkCoxLinkage(binding: SolanaProgramBinding, linkage: Co
     const [account] = await fetch([key]);
     if (!account) return deny(`request account ${key.toBase58()} does not exist`);
     if (!account.owner.equals(program)) deny(`request account ${key.toBase58()} is not owned by the COX program`);
-    if (account.data.subarray(0, 8).toString("hex") !== REQUEST) deny(`${key.toBase58()} is not a request account`);
+    if (account.data.length < HEADER + 72 || account.data.subarray(0, 8).toString("hex") !== REQUEST) deny(`${key.toBase58()} is not a request account`);
+    const schema = account.data.readUInt16LE(8);
+    if (!REQUEST_SCHEMAS.has(schema)) deny(`request ${key.toBase58()} has unsupported schema ${schema}`);
     if (!new PublicKey(account.data.subarray(HEADER, HEADER + 32)).equals(pool)) deny(`request ${key.toBase58()} belongs to another pool`);
     return account.data;
   }
