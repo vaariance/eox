@@ -9,7 +9,7 @@ import { CRYPTO_CLASS, type ClassView, feeLabel, holdingsOf, quotedFee, toNumber
 import { useAccount } from "./account";
 import { useOpenBatch } from "./open-batch";
 import { SendButton } from "./send-button";
-import { useQuote } from "./use-quote";
+import { QUOTE_MESSAGES, useQuote } from "./use-quote";
 
 type Side = "buy" | "sell";
 
@@ -38,12 +38,10 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
   const available = held ? held.units - held.locked : holdings === null ? null : 0;
   const unitsProblem = valid ? unlockedProblem(holdings, from, parsed) : null;
   const planned = planRequest({ operation: "switch", fromClass: from, toClass: to, amount, minimum, validForBatches: VALID_FOR, targetBatch: open.batch?.batch ?? null, collateralDecimals: decimals });
-  const fromValue = (buying ? crypto : claim).unitValue ?? 1;
-  const toValue = (buying ? claim : crypto).unitValue ?? 1;
-  const estimate = valid ? ((parsed * fromValue) / toValue) * (1 - (fee?.bps ?? 0) / 10000) : null;
-  const { quote, pending } = useQuote(planned.intent);
+  const { quote, pending, problem } = useQuote(planned.intent);
   const quoted = quote === null || quote.mintedUnits === null ? null : toNumber(quote.mintedUnits, unitDigits(decimals));
-  const shown = quoted ?? estimate;
+  const connected = live && owner !== null;
+  const blocked = unitsProblem ? QUOTE_MESSAGES.balance : problem ? QUOTE_MESSAGES[problem] : null;
   const receives = buying ? `${claim.id} units` : "$CRYPTO";
   const needsCrypto = buying && live && owner !== null && available === 0;
 
@@ -85,16 +83,16 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted">You receive</dt>
-            <dd className="num">{shown === null ? "—" : pending ? "…" : `≈ ${formatAmount(shown, 4)} ${receives}`}</dd>
+            <dd className="num">{pending ? "…" : quoted === null ? "—" : `≈ ${formatAmount(quoted, 4)} ${receives}`}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Fee</dt>
-            <dd className="num">{quote ? quotedFee(quote.fee, quote.feeTerms, decimals) : feeLabel(fee, decimals)}</dd>
+            <dd className="num">{quote ? quotedFee(quote.fee, quote.feeTerms, decimals) : pending ? "…" : connected ? "—" : feeLabel(fee, decimals)}</dd>
           </div>
         </dl>
 
 
-        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={pending ? "Calculating" : buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? "" : unitsProblem) ?? (pending ? "" : null)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={pending ? "Calculating" : buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? "" : blocked) ?? (pending ? "" : null)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );
