@@ -52,6 +52,41 @@ Signing is disabled for every target until its deployed address is added to
 with its roles. Change the config by commit and redeploy. Never widen a role to make a
 request pass.
 
+## COX publisher binding (J4)
+
+`config/dev.json` binds `oracle-operator` to the devnet COX program
+`G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF` for `publish`, `evaluate`, `safety`,
+`seal_evaluation`, `execute` and `finalize` only. The binding is **prepared but
+disabled** (`enabled: false`): every request is refused with `TARGET_NOT_BOUND`
+until Peter supplies the initialized pool, vault, mint and sealed methodology and
+the binding is switched on with `linkage.methodology` set.
+
+Checks per transaction, on top of the general rules above:
+
+- the registry, pool 0 and its vault PDAs at their IDL positions; `publish` and
+  `finalize` must be paid by the operator key, which is also `publish`'s runtime
+  authority; the system program where the IDL has it;
+- `cox-v1` linkage, read over `SIGNER_SOLANA_RPC_URL` (devnet, genesis checked at
+  start-up): the batch PDA of `publish`'s batch id; for the cranks the batch,
+  request and the request owner's position PDAs, read from the stored batch and
+  request accounts; for `finalize` the publication PDA of the batch's sequence; the
+  bound sealed methodology for `publish` and `finalize`;
+- compute unit limit at most 1,400,000 and price at most 1,000 micro-lamports;
+  no lookup tables, no heap frame, no other program.
+
+Only `cox-publisher@colosseum-eox.iam.gserviceaccount.com` may call it; it holds
+`roles/run.invoker` on this service. The dev VM's account (`eox-dev-vm`) holds
+`roles/iam.serviceAccountOpenIdTokenCreator` on it, so a process on `eox-dev` gets
+its identity token without any key file:
+
+```bash
+AT=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token | jq -r .access_token)
+curl -s -X POST -H "Authorization: Bearer $AT" -H "Content-Type: application/json"   -d '{"audience":"https://eox-signer-529206295845.us-central1.run.app","includeEmail":true}'   https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/cox-publisher@colosseum-eox.iam.gserviceaccount.com:generateIdToken
+```
+
+In Node, `new IAMCredentialsClient().generateIdToken({ name: "projects/-/serviceAccounts/cox-publisher@colosseum-eox.iam.gserviceaccount.com", audience, includeEmail: true })`
+does the same; pass the token to `createSigningClient({ identityToken })`.
+
 ## Commands
 
 ```bash
