@@ -84,3 +84,14 @@ wallet's filled requests at average cost: a swap in costs its USDC amount, a
 buy costs the value moved from CRYPTO (`receipt.proceeds`), and a sale or swap
 out reduces the cost in proportion. No figure is shown when the filled
 requests do not account for the units held.
+
+## Order confirmation and position view
+
+After a buy, sale, cash out or swap is sent, a snackbar at the top of the
+page says the order was placed, what it was and which batch it fills in, with
+links to the portfolio and the transaction. It closes after ten seconds.
+
+Clicking a row on the Portfolio page opens `/portfolio/<class>`: what the
+position is worth, what it cost, the gain or loss, and a chart of its worth at
+each publication since the wallet's last filled request for that class. The
+Portfolio and position pages reload their publication data every 20 seconds.
