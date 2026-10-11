@@ -552,3 +552,10 @@ another agent needs to know.
 - **Rules for agents:** Never commit or log an RPC URL with a key or token; log hosts only. Each service gets its own proxy token. Do not point another developer's service at this proxy; they run their own.
 - **Open:** Peter: rotate the Helius key that was shared in chat, then update the Worker's `UPSTREAM_URLS` secret.
 - **Refs:** `apps/rpc-proxy/README.md`, `apps/signer/README.md`, `apps/app-api/README.md`.
+
+### 2026-10-11 · Joel (Claude Code) · RPC proxy: no key rotation, Peter has a token
+
+- **Area:** `apps/rpc-proxy` (Worker secret `ACCESS_TOKENS`).
+- **What:** Joel decided the Helius key is not rotated; this closes the open item in the 2026-10-11 "Solana RPC through a Cloudflare Worker proxy" entry. At Joel's request Peter got his own proxy token (a third entry in `ACCESS_TOKENS`, alongside the signer's and the live app API's), handed to him privately.
+- **Rules for agents:** This replaces that entry's rule against pointing another developer's service at the proxy: Peter may use it with his own token. Revoke a client by re-putting `ACCESS_TOKENS` without its token; never share one token between clients.
+- **Refs:** `apps/rpc-proxy/README.md`.
