@@ -1,0 +1,26 @@
+[Unit]
+Description=COX devnet publisher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cox-publisher
+Group=cox-publisher
+WorkingDirectory=/opt/eox
+ExecStart=/usr/bin/flock --nonblock --no-fork /var/lib/cox-publisher/state.json.flock /usr/bin/node --import /opt/eox/apps/cox-publisher/node_modules/tsx/dist/loader.mjs /opt/eox/apps/cox-publisher/src/main.ts --config /etc/cox-publisher/dev.json --locked
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=cox-publisher
+StateDirectory=cox-publisher
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cox-publisher /run/cox-publisher
+TimeoutStopSec=30
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target
