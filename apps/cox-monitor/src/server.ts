@@ -23,7 +23,7 @@ function handle(monitor: ArchiveMonitor, request: IncomingMessage, response: Ser
   const url = new URL(request.url ?? "/", "http://monitor");
   const segments = url.pathname.split("/").filter(Boolean);
 
-  if (segments.length === 1 && segments[0] === "healthz") {
+  if (segments.length === 1 && (segments[0] === "health" || segments[0] === "healthz")) {
     const { checked, mismatches, cursor } = monitor.state;
     return send(response, 200, { schema: MONITOR_SCHEMA, checked, mismatches, started: cursor !== null, latestCutoff: monitor.latest()?.cutoff ?? null });
   }
