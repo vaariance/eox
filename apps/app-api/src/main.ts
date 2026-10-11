@@ -1,9 +1,11 @@
 import { dirname, join, resolve } from "node:path";
+import { addresses } from "@cox/client";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { loadProgram } from "./cox/chain.js";
 import { CoxFixtureSource } from "./cox/fixture-source.js";
 import { LiveCoxSource } from "./cox/live-source.js";
+import { PublicationArchive } from "./cox/publication-archive.js";
 import { checkGenesis, failoverConnection, parseRpcUrls } from "./cox/rpc.js";
 import { createCoxApiServer, type CoxApiServerOptions } from "./cox/server.js";
 import { CoxSubmissions } from "./cox/submissions.js";
@@ -46,7 +48,9 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
   const connection = failoverConnection(urls, "finalized", (from, to, reason) => console.warn(`cox rpc failover from ${from} to ${to}: ${reason}`));
   const program = loadProgram(connection, process.env.COX_IDL_PATH ?? join(here, "..", "..", "..", "packages", "cox", "idl", "cox.json"));
   const poolId = BigInt(poolText);
-  const options = { connection, program, poolId, network, logPath: join(stateDir, `publications-${poolId}.jsonl`), pollMs, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
+  const archiveDir = process.env.COX_PUBLICATION_ARCHIVE;
+  const archive = archiveDir ? new PublicationArchive(resolve(archiveDir), program, addresses(program.programId).pool(poolId), genesis) : null;
+  const options = { connection, program, poolId, network, logPath: join(stateDir, `publications-${poolId}.jsonl`), pollMs, archive, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
   for (;;) {
     try {
       const source = await LiveCoxSource.open(options);
