@@ -6,7 +6,7 @@ import { FirstPublication } from "@/components/first-publication";
 import { RowLink } from "@/components/row-link";
 import { Sparkline } from "@/components/sparkline";
 import { CardTitle, Figure, StatCard } from "@/components/stat-card";
-import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
+import { getAssets, getDeployment, getPublications } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
 import { changeSince, decimalsOf, classViews, currentOf, findClass, latest, levelSeries, priceSeries, referenceSeries } from "@/lib/view";
 
@@ -30,13 +30,12 @@ function EmptyRow({ id, name, href }: { id: string; name: string; href: string }
       <td className="px-4 py-3 text-right text-muted">{EMPTY}</td>
       <td className="px-4 py-3 text-muted">{EMPTY}</td>
       <td className="num px-4 py-3 text-right">{formatAmount(0)}</td>
-      <td className="num px-4 py-3 text-right text-muted">n/a</td>
     </RowLink>
   );
 }
 
 export default async function MarketsPage() {
-  const [assets, deployment, publications, status] = await Promise.all([getAssets(), getDeployment(), getPublications(), getStatus()]);
+  const [assets, deployment, publications] = await Promise.all([getAssets(), getDeployment(), getPublications()]);
   const current = currentOf(publications);
 
   const classes = classViews(current, assets, decimalsOf(deployment));
@@ -85,13 +84,13 @@ export default async function MarketsPage() {
         <StatCard icon={Coins} title="Pool TVL" value={<Figure text={formatAmount(active)} unit="USDC" />} caption={`across ${classes.length} classes`} />
       </div>
 
-      {!current && <FirstPublication status={status} />}
+      {!current && <FirstPublication />}
 
       <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
         <div className="border-b border-line px-4 py-3">
           <CardTitle icon={LayoutList} aside={`${assets.length} coins`}>All markets</CardTitle>
         </div>
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[660px] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-muted">
               <th scope="col" className="px-4 py-3 font-normal">Asset</th>
@@ -100,7 +99,6 @@ export default async function MarketsPage() {
               <th scope="col" className="px-4 py-3 text-right font-normal">Reference, 1h</th>
               <th scope="col" className="px-4 py-3 font-normal">Last 4h</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Class backing</th>
-              <th scope="col" className="px-4 py-3 text-right font-normal">Unit value</th>
             </tr>
           </thead>
           <tbody>
@@ -122,7 +120,6 @@ export default async function MarketsPage() {
                   <td className="px-4 py-3 text-right"><Change ratio={changeSince(reference, HOUR)} /></td>
                   <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(changeSince(reference, WINDOW))} /></td>
                   <td className="num px-4 py-3 text-right">{formatAmount(claim.backing)}</td>
-                  <td className="num px-4 py-3 text-right">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</td>
                 </RowLink>
               );
             })}

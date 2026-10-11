@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { shortAddress } from "@/lib/address";
 import { COLLATERAL } from "@/lib/config";
 import { costBasis, paidFor } from "@/lib/basis";
-import { direction, formatAmount, formatSigned, formatWhole } from "@/lib/format";
+import { direction, formatAmount, formatSigned } from "@/lib/format";
 import { CRYPTO_CLASS, type ClassView, nameOf, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { useOpenBatch } from "./open-batch";
@@ -54,7 +54,6 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
         <h1 className="font-display text-title font-semibold tracking-tight">Portfolio</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           {who}
-          {portfolio && portfolio.appliedSequence !== null && ` Up to date with publication #${formatWhole(portfolio.appliedSequence)}.`}
         </p>
       </div>
 

@@ -5,13 +5,12 @@ import { AssetChart } from "@/components/asset-chart";
 import { CoinIcon } from "@/components/coin-icon";
 import { FirstPublication } from "@/components/first-publication";
 import { MyPosition } from "@/components/my-position";
-import { PriceSource } from "@/components/price-source";
 import { RequestList } from "@/components/request-list";
 import { Figure, StatCard } from "@/components/stat-card";
 import { TradeForm } from "@/components/trade-form";
 import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
-import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
+import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 const SPARK = 60;
@@ -20,7 +19,7 @@ const EMPTY = "—";
 function NoChart() {
   return (
     <section className="flex h-80 items-center justify-center rounded-card border border-line bg-surface p-4 text-sm text-muted shadow-card">
-      The chart starts with the first publication.
+      The chart starts with the first price update.
     </section>
   );
 }
@@ -57,7 +56,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
         {asset.name !== asset.assetId && <span className="text-base font-normal text-muted">{asset.name}</span>}
       </h1>
 
-      {!current && <FirstPublication status={status} />}
+      {!current && <FirstPublication />}
 
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard
@@ -66,7 +65,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
           aside="USD"
           value={current ? <Figure text={formatPrice(latest(price))} /> : EMPTY}
           change={current ? priceHour : null}
-          caption={current ? <PriceSource price={priceOf(current, asset.assetId)} detailed /> : "No price published yet"}
+          caption={current ? "last hour" : "No price yet"}
           spark={current ? { points: price.slice(-SPARK), tone: direction(priceHour) } : null}
         />
         <StatCard

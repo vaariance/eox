@@ -110,7 +110,7 @@ export function AssetChart({ series, note, height }: { series: Series[]; note?: 
           <TradeChart bars={bars} candles={candles} digits={current.digits} label={current.label} lines={lines} marks={current.marks} compare={current.compare} height={height} />
         ) : (
           <p className="flex items-center justify-center px-6 text-center text-sm text-muted" style={{ height: height ?? 420 }}>
-            {shown.length > 1 ? "There is not enough history yet for bars this wide. Choose a shorter interval." : "This line starts with the next publication."}
+            {shown.length > 1 ? "There is not enough history yet for bars this wide. Choose a shorter interval." : "This line starts with the next price update."}
           </p>
         )}
       </div>

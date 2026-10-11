@@ -3,8 +3,8 @@
 import type { CoxRequest, CoxStatus, RequestState } from "@eox/app-api";
 import { CircleCheck, CircleX, Clock, Undo2 } from "lucide-react";
 import { COLLATERAL } from "@/lib/config";
-import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import { CRYPTO_CLASS, batchCutoff, nameOf, toNumber, unitDigits } from "@/lib/view";
+import { formatAmount } from "@/lib/format";
+import { CRYPTO_CLASS, nameOf, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { SendButton } from "./send-button";
 
@@ -12,9 +12,9 @@ const states: Record<RequestState, { label: string; tone: string; Icon: typeof C
   queued: { label: "Queued", tone: "text-warn", Icon: Clock, note: null },
   filled: { label: "Filled", tone: "text-up", Icon: CircleCheck, note: null },
   "condition-failed": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "The result was below your minimum, so nothing moved." },
-  expired: { label: "Expired", tone: "text-down", Icon: CircleX, note: "It ran out of batches before a publication." },
+  expired: { label: "Expired", tone: "text-down", Icon: CircleX, note: "It was not filled in time, so nothing moved." },
   "zero-value-class": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "That class has units but no value, so it cannot take new money." },
-  "safety-rejected": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "The pool could not take this request safely in that batch, so nothing moved." },
+  "safety-rejected": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "The pool could not take this request safely, so nothing moved." },
   cancelled: { label: "Cancelled", tone: "text-muted", Icon: CircleX, note: null },
   refunded: { label: "Refunded", tone: "text-muted", Icon: Undo2, note: null },
 };
@@ -34,29 +34,23 @@ function subject(request: CoxRequest): string {
 
 function size(request: CoxRequest, decimals: number): string {
   if (request.amount !== null) return `${formatAmount(toNumber(request.amount, decimals))} ${COLLATERAL.symbol}`;
-  return `${formatAmount(toNumber(request.units ?? "0", unitDigits(decimals)))} ${request.fromClass ?? ""}`;
+  return `${formatAmount(toNumber(request.units ?? "0", unitDigits(decimals)))} ${nameOf(request.fromClass ?? "")}`;
 }
 
 function minimum(request: CoxRequest, decimals: number): string {
   if (request.minimumProceeds !== null && BigInt(request.minimumProceeds) > 0n) return `Min ${formatAmount(toNumber(request.minimumProceeds, decimals))} ${COLLATERAL.symbol}`;
-  if (request.minimumUnits !== null && BigInt(request.minimumUnits) > 0n) return `Min ${formatAmount(toNumber(request.minimumUnits, unitDigits(decimals)))} ${request.toClass ?? ""}`;
+  if (request.minimumUnits !== null && BigInt(request.minimumUnits) > 0n) return `Min ${formatAmount(toNumber(request.minimumUnits, unitDigits(decimals)))} ${nameOf(request.toClass ?? "")}`;
   return "No minimum";
 }
 
 function detail(request: CoxRequest, decimals: number): string {
   const state = states[request.state];
-  if (request.state === "queued") return `${minimum(request, decimals)} · expires after batch #${formatWhole(request.expiryBatch)}`;
+  if (request.state === "queued") return `Fills at the next price update · ${minimum(request, decimals)}`;
   if (request.state === "filled" && request.receipt) {
     if (request.operation === "redeem") return `Received ${formatAmount(toNumber(request.receipt.proceeds, decimals))} ${COLLATERAL.symbol}`;
-    return `Received ${formatAmount(toNumber(request.receipt.minted, unitDigits(decimals)))} ${request.toClass ?? ""}`;
+    return `Received ${formatAmount(toNumber(request.receipt.minted, unitDigits(decimals)))} ${nameOf(request.toClass ?? "")}`;
   }
   return state.note ?? "";
-}
-
-function when(request: CoxRequest, status: CoxStatus): string {
-  if (request.receipt) return `Publication #${formatWhole(request.receipt.sequence)}`;
-  const cutoff = batchCutoff(status, request.targetBatch);
-  return `Batch #${formatWhole(request.targetBatch)}${cutoff === null ? "" : ` · closes ${formatUtcTime(cutoff)}`}`;
 }
 
 const action = "h-9 rounded-pill border border-line px-3 text-xs";
@@ -84,7 +78,6 @@ export function RequestList({ classId = null, status, decimals }: { classId?: st
                 {operationLabel(request)} <span className="text-muted">{subject(request)}</span>
               </span>
               <span className="num w-36">{size(request, decimals)}</span>
-              <span className="num w-60 text-muted">{when(request, status)}</span>
               <span className="min-w-64 flex-1 text-xs text-muted">{detail(request, decimals)}</span>
               {request.state === "queued" && (
                 <span className="flex flex-col items-end gap-1">

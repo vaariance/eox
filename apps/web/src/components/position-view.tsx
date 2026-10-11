@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { costBasis, paidFor } from "@/lib/basis";
 import { COLLATERAL } from "@/lib/config";
-import { direction, formatAmount, formatPrice, formatSigned, formatUtcTime, formatWhole } from "@/lib/format";
+import { direction, formatAmount, formatPrice, formatSigned, formatUtcTime } from "@/lib/format";
 import { tradesOf } from "@/lib/trades";
 import { CRYPTO_CLASS, type ClassView, type Point, type ValuePoint, holdingsOf, nameOf } from "@/lib/view";
 import { useAccount } from "./account";
@@ -61,7 +61,7 @@ export function PositionView({ classId, claim, crypto, values, reference, price,
   const since = lastBuy === null ? values : values.filter((point) => point.sequence >= lastBuy.sequence);
   const free = position ? BigInt(position.units) - BigInt(position.locked) : 0n;
   const expiryBatch = open.batch ? open.batch.batch + 2 : null;
-  const when = (sequence: number) => (cutoffs[sequence] === undefined ? `Publication #${formatWhole(sequence)}` : `${formatUtcTime(cutoffs[sequence])} · #${formatWhole(sequence)}`);
+  const when = (sequence: number) => (cutoffs[sequence] === undefined ? "—" : formatUtcTime(cutoffs[sequence]));
   const marks: ChartMark[] = trades.flatMap((trade) =>
     cutoffs[trade.sequence] === undefined ? [] : [{ cutoff: cutoffs[trade.sequence], side: trade.side === "bought" ? ("buy" as const) : ("sell" as const), label: `${sides[trade.side]} ${trade.price === null ? "n/a" : formatAmount(trade.price, 6)}` }],
   );
@@ -99,7 +99,7 @@ export function PositionView({ classId, claim, crypto, values, reference, price,
             {percent !== null && change !== null && (
               <span className={`num text-sm ${tone}`}>{formatSigned(change, 6)} {COLLATERAL.symbol} ({formatSigned(percent, 3)}%)</span>
             )}
-            <span className="text-xs text-muted">Unit value{status.latestSequence !== null && ` · publication #${formatWhole(status.latestSequence)}`}</span>
+            <span className="text-xs text-muted">Unit value</span>
           </div>
           {holding && classId === CRYPTO_CLASS && (
             <span className="flex flex-col items-end gap-1">
