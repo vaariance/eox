@@ -91,7 +91,14 @@ After a buy, sale, cash out or swap is sent, a snackbar at the top of the
 page says the order was placed, what it was and which batch it fills in, with
 links to the portfolio and the transaction. It closes after ten seconds.
 
-Clicking a row on the Portfolio page opens `/portfolio/<class>`: what the
-position is worth, what it cost, the gain or loss, and a chart of its worth at
-each publication since the wallet's last filled request for that class. The
-Portfolio and position pages reload their publication data every 20 seconds.
+Clicking a row on the Portfolio page opens `/portfolio/<class>`, laid out as a
+trading screen: a header with the unit value and the position's gain or loss,
+a strip with bought at, sold at, units, paid and worth, a chart beside the
+Buy, Sell and Cash out form, and a table of the wallet's filled trades with
+the price of each. The chart (`src/components/trade-chart.tsx`, also used on
+the asset and CRYPTO pages) has a crosshair with price and time tags, a tag
+for the latest value, a dashed "Bought at" line at the average entry price and
+B and S markers where trades filled. Bought-at and sold-at prices come from
+filled requests (`src/lib/trades.ts`): the USDC value moved divided by the
+units. The Portfolio and position pages reload their publication data every 20
+seconds.
