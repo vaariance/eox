@@ -112,6 +112,11 @@ describe("archived snapshot check", () => {
     expect(checkArchivedCutoff(change((_, view) => (view.snapshot = { digest: null, digestEncoding: null, admissible: false }))).verdict).toBe("inadmissible");
     expect(checkArchivedCutoff(change((_, view) => (view.snapshot.admissible = false))).verdict).toBe("mismatch");
   });
+
+  it("skips an inadmissible snapshot whose digest predates the wire encoding", () => {
+    const result = checkArchivedCutoff(change((_, view) => (view.snapshot = { ...view.snapshot, digestEncoding: null, admissible: false })));
+    expect(result.verdict).toBe("skipped");
+  });
 });
 
 describe("price conversion", () => {
