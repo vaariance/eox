@@ -10,6 +10,7 @@ const states: Record<RequestState, { label: string; tone: string; Icon: typeof C
   "condition-failed": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "The result was below your minimum, so nothing moved." },
   expired: { label: "Expired", tone: "text-down", Icon: CircleX, note: "It ran out of batches before a publication." },
   "zero-value-class": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "That class has units but no value, so it cannot take new money." },
+  "safety-rejected": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "The pool could not take this request safely in that batch, so nothing moved." },
   cancelled: { label: "Cancelled", tone: "text-muted", Icon: CircleX, note: null },
   refunded: { label: "Refunded", tone: "text-muted", Icon: Undo2, note: null },
 };
