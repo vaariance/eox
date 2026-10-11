@@ -544,3 +544,11 @@ another agent needs to know.
 - **Rules for agents:** The public service is fixture data; the web app still cannot send requests or show the connected wallet's portfolio until the live app API (J5) exists. Requests to the API are made on the server side of the Next.js app, so the browser does not depend on the service's CORS setting.
 - **Open:** Joel: J5. On macOS `apps/app-api` "COX fixture provenance" fails because `packages/cox-methodology/src/vectors.ts` hashes to `9dfa71b4…`, not the fixture's recorded `ea87c088…`; line endings are a likely cause, not confirmed.
 - **Refs:** commit `34213fb`, `apps/web/README.md`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app deployed on Vercel
+
+- **Area:** `apps/web`; Vercel project `cox-web` in Godwin's team `gef`.
+- **What:** At Godwin's request the web app is deployed at <https://cox-web.vercel.app> from `dev` at `f75d046`, with root directory `apps/web`, Next.js built with webpack and Node 24. It reads the public fixture API and shows the fixture label on every page; all six pages were checked on the deployed site. It was the project's first deployment, which Vercel makes the production deployment.
+- **Rules for agents:** The site is public and shows synthetic fixture data only. It is deployed by hand from Godwin's machine with the Vercel CLI; pushing to GitHub does not redeploy it, because the project is not connected to the repository. Do not point it at a live API or add secrets to it without Godwin.
+- **Open:** Whether to connect the Vercel project to the GitHub repository so each push gets a preview.
+- **Refs:** `apps/web/README.md`.
