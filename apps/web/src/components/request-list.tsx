@@ -10,7 +10,7 @@ import { SendButton } from "./send-button";
 
 const states: Record<RequestState, { label: string; tone: string; Icon: typeof Clock; note: string | null }> = {
   queued: { label: "Queued", tone: "text-warn", Icon: Clock, note: null },
-  filled: { label: "Executed", tone: "text-up", Icon: CircleCheck, note: null },
+  filled: { label: "Filled", tone: "text-up", Icon: CircleCheck, note: null },
   "condition-failed": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "The result was below your minimum, so nothing moved." },
   expired: { label: "Expired", tone: "text-down", Icon: CircleX, note: "It ran out of batches before a publication." },
   "zero-value-class": { label: "Rejected", tone: "text-down", Icon: CircleX, note: "That class has units but no value, so it cannot take new money." },
