@@ -48,3 +48,20 @@ pnpm --filter @eox/web start
 ```
 
 Development and production builds use webpack. [`next.config.ts`](next.config.ts) maps `.js` import specifiers to workspace TypeScript sources through `resolve.extensionAlias`; use the package scripts to preserve that configuration.
+
+## Swap page
+
+The Swap page moves between the pool's test collateral and the CRYPTO class
+only (`product.md` version 14). It uses `@cox/client/swap` on the server
+(`src/lib/swap-chain.ts`, `src/app/swap-actions.ts`): the SDK checks the pool
+on Solana devnet, estimates the output with an on-chain simulation and
+prepares an unsigned transaction. The browser checks that the connected wallet
+is its fee payer and only signer, the wallet signs it, and the server sends it
+to devnet. It does not go through the app API, so it also works when the app
+API serves fixture data. `COX_RPC_URL` sets the devnet RPC used by the server
+(default `https://api.devnet.solana.com`).
+
+The collateral is the pool's devnet test mint
+`5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X`, not Circle's devnet USDC. One
+collateral base unit buys one whole unit in an empty class, so 250 test USDC
+is about 250,000,000 CRYPTO units.
