@@ -102,3 +102,15 @@ B and S markers where trades filled. Bought-at and sold-at prices come from
 filled requests (`src/lib/trades.ts`): the USDC value moved divided by the
 units. The Portfolio and position pages reload their publication data every 20
 seconds.
+
+## Candles, intervals and ranges
+
+Every chart can be drawn as a line or as candlesticks, with bars of 1 minute
+to 1 day and ranges of 1H, 4H, 1D, 1W and 1M. The source has one value per
+publication, so a candle opens at the previous bar's close and its high and
+low are the highest and lowest values in the bar (`src/lib/bars.ts`).
+
+The server keeps the last 1,440 publications (24 hours) in memory and fetches
+only newer ones on each request (`src/lib/data.ts`). The 1W and 1M ranges
+therefore show at most 24 hours until the app API offers a compact history
+route; the chart says how much history it is showing.
