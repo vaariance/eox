@@ -14,6 +14,7 @@ pnpm --filter @eox/cox-monitor test
 | `MONITOR_STATE` | `cox-monitor-state.json` | where progress and verdicts are kept |
 | `MONITOR_HOST`, `MONITOR_PORT` | `127.0.0.1`, `8792` | where verdicts are served |
 | `MONITOR_INTERVAL_SECONDS` | `20` | pause between checks |
+| `MONITOR_PAGE_SIZE`, `MONITOR_MAX_PAGES` | `50`, `20` | cutoffs read per request and requests per check; lower them to catch up gently |
 | `MONITOR_VENUE_CHECK` | off | `true` re-fetches candles from the venues |
 | `MONITOR_USER_AGENT` | none | required with the venue check; names COX and a contact address |
 | `MONITOR_VENUE_INTERVAL_SECONDS` | `600` | pause between venue sweeps |
@@ -64,7 +65,21 @@ Read-only, schema `cox.monitor/v1`, every verdict has `scope: "archive"`.
 | `GET /v1/verdicts/latest` | the newest verdict; 404 `NO_VERDICT` before the first check |
 | `GET /v1/verdicts/:cutoff` | the verdict for one cutoff; 404 `VERDICT_NOT_FOUND` |
 | `GET /v1/verdicts?limit=` | recent verdicts, newest first (1 to 1440, default 60) |
-| `GET /healthz` | counts, whether it has started, the latest cutoff |
+| `GET /health`, `GET /healthz` | counts, whether it has started, the latest cutoff |
+
+## Running on the dev VM
+
+`deploy/deploy.sh` installs only the monitor and restarts no other service. It
+bundles `src/main.ts` into one file, copies it to
+`/opt/cox-monitor/releases/<commit>` on `eox-dev`, points
+`/opt/cox-monitor/current` at it and starts systemd `cox-monitor` as its own
+user `cox-monitor`. State is in `/var/lib/cox-monitor/state.json`. The unit
+reads at most 5 cutoffs every 20 seconds so a backlog does not load the
+evidence API, and leaves the venue check off.
+
+```bash
+apps/cox-monitor/deploy/deploy.sh
+```
 
 ## Calculations it can already reproduce
 
