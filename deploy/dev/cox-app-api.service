@@ -11,7 +11,7 @@ WorkingDirectory=/opt/eox/app/apps/app-api
 Environment=APP_API_HOST=127.0.0.1
 Environment=APP_API_PORT=8790
 Environment=APP_API_SOURCE=cox-fixture
-ExecStart=/opt/eox/app/apps/app-api/node_modules/.bin/tsx src/main.ts
+ExecStart=/opt/eox/runtime/node-v24.21.0-linux-x64/bin/node --import /opt/eox/app/apps/app-api/node_modules/tsx/dist/loader.mjs src/main.ts
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
