@@ -49,18 +49,21 @@ pnpm --filter @eox/web start
 
 Development and production builds use webpack. [`next.config.ts`](next.config.ts) maps `.js` import specifiers to workspace TypeScript sources through `resolve.extensionAlias`; use the package scripts to preserve that configuration.
 
-## Swap page
+## Swap, buy and sell
 
-The Swap page moves between the pool's collateral and the CRYPTO class only
-(`product.md` version 14). It uses the same app API builders as the other
-forms (`buildDeposit` into CRYPTO, `buildRedeem` out of it), which address
-CRYPTO as the last class. It does not use `@cox/client/swap`: that SDK's
-`CRYPTO_CLASS` is 0, which is the first asset's class, while
-`packages/cox/SPEC.md` §3 and the program put CRYPTO last.
+USDC enters and leaves through the Swap page only: it deposits USDC into the
+CRYPTO class and redeems CRYPTO back to USDC (`product.md` version 14), using
+the app API's `buildDeposit` and `buildRedeem`. The page presents CRYPTO as
+what the user pays with. Asset pages have two actions: Buy is a switch from
+CRYPTO into that asset's class, and Sell is a switch back to CRYPTO
+(`buildSwitch`). The CRYPTO page has no form; it links to Swap. The app does
+not use `@cox/client/swap`, whose `CRYPTO_CLASS` is 0 while the program and
+`packages/cox/SPEC.md` §3 put CRYPTO last.
 
-The live pool is pool 1 and its collateral is Circle's devnet USDC
-(`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`). One collateral base unit
-buys one whole unit in an empty class, so 250 USDC is about 250,000,000 units.
+Units are shown at 10^(12 + collateral decimals) quanta per displayed unit, so
+with USDC one displayed unit is 10^18 quanta. An empty class mints one unit of
+10^12 quanta per collateral base unit, so 10 USDC reads as 10 CRYPTO and a
+fresh class has a unit value of 1. Requests are still sent in exact quanta.
 
 ## Faucet page
 
