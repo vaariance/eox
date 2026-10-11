@@ -1,4 +1,4 @@
-import { DEFAULT_API_URL, FIXTURE_DEMO_WALLET } from "./config";
+import { FIXTURE_DEMO_WALLET } from "./config";
 import { type CoxAsset, type CoxDeployment, type CoxStatus, type CryptoComposition, type Portfolio, type Publication, CoxApiError, createCoxApiClient } from "@eox/app-api";
 
 const HISTORY = 1440;
@@ -7,7 +7,13 @@ const MAX_PAGES = 20;
 const OWNER = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 const configuredWallet = process.env.COX_DEMO_WALLET;
-export const API_URL = (process.env.COX_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, "");
+function configuredApiUrl(): string {
+  const value = process.env.COX_API_URL?.trim();
+  if (!value) throw new Error("COX_API_URL is not set. Add it to apps/web/.env.local or to the hosting environment.");
+  return value.replace(/\/+$/, "");
+}
+
+export const API_URL = configuredApiUrl();
 export const api = createCoxApiClient({
   baseUrl: API_URL,
   fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
