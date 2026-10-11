@@ -1,4 +1,6 @@
-import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, Portfolio, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
+import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, FeeTerms, Portfolio, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
+
+import { COLLATERAL } from "./config";
 
 export const PRICE_DIGITS = 8;
 export const SCALE_DIGITS = 12;
@@ -39,6 +41,13 @@ export interface ClassView {
 
 export function toNumber(value: string, digits: number): number {
   return Number(BigInt(value)) / 10 ** digits;
+}
+
+export function feeLabel(fee: FeeTerms | null, decimals: number): string {
+  if (!fee || fee.bps === 0) return "0";
+  const rate = `${(fee.bps / 100).toFixed(2)}%`;
+  const cap = toNumber(fee.cap, decimals);
+  return cap > 0 ? `${rate}, at most ${cap} ${COLLATERAL.symbol}` : rate;
 }
 
 export function currentOf(publications: readonly Publication[]): Publication | null {

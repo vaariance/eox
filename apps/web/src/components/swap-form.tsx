@@ -3,10 +3,10 @@
 import type { Batch } from "@eox/app-api";
 import { ArrowDownUp } from "lucide-react";
 import { useState } from "react";
-import { COLLATERAL, SWAP_CHARGE_BPS } from "@/lib/config";
+import { COLLATERAL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
 import { planRequest } from "@/lib/requests";
-import { CRYPTO_CLASS, type ClassView, holdingsOf, unlockedProblem } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, feeLabel, holdingsOf, unlockedProblem } from "@/lib/view";
 import { useAccount } from "./account";
 import { TargetBatch, useOpenBatch } from "./open-batch";
 import { SendButton } from "./send-button";
@@ -16,7 +16,7 @@ const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 tex
 const fixed = "flex h-11 w-full items-center rounded-control border border-line bg-bg px-3 text-sm text-ink";
 
 export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; nextBatch: Batch | null; decimals: number }) {
-  const { portfolio } = useAccount();
+  const { portfolio, fee } = useAccount();
   const holdings = holdingsOf(portfolio, decimals);
   const open = useOpenBatch(nextBatch);
   const [buying, setBuying] = useState(true);
@@ -38,8 +38,7 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
     collateralDecimals: decimals,
   });
   const gross = valid ? (buying ? parsed / unitValue : parsed * unitValue) : null;
-  const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;
-  const estimate = gross === null ? null : gross - (charge ?? 0);
+  const estimate = gross === null ? null : gross * (1 - (fee?.bps ?? 0) / 10000);
   const give = buying ? COLLATERAL.symbol : "$CRYPTO";
   const get = buying ? "$CRYPTO" : COLLATERAL.symbol;
 
@@ -80,12 +79,10 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
             <dt className="text-muted">Stays valid for</dt>
             <dd className="num">{VALID_FOR_BATCHES} batches</dd>
           </div>
-          {SWAP_CHARGE_BPS !== null && (
-            <div className="flex justify-between">
-              <dt className="text-muted">Swap charge</dt>
-              <dd className="num">{charge === null ? `${(SWAP_CHARGE_BPS / 100).toFixed(2)}%` : `${formatAmount(charge)} ${get} (${(SWAP_CHARGE_BPS / 100).toFixed(2)}%)`}</dd>
-            </div>
-          )}
+          <div className="flex justify-between">
+            <dt className="text-muted">Fee</dt>
+            <dd className="num">{feeLabel(fee, decimals)}</dd>
+          </div>
         </dl>
 
 

@@ -24,15 +24,25 @@ export async function walletPortfolio(owner: string): Promise<Outcome<Portfolio 
   });
 }
 
+async function feeVersion(): Promise<string | undefined> {
+  return (await api.status()).data.fees?.active.version;
+}
+
 export async function buildTransaction(owner: string, intent: Intent): Promise<Outcome<UnsignedTransaction>> {
   return attempt(async () => {
     switch (intent.operation) {
-      case "deposit":
-        return (await api.buildDeposit({ owner, toClass: intent.toClass, amount: intent.amount, minimumUnits: intent.minimumUnits, expiryBatch: intent.expiryBatch })).data;
-      case "switch":
-        return (await api.buildSwitch({ owner, fromClass: intent.fromClass, toClass: intent.toClass, units: intent.units, minimumUnits: intent.minimumUnits, expiryBatch: intent.expiryBatch })).data;
-      case "redeem":
-        return (await api.buildRedeem({ owner, fromClass: intent.fromClass, units: intent.units, minimumProceeds: intent.minimumProceeds, expiryBatch: intent.expiryBatch })).data;
+      case "deposit": {
+        const expectedFeeVersion = await feeVersion();
+        return (await api.buildDeposit({ owner, toClass: intent.toClass, amount: intent.amount, minimumUnits: intent.minimumUnits, expiryBatch: intent.expiryBatch, expectedFeeVersion })).data;
+      }
+      case "switch": {
+        const expectedFeeVersion = await feeVersion();
+        return (await api.buildSwitch({ owner, fromClass: intent.fromClass, toClass: intent.toClass, units: intent.units, minimumUnits: intent.minimumUnits, expiryBatch: intent.expiryBatch, expectedFeeVersion })).data;
+      }
+      case "redeem": {
+        const expectedFeeVersion = await feeVersion();
+        return (await api.buildRedeem({ owner, fromClass: intent.fromClass, units: intent.units, minimumProceeds: intent.minimumProceeds, expiryBatch: intent.expiryBatch, expectedFeeVersion })).data;
+      }
       case "cancel":
         return (await api.buildCancel({ owner, requestId: intent.requestId })).data;
       case "refund":
