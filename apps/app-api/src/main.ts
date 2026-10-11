@@ -82,7 +82,10 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
 }
 
 const sources = mode === "cox-live" ? await live() : { source: new CoxFixtureSource(join(here, "..", "fixtures", "cox-fixture.json")) };
-const server = createCoxApiServer({ ...sources, corsOrigin, onError: (error) => console.error("app-api request failed", error) });
+const postPerMinute = Number(process.env.APP_API_POST_LIMIT_PER_MINUTE ?? "30");
+if (!Number.isInteger(postPerMinute) || postPerMinute < 1) throw new Error(`invalid APP_API_POST_LIMIT_PER_MINUTE: ${postPerMinute}`);
+const postLimit = { perMinute: postPerMinute, trustForwardedFor: process.env.APP_API_TRUST_FORWARDED_FOR === "true" };
+const server = createCoxApiServer({ ...sources, corsOrigin, postLimit, onError: (error) => console.error("app-api request failed", error) });
 server.listen(port, host, () => console.log(`app-api (${mode}) listening on http://${host}:${port}`));
 
 function shutdown(): void {

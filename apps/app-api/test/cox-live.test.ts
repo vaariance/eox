@@ -224,6 +224,32 @@ describe("live COX source on the compiled-program account fixtures", () => {
   });
 });
 
+describe("transaction rate limit", () => {
+  it("limits POSTs per client using the address the proxy appended last", async () => {
+    const source = await open();
+    const program = loadProgram(connection as unknown as Connection, idlPath);
+    const transactions = new CoxTransactions({ connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes });
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json") });
+    const server = createCoxApiServer({ source, transactions, submissions, postLimit: { perMinute: 2, trustForwardedFor: true } });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1/transactions/withdraw`;
+    const post = (forwarded: string) => fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": forwarded }, body: JSON.stringify({ owner: "bad" }) });
+    try {
+      expect((await post("1.1.1.1, 9.9.9.9")).status).toBe(400);
+      expect((await post("2.2.2.2, 9.9.9.9")).status).toBe(400);
+      const limited = await post("3.3.3.3, 9.9.9.9");
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get("retry-after")).toBe("30");
+      expect(((await limited.json()) as { error: { code: string } }).error.code).toBe("RATE_LIMITED");
+      expect((await post("9.9.9.9, 8.8.8.8")).status).toBe(400);
+      expect((await fetch(url.replace("/transactions/withdraw", "/status"))).status).toBe(200);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+  });
+});
+
 describe("reusable publication account and the publisher archive", () => {
   function archiveRecord(overrides: Record<string, unknown> = {}) {
     const account = Object.values(fixture.accounts).find((a) => a.name === "publication")!;
