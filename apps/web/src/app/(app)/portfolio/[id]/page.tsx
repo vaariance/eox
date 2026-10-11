@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { AutoRefresh } from "@/components/auto-refresh";
 import { PositionView } from "@/components/position-view";
 import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { CRYPTO_CLASS, classViews, currentOf, decimalsOf, findClass, priceSeries, referenceSeries, unitValueSeries } from "@/lib/view";
@@ -14,7 +13,6 @@ export default async function PositionPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <AutoRefresh />
       <PositionView
         classId={id}
         claim={findClass(classes, id)}

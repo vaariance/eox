@@ -2,18 +2,18 @@
 
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { clusterApiUrl } from "@solana/web3.js";
-import type { Portfolio } from "@eox/app-api";
+import type { FeeTerms, Portfolio } from "@eox/app-api";
 import type { ReactNode } from "react";
 import { AccountProvider } from "./account";
 
 const endpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? clusterApiUrl("devnet");
 const wallets: never[] = [];
 
-export function Providers({ live, demo, children }: { live: boolean; demo: Portfolio | null; children: ReactNode }) {
+export function Providers({ live, demo, apiUrl, sequence, fee, children }: { live: boolean; demo: Portfolio | null; apiUrl: string; sequence: number | null; fee: FeeTerms | null; children: ReactNode }) {
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
-        <AccountProvider live={live} demo={demo}>{children}</AccountProvider>
+        <AccountProvider live={live} demo={demo} apiUrl={apiUrl} sequence={sequence} fee={fee}>{children}</AccountProvider>
       </WalletProvider>
     </ConnectionProvider>
   );

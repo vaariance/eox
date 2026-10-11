@@ -7,8 +7,9 @@ const MAX_PAGES = 20;
 const OWNER = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 const configuredWallet = process.env.COX_DEMO_WALLET;
+export const API_URL = (process.env.COX_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, "");
 export const api = createCoxApiClient({
-  baseUrl: process.env.COX_API_URL ?? DEFAULT_API_URL,
+  baseUrl: API_URL,
   fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
 });
 
