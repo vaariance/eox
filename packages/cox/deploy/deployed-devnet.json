@@ -9,28 +9,21 @@
   "runtimeAuthority": "GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6",
   "anchorVersion": "0.31.1",
   "sbfToolsVersion": "2.2.1",
-  "livePoolActive": false,
-  "status": "deployed-program-live-pool-inactive",
-  "deployedCommit": "d591412073d24ce5bd1886bd936bd9705cc2bb39",
-  "deployedBuildSha256": "fd557e30dc1476d33076a83d7a2497753f03f6fedac0b4f9e11283e61e1e6172",
-  "deploymentSignature": "5xZ231zy95kuCivGjyTG4Tf2mRXaudF8hR2o6TwdfLUXjhBUdoJQ5PT4Az91YiVZnqTLzofW4Mp9jurb2HGbbteq",
+  "livePoolActive": true,
+  "status": "deployed-fee-upgrade-pool-1-live-fees-disabled",
+  "deployedCommit": "658afd5bca8ac381b5de4fd79c0cc914d1118d9f",
+  "deployedBuildSha256": "865dcb315e2b9359294df8640c9d6aa04b3f9c308e2f1b74ff5a8db0e36a9b3c",
+  "deploymentSignature": "2p2HtT5cUu2BEsrAAAW5jnvNPfbsXZX5mM17G3qynyH9MyoaS9KmGYaC2ngkRP6JVUfdvKZUEjjGwpPeVXGfb7tD",
   "platformToolsVersion": "v1.48",
   "sbfRustVersion": "rustc 1.84.1-dev",
-  "deployedDumpSha256": "fd557e30dc1476d33076a83d7a2497753f03f6fedac0b4f9e11283e61e1e6172",
-  "verifiedAt": "2026-10-11T05:45:18.900Z",
+  "binarySha256": "865dcb315e2b9359294df8640c9d6aa04b3f9c308e2f1b74ff5a8db0e36a9b3c",
+  "deployedDumpSha256": "865dcb315e2b9359294df8640c9d6aa04b3f9c308e2f1b74ff5a8db0e36a9b3c",
+  "verifiedAt": "2026-10-11T15:28:05.070Z",
+  "finalizedSlot": 509947231,
   "programAccount": {
-    "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
-    "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
     "programdataAddress": "9na87Wyc6wMMaVfk2JVf3ReP1XQUbEg38SUi7jh2b6KQ",
     "authority": "4yHCCpEmBvaCKAdfiY2kULM8qFJcDQR4uSrfAT3EWbw5",
-    "lastDeploySlot": 509800571,
-    "dataLen": 940008,
-    "lamports": 4776119480
-  },
-  "deploymentResponse": {
-    "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
-    "signature": "5xZ231zy95kuCivGjyTG4Tf2mRXaudF8hR2o6TwdfLUXjhBUdoJQ5PT4Az91YiVZnqTLzofW4Mp9jurb2HGbbteq"
-  },
-  "deploymentRpcProvider": "Helius",
-  "finalizedSlot": 509800571
+    "dataLen": 1029528,
+    "lastDeploySlot": "509947231"
+  }
 }

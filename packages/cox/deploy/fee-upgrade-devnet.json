@@ -1,6 +1,6 @@
 {
   "schema": "cox.fee-upgrade/v1",
-  "status": "prepared-not-deployed",
+  "status": "deployed-initial-fees-scheduled",
   "network": "solana-devnet",
   "program": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
   "poolId": "1",
@@ -14,7 +14,8 @@
   "initial": {
     "bps": 2,
     "capBaseUnits": "2000000",
-    "activationCutoff": null
+    "activationCutoff": "1791738000",
+    "activationLagos": "2026-10-11T18:00:00+01:00"
   },
   "limits": {
     "bps": 100,
@@ -32,7 +33,7 @@
   "sbfBuildSha256": "865dcb315e2b9359294df8640c9d6aa04b3f9c308e2f1b74ff5a8db0e36a9b3c",
   "sbfBytes": 1029528,
   "idlSha256": "0c0da22338aedbddbaa495f48c46e762b59d5a1a81ef7143ad818e572d91f493",
-  "approvedCommit": null,
+  "approvedCommit": "658afd5bca8ac381b5de4fd79c0cc914d1118d9f",
   "verification": {
     "compiledProgramTests": 29,
     "clientTests": 29,
@@ -40,7 +41,8 @@
     "rustWorkspaceTests": 26,
     "typeChecksPassed": true,
     "clippyPassed": true,
-    "devnetFeeJourney": "not-run"
+    "devnetFeeJourney": "not-run-fees-disabled",
+    "compiledProgramTestsRerunAt": "2026-10-11T15:31:16.175Z"
   },
   "runtimeInstructionsUnchanged": true,
   "adminInstructions": [
@@ -66,5 +68,54 @@
     "accounts": "packages/cox/fixtures/fee-accounts.json",
     "vectors": "packages/cox/fixtures/fee-state-vectors.json",
     "measurements": "packages/cox/results/revenue-runtime.json"
+  },
+  "deployedAt": "2026-10-11T15:28:05.070Z",
+  "deploymentSignature": "2p2HtT5cUu2BEsrAAAW5jnvNPfbsXZX5mM17G3qynyH9MyoaS9KmGYaC2ngkRP6JVUfdvKZUEjjGwpPeVXGfb7tD",
+  "migration": {
+    "signature": "3GPk1eRF8WyDp4amTMmsGurHvYQTLJFi65TFoXgCZvPtqMYy1RgpvaaSnqvsK78DZnnuwG7VJpFhgPnZLhNS91ae",
+    "slot": 509947403,
+    "at": "2026-10-11T15:28:20.548Z"
+  },
+  "pause": {
+    "signature": "4Gm6imwqLLUJP25EM8Fy44pipfcoiyHiuLaix2QXkNh5FQPHKBVq4yCAVFMUWntW67NVA3nn5ncurL8rQY4PWF1C",
+    "slot": 509947028,
+    "at": "2026-10-11T15:26:51.873Z"
+  },
+  "unpause": {
+    "signature": "rWPrY2kQ2nbsun2WEawZ8jEu3G7BQvziVBaeeaU5JDVdaPViT92N8yjkr9KiGd1W1832z45ceLhrdvnxHka7CvQ",
+    "slot": 509947588,
+    "at": "2026-10-11T15:29:05.017Z"
+  },
+  "publisher": {
+    "release": "fees-658afd5",
+    "statePathPreserved": true,
+    "backupVerified": true
+  },
+  "continuity": {
+    "verifiedAt": "2026-10-11T15:30:27.230Z",
+    "schema": 2,
+    "sequence": "305",
+    "firstV2Sequence": "304",
+    "legacySequence": "303",
+    "firstV2StateDigest": "a6c0339a8ec1421736b4a58fa00960fa34f0e91c048a8c7b5c3e10c720c56a18",
+    "predecessor": "2cd4705fc59ac1c90496317318010ff1dee076aa25bd713f3f5a17cfdb7b704e",
+    "historyRecords": "306",
+    "historyVerified": true,
+    "vault": "13998590",
+    "ledger": "13998590",
+    "fees": "0",
+    "scheduled": false
+  },
+  "feesActive": false,
+  "feesScheduled": true,
+  "activationSchedule": {
+    "signature": "CrmNS3Ch1ZJGRnbLbLXCgqkrTK1BRzBZSNc1SrCwV7sKSiSrwQfS8isjS6K6LsTDRYjo9zfCpqorbWyD44A1FuW",
+    "slot": 509948487,
+    "at": "2026-10-11T15:32:40.910Z",
+    "version": "1",
+    "bps": 2,
+    "cap": "2000000",
+    "activationCutoff": "1791738000",
+    "activationRule": "First publication at or after cutoff must finalize; requests lock active terms at submission"
   }
 }
