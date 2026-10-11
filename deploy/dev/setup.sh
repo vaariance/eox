@@ -95,12 +95,12 @@ if [ -f /etc/systemd/system/eox-app-api-live.service ]; then
   rm -rf /opt/eox/state/app-api-live
   systemctl daemon-reload
 fi
-install -m 0755 /opt/eox/app/deploy/dev/copy-publication-archive.sh /opt/eox/copy-publication-archive.sh
-install -m 0644 /opt/eox/app/deploy/dev/cox-publication-archive-copy.service /etc/systemd/system/cox-publication-archive-copy.service
-install -m 0644 /opt/eox/app/deploy/dev/cox-publication-archive-copy.timer /etc/systemd/system/cox-publication-archive-copy.timer
-systemctl daemon-reload
-systemctl start cox-publication-archive-copy.service
-systemctl enable --now cox-publication-archive-copy.timer >/dev/null
+if [ -f /etc/systemd/system/cox-publication-archive-copy.timer ]; then
+  systemctl disable --now cox-publication-archive-copy.timer >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/cox-publication-archive-copy.timer /etc/systemd/system/cox-publication-archive-copy.service /opt/eox/copy-publication-archive.sh
+  rm -rf /opt/eox/state/cox-publication-archive
+  systemctl daemon-reload
+fi
 install -d -o eox -g eox -m 0750 /opt/eox/state/cox-app-api-live
 start_service cox-app-api-live 8791
 
