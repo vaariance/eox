@@ -18,7 +18,7 @@ Open <http://localhost:3100>. The default fixture API is hosted remotely, so a l
 
 | Variable | Purpose |
 | --- | --- |
-| `COX_API_URL` | Server-side base URL for a `cox.app-api/v1` API. Defaults to `https://cox-app-api-529206295845.us-central1.run.app`. For a local fixture API, use `http://127.0.0.1:8790`. |
+| `COX_API_URL` | Server-side base URL for a `cox.app-api/v1` API. Defaults to the live devnet API, `https://cox-app-api-live-529206295845.europe-west1.run.app`. The fixture API is `https://cox-app-api-529206295845.us-central1.run.app`. For a local fixture API, use `http://127.0.0.1:8790`. |
 | `COX_DEMO_WALLET` | Portfolio wallet used with fixture data. Defaults to the first fixture wallet; ignored in live mode. |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Browser wallet-adapter RPC. Defaults to public Solana devnet. This value is exposed to browsers; use only an endpoint intended for public client access. |
 
