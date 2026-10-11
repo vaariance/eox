@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { COX_APP_API_SCHEMA_VERSION, type CoxErrorCode, type CoxPublicationEvent, type CoxPublicationPage, type Publication } from "@eox/app-api";
+import { CoxLiveStream, StreamLimitError } from "./live-stream.js";
 import type { CoxSource } from "./source.js";
 import type { CoxSubmissions } from "./submissions.js";
 import { FeeChangedError, TransactionInputError, TransactionRejectedError, type CoxTransactions } from "./transactions.js";
@@ -32,6 +33,8 @@ export interface CoxApiServerOptions {
   transactions?: CoxTransactions | null;
   submissions?: CoxSubmissions | null;
   postLimit?: { perMinute: number; trustForwardedFor: boolean } | null;
+  trustForwardedFor?: boolean;
+  stream?: { statusMs?: number; portfolioMs?: number; maxConnections?: number; maxPerClient?: number; maxWallets?: number };
 }
 
 function clientAddress(req: IncomingMessage, trustForwardedFor: boolean): string {
@@ -81,6 +84,8 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
   const submissions = options.submissions ?? null;
   const postLimit = options.postLimit ?? null;
   const buckets = new Map<string, { tokens: number; at: number }>();
+  const trustForwardedFor = options.trustForwardedFor ?? postLimit?.trustForwardedFor ?? false;
+  const live = new CoxLiveStream({ source, now, onError: options.onError, ...options.stream });
 
   function admit(req: IncomingMessage, res: ServerResponse): void {
     if (!postLimit) return;
@@ -215,6 +220,13 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
       if (!asset) throw new ApiError(404, "UNKNOWN_ASSET", `asset ${b} is not in the roster`);
       return send(res, asset);
     }
+    if (path.length === 2 && a === "stream") {
+      const wallet = url.searchParams.get("wallet");
+      if (wallet !== null && !OWNER_PATTERN.test(wallet)) throw new ApiError(400, "INVALID_REQUEST", "invalid wallet");
+      const header = req.headers["last-event-id"];
+      const from = after(Array.isArray(header) ? header[0] : header ?? url.searchParams.get("after"));
+      return live.open(req, res, clientAddress(req, trustForwardedFor), wallet, from);
+    }
     if (path.length === 2 && a === "publications") return page(url, res);
     if (path.length === 3 && a === "publications" && b === "stream") return stream(req, url, res);
     if (path.length === 3 && a === "publications") return publication(res, b!);
@@ -241,11 +253,15 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
     throw new ApiError(404, "NOT_FOUND", "not found");
   }
 
-  return createServer((req, res) => {
+  const server = createServer((req, res) => {
     route(req, res).catch((error: unknown) => {
       const errorBody = (code: CoxErrorCode, message: string) => ({ schemaVersion: COX_APP_API_SCHEMA_VERSION, error: { code, message } });
       if (error instanceof ApiError) return write(res, error.status, errorBody(error.code, error.message));
       if (error instanceof TransactionInputError) return write(res, 400, errorBody("INVALID_REQUEST", error.message));
+      if (error instanceof StreamLimitError) {
+        res.setHeader("retry-after", "10");
+        return write(res, 429, errorBody("RATE_LIMITED", error.message));
+      }
       if (error instanceof FeeChangedError) return write(res, 409, errorBody("FEE_CHANGED", error.message));
       if (error instanceof TransactionRejectedError) return write(res, 422, errorBody("TRANSACTION_REJECTED", error.message));
       if (error instanceof URIError) return write(res, 400, errorBody("INVALID_REQUEST", "invalid path encoding"));
@@ -253,4 +269,6 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
       if (!res.headersSent) write(res, 500, errorBody("INTERNAL_ERROR", "internal error"));
     });
   });
+  server.on("close", () => live.stop());
+  return server;
 }
