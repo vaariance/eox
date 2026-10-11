@@ -89,8 +89,9 @@ export function checkArchivedCutoff(archived: ArchivedCutoff): ArchiveCheck {
   const done = (verdict: ArchiveVerdict, findings: string[], digest: string | null = null): ArchiveCheck => ({ cutoff, verdict, findings, snapshotDigest: digest });
 
   if (!snapshot.admissible) {
-    if (snapshot.digest !== null) return done("mismatch", ["an inadmissible snapshot carries a digest"]);
-    return done("inadmissible", []);
+    if (snapshot.digest === null) return done("inadmissible", []);
+    if (snapshot.digestEncoding !== WIRE_ENCODING) return done("skipped", [`inadmissible snapshot carries a digest in encoding ${snapshot.digestEncoding ?? "unlabelled"}, not ${WIRE_ENCODING}`]);
+    return done("mismatch", ["an inadmissible snapshot carries a digest"]);
   }
   if (snapshot.digestEncoding !== WIRE_ENCODING) return done("skipped", [`digest encoding is ${snapshot.digestEncoding ?? "unlabelled"}, not ${WIRE_ENCODING}`]);
   if (snapshot.digest === null) return done("mismatch", ["an admissible snapshot has no digest"]);
