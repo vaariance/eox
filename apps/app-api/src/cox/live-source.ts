@@ -1,0 +1,337 @@
+import anchor, { type Program } from "@coral-xyz/anchor";
+import { CoxReader, committedRequest, decodeAccount, discriminator, type Pool, type Registry, type Request } from "@cox/client";
+import { PublicKey, type AccountInfo, type Connection } from "@solana/web3.js";
+import {
+  batchFor,
+  COX_TRANSFER_RULE,
+  systemState,
+  type CoxAsset,
+  type CoxDeployment,
+  type CoxRequest,
+  type CoxStatus,
+  type CryptoComposition,
+  type Portfolio,
+  type Publication,
+  type ReceiptStatus,
+  type RequestState,
+  type VaultReconciliation,
+} from "@eox/app-api";
+import { classIds, parseManifest, toPublication, type Manifest } from "./chain.js";
+import { PublicationLog } from "./publication-log.js";
+import type { CoxSource } from "./source.js";
+
+const REQUEST_STATES: readonly RequestState[] = ["queued", "filled", "condition-failed", "expired", "zero-value-class", "cancelled", "refunded", "safety-rejected"];
+const RECEIPT_STATUSES: readonly ReceiptStatus[] = ["filled", "condition-failed", "expired", "zero-value-class", "safety-rejected"];
+const OPERATIONS = ["deposit", "switch", "redeem"] as const;
+const NO_CLASS = 255;
+const READ_ATTEMPTS = 3;
+const TOKEN_AMOUNT_OFFSET = 64;
+const MINT_DECIMALS_OFFSET = 44;
+
+export interface LiveCoxSourceOptions {
+  connection: Connection;
+  program: Program;
+  poolId: bigint;
+  network: string;
+  logPath: string;
+  pollMs?: number;
+  onError?: (error: unknown) => void;
+}
+
+interface ChainView {
+  registry: Registry;
+  pool: Pool;
+  vault: bigint;
+  reconciliation: VaultReconciliation | null;
+}
+
+const big = (value: { toString(): string }): bigint => BigInt(value.toString());
+
+function tokenAmount(info: AccountInfo<Buffer> | null): bigint {
+  if (!info || info.data.length < TOKEN_AMOUNT_OFFSET + 8) throw new Error("VaultAccountMissing");
+  return info.data.readBigUInt64LE(TOKEN_AMOUNT_OFFSET);
+}
+
+export class LiveCoxSource implements CoxSource {
+  private readonly reader: CoxReader;
+  private readonly listeners = new Set<(publication: Publication) => void>();
+  private readonly poolKey: PublicKey;
+  private readonly vaultKey: PublicKey;
+  private view: ChainView | null = null;
+  private timer: NodeJS.Timeout | null = null;
+  private stopped = false;
+
+  private constructor(
+    private readonly options: LiveCoxSourceOptions,
+    readonly manifest: Manifest,
+    readonly collateralMint: PublicKey,
+    readonly collateralDecimals: number,
+    private readonly log: PublicationLog,
+  ) {
+    this.reader = new CoxReader(options.program);
+    this.poolKey = this.reader.pdas.pool(options.poolId);
+    this.vaultKey = this.reader.pdas.vault(this.poolKey);
+  }
+
+  static async open(options: LiveCoxSourceOptions): Promise<LiveCoxSource> {
+    const reader = new CoxReader(options.program);
+    const pool = await reader.pool(options.poolId);
+    const methodology = await reader.methodology(pool.methodology);
+    if (!methodology.sealed) throw new Error("PoolMethodologyNotSealed");
+    const manifest = parseManifest(methodology);
+    if (manifest.assets.length + 1 !== pool.classes.length || manifest.origin !== Number(pool.origin.toString())) throw new Error("PoolManifestMismatch");
+    const mint = await options.connection.getAccountInfo(pool.collateralMint, "finalized");
+    if (!mint || mint.data.length <= MINT_DECIMALS_OFFSET) throw new Error("CollateralMintMissing");
+    const log = new PublicationLog(options.logPath, { program: options.program.programId.toBase58(), pool: reader.pdas.pool(options.poolId).toBase58() });
+    return new LiveCoxSource(options, manifest, pool.collateralMint, mint.data[MINT_DECIMALS_OFFSET]!, log);
+  }
+
+  get poolAddress(): PublicKey {
+    return this.poolKey;
+  }
+
+  get vaultAddress(): PublicKey {
+    return this.vaultKey;
+  }
+
+  get classes(): string[] {
+    return classIds(this.manifest);
+  }
+
+  start(): void {
+    const loop = async () => {
+      try {
+        await this.tick();
+      } catch (error) {
+        this.options.onError?.(error);
+      }
+      if (!this.stopped) this.timer = setTimeout(loop, this.options.pollMs ?? 5_000);
+    };
+    void loop();
+  }
+
+  stop(): void {
+    this.stopped = true;
+    if (this.timer) clearTimeout(this.timer);
+  }
+
+  async tick(): Promise<void> {
+    const view = await this.readView();
+    this.view = view;
+    if (!view.pool.initialized) return;
+    const last = Number(view.pool.sequence.toString());
+    while (this.log.nextSequence <= last) await this.index(BigInt(this.log.nextSequence));
+    const latest = this.log.all.at(-1);
+    this.view = { ...view, reconciliation: latest && latest.identity.sequence === last ? this.reconcile(view, latest.identity.sequence) : null };
+  }
+
+  async pool(): Promise<Pool> {
+    return (await this.readView()).pool;
+  }
+
+  private async readView(): Promise<ChainView> {
+    const program = this.options.program;
+    const registryKey = this.reader.pdas.registry();
+    const { value } = await this.options.connection.getMultipleAccountsInfoAndContext([registryKey, this.poolKey, this.vaultKey], "finalized");
+    const [registryInfo, poolInfo, vaultInfo] = value;
+    if (!registryInfo || !poolInfo) throw new Error("CoxAccountNotFound");
+    const registry = decodeAccount(program, "registry", registryInfo);
+    const pool = decodeAccount(program, "pool", poolInfo);
+    if (pool.poolId.toString() !== this.options.poolId.toString() || !pool.registry.equals(registryKey) || !pool.vault.equals(this.vaultKey) || !pool.collateralMint.equals(this.collateralMint)) {
+      throw new Error("PoolIdentityMismatch");
+    }
+    if (!vaultInfo || !vaultInfo.data.subarray(0, 32).equals(this.collateralMint.toBuffer())) throw new Error("VaultIdentityMismatch");
+    return { registry, pool, vault: tokenAmount(vaultInfo), reconciliation: null };
+  }
+
+  private reconcile(view: ChainView, sequence: number): VaultReconciliation {
+    const ledger = big(view.pool.active) + big(view.pool.pending) + big(view.pool.payable) + big(view.pool.residual);
+    return { sequence, vault: view.vault.toString(), ledger: ledger.toString(), covered: view.vault >= ledger };
+  }
+
+  private async index(sequence: bigint): Promise<void> {
+    const publication = await this.reader.publication(this.options.poolId, sequence);
+    const batch = await this.reader.batch(this.options.poolId, big(publication.batch));
+    if (batch.phase !== 2) throw new Error("PublicationBatchNotCommitted");
+    const previous = this.log.all.at(-1) ?? null;
+    const previousDigest = previous ? Buffer.from(previous.identity.stateDigest!, "hex") : Buffer.alloc(32);
+    if (!Buffer.from(publication.state.previousState).equals(previousDigest)) throw new Error("PublicationPredecessorMismatch");
+    if (!Buffer.from(publication.manifestDigest).equals(Buffer.from(this.manifest.digest, "hex"))) throw new Error("PublicationManifestMismatch");
+    const finalization = await this.finalization(this.reader.pdas.publication(this.poolKey, sequence));
+    const value = toPublication(publication, batch, {
+      program: this.options.program.programId.toBase58(),
+      poolId: this.options.poolId.toString(),
+      manifest: this.manifest,
+      predecessorBatch: previous?.identity.batch ?? null,
+      finalization,
+    });
+    this.log.append(value);
+    for (const listener of this.listeners) listener(value);
+  }
+
+  private async finalization(address: PublicKey): Promise<{ transaction: string | null; slot: number | null }> {
+    const signatures = await this.options.connection.getSignaturesForAddress(address, { limit: 1000 }, "finalized");
+    const creator = signatures.filter((s) => s.err === null).at(-1);
+    return creator ? { transaction: creator.signature, slot: creator.slot } : { transaction: null, slot: null };
+  }
+
+  async deployment(): Promise<CoxDeployment> {
+    const sealed = this.manifest.sealed;
+    return {
+      origin: "live",
+      network: this.options.network,
+      program: this.options.program.programId.toBase58(),
+      poolId: this.options.poolId.toString(),
+      poolAddress: this.poolKey.toBase58(),
+      collateralMint: this.collateralMint.toBase58(),
+      collateralDecimals: this.collateralDecimals,
+      testCollateral: true,
+      transferRule: COX_TRANSFER_RULE,
+      methodology: { digest: this.manifest.digest, label: this.label(), status: sealed ? "sealed" : "draft", assetCount: this.manifest.assets.length },
+      fixtureSource: null,
+    };
+  }
+
+  private label(): string {
+    return `CRYPTO (pilot, ${this.manifest.assets.length} assets)`;
+  }
+
+  async status(now: number): Promise<CoxStatus> {
+    const latest = this.log.all.at(-1) ?? null;
+    const current = batchFor(now, this.manifest.origin);
+    const missedCutoffs = Math.max(0, current.batch - (latest?.identity.batch ?? -1) - 1);
+    const view = this.view;
+    const reconciliation = view?.reconciliation ?? null;
+    return {
+      asOf: now,
+      latestSequence: latest?.identity.sequence ?? null,
+      latestBatch: latest?.identity.batch ?? null,
+      latestCutoff: latest?.identity.cutoff ?? null,
+      ageSeconds: latest ? now - latest.identity.cutoff : null,
+      missedCutoffs,
+      state: systemState(missedCutoffs, view?.registry.paused ?? false, reconciliation !== null && !reconciliation.covered),
+      executing: view?.pool.stage !== null && view?.pool.stage !== undefined,
+      monitor: null,
+      reconciliation,
+      currentBatch: current,
+    };
+  }
+
+  async assets(): Promise<CoxAsset[]> {
+    const latest = this.log.all.at(-1) ?? null;
+    return this.manifest.assets.map((asset, classIndex) => {
+      const price = latest?.prices[classIndex] ?? null;
+      return {
+        assetId: asset.assetId,
+        classIndex,
+        name: asset.assetId,
+        venues: asset.venues,
+        latest: latest && price ? { sequence: latest.identity.sequence, batch: latest.identity.batch, priceE8: price.priceE8, venue: price.venue, step: price.step, tradeAgeMinutes: price.tradeAgeMinutes } : null,
+      };
+    });
+  }
+
+  async crypto(): Promise<CryptoComposition> {
+    return {
+      label: this.label(),
+      methodologyDigest: this.manifest.digest,
+      members: this.manifest.assets.map((a) => ({ assetId: a.assetId, weightNumerator: a.weightNumerator, weightDenominator: a.weightDenominator })),
+    };
+  }
+
+  async publications(): Promise<readonly Publication[]> {
+    return this.log.all;
+  }
+
+  onPublication(listener: (publication: Publication) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  async ownerRequests(owner: PublicKey, pool: Pool): Promise<{ address: PublicKey; request: Request }[]> {
+    const program = this.options.program;
+    const accounts = await this.options.connection.getProgramAccounts(program.programId, {
+      commitment: "finalized",
+      filters: [
+        { memcmp: { offset: 0, bytes: anchor.utils.bytes.bs58.encode(discriminator("account", "Request")) } },
+        { memcmp: { offset: 11, bytes: this.poolKey.toBase58() } },
+        { memcmp: { offset: 43, bytes: owner.toBase58() } },
+      ],
+    });
+    return accounts
+      .map(({ pubkey, account }) => {
+        const request = committedRequest(decodeAccount(program, "request", account), pool);
+        if (!request.pool.equals(this.poolKey) || !request.owner.equals(owner) || !this.reader.pdas.request(this.poolKey, big(request.nonce)).equals(pubkey)) throw new Error("RequestIdentityMismatch");
+        return { address: pubkey, request };
+      })
+      .sort((a, b) => (big(a.request.nonce) < big(b.request.nonce) ? -1 : 1));
+  }
+
+  async portfolio(owner: string): Promise<Portfolio | null> {
+    const key = new PublicKey(owner);
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await this.readPortfolio(key);
+      } catch (error) {
+        if (!(error instanceof Error && error.message === "InconsistentRead") || attempt >= READ_ATTEMPTS) throw error;
+      }
+    }
+  }
+
+  private async readPortfolio(owner: PublicKey): Promise<Portfolio | null> {
+    const pool = await this.reader.pool(this.options.poolId);
+    const position = await this.reader.position(this.options.poolId, owner).catch((error: unknown) => {
+      if (error instanceof Error && error.message === "CoxAccountNotFound") return null;
+      throw error;
+    });
+    const requests = await this.ownerRequests(owner, pool);
+    if (!position && requests.length === 0) return null;
+    const ids = this.classes;
+    const mapped = requests.map(({ address, request }) => this.request(address, request, ids));
+    const refundable = position ? big(position.refundable) : 0n;
+    const queuedDeposits = requests.filter(({ request }) => request.status === 0 && request.operation === 0).reduce((sum, { request }) => sum + big(request.amount), 0n);
+    return {
+      owner: owner.toBase58(),
+      appliedSequence: position ? Number(position.appliedSequence.toString()) : null,
+      positions: position
+        ? position.classes.flatMap((c, i) => (c.units.isZero() && c.locked.isZero() ? [] : [{ classId: ids[i]!, units: c.units.toString(), locked: c.locked.toString() }]))
+        : [],
+      payable: position ? position.payable.toString() : "0",
+      refundable: refundable.toString(),
+      pending: (refundable + queuedDeposits).toString(),
+      requests: mapped,
+    };
+  }
+
+  private request(address: PublicKey, request: Request, ids: string[]): CoxRequest {
+    const operation = OPERATIONS[request.operation];
+    const state = REQUEST_STATES[request.status];
+    if (!operation || !state) throw new Error("RequestCodeInvalid");
+    const cls = (index: number): string | null => {
+      if (index === NO_CLASS) return null;
+      const id = ids[index];
+      if (!id) throw new Error("RequestClassInvalid");
+      return id;
+    };
+    const requestId = address.toBase58();
+    const receiptStatus = RECEIPT_STATUSES[request.receiptStatus];
+    const receipt = request.status !== 0 && request.status !== 5 && request.applied && receiptStatus
+      ? { requestId, sequence: Number(request.boundSequence.toString()), batch: Number(request.boundBatch.toString()), status: receiptStatus, minted: request.minted.toString(), proceeds: request.proceeds.toString() }
+      : null;
+    return {
+      requestId,
+      owner: request.owner.toBase58(),
+      operation,
+      fromClass: cls(request.from),
+      toClass: cls(request.to),
+      amount: operation === "deposit" ? request.amount.toString() : null,
+      units: operation === "deposit" ? null : request.units.toString(),
+      minimumUnits: operation === "redeem" ? null : request.minimumUnits.toString(),
+      minimumProceeds: operation === "redeem" ? request.minimumProceeds.toString() : null,
+      targetBatch: Number(request.targetBatch.toString()),
+      expiryBatch: Number(request.expiryBatch.toString()),
+      state,
+      receipt,
+    };
+  }
+}
