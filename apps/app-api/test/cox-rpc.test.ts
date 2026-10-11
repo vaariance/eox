@@ -51,6 +51,14 @@ describe("RPC failover", () => {
     expect(primary.calls).toHaveLength(1);
   });
 
+  it("moves on when an endpoint refuses access with 401, 403 or 408", async () => {
+    for (const status of [401, 403, 408]) {
+      const refused = await endpoint(() => ({ status, result: "BLOCKED" }));
+      const fallback = await endpoint(() => ({ status: 200, result: "GENESIS" }));
+      expect(await failoverConnection([refused.url, fallback.url], "finalized").getGenesisHash(), String(status)).toBe("GENESIS");
+    }
+  });
+
   it("fails when every endpoint fails", async () => {
     const a = await endpoint(() => ({ status: 503 }));
     const b = await endpoint(() => ({ status: 500 }));
