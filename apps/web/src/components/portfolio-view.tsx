@@ -68,6 +68,11 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
               connectLabel="Connect wallet to withdraw"
               className="h-10 w-full rounded-pill bg-accent text-sm font-medium text-accent-ink"
             />
+            {BigInt(payable) === 0n && (
+              <p className="text-xs text-muted">
+                To take USDC out, <Link href="/swap" className="text-accent underline">swap CRYPTO back to USDC</Link>. It shows up here once that fills.
+              </p>
+            )}
           </div>
         </div>
       </div>
