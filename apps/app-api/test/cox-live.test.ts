@@ -3,12 +3,17 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import anchor from "@coral-xyz/anchor";
-import { PublicKey, type AccountInfo, type Connection } from "@solana/web3.js";
-import type { Publication } from "@eox/app-api";
+import { discriminator } from "@cox/client";
+import type { AddressInfo } from "node:net";
+import { Keypair, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction, type AccountInfo, type Connection } from "@solana/web3.js";
+import { createCoxApiClient, type Publication, type UnsignedTransaction } from "@eox/app-api";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadProgram } from "../src/cox/chain.js";
 import { LiveCoxSource } from "../src/cox/live-source.js";
 import { PublicationLog } from "../src/cox/publication-log.js";
+import { createCoxApiServer } from "../src/cox/server.js";
+import { CoxSubmissions } from "../src/cox/submissions.js";
+import { associatedTokenAddress, CoxTransactions } from "../src/cox/transactions.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const idlPath = join(root, "packages", "cox", "idl", "cox.json");
@@ -27,6 +32,31 @@ const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
 class FixtureConnection {
   readonly accounts = new Map<string, AccountInfo<Buffer>>();
   readonly signatures = new Map<string, { signature: string; slot: number; err: null }[]>();
+  readonly sent: Buffer[] = [];
+  simulationError: string | null = null;
+  status: { slot: number; confirmationStatus: string; err: unknown } | null = null;
+
+  async getLatestBlockhash() {
+    return { blockhash: "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin", lastValidBlockHeight: 4242 };
+  }
+
+  async simulateTransaction() {
+    if (!this.simulationError) return { context: { slot: 1 }, value: { err: null, logs: [] } };
+    return { context: { slot: 1 }, value: { err: { InstructionError: [0, { Custom: 6000 }] }, logs: [`Program log: AnchorError occurred. Error Message: ${this.simulationError}.`] } };
+  }
+
+  async sendRawTransaction(bytes: Buffer) {
+    this.sent.push(Buffer.from(bytes));
+    return anchor.utils.bytes.bs58.encode(VersionedTransaction.deserialize(bytes).signatures[0]!);
+  }
+
+  async getSignatureStatuses() {
+    return { context: { slot: 1 }, value: [this.status] };
+  }
+
+  async isBlockhashValid() {
+    return { context: { slot: 1 }, value: false };
+  }
 
   set(address: string, owner: PublicKey, data: Buffer): void {
     this.accounts.set(address, { data, owner, executable: false, lamports: 1, rentEpoch: 0 });
@@ -196,5 +226,118 @@ describe("publication log", () => {
     expect(new PublicationLog(path, { program: fixture.programAddress, pool: POOL }).all.map((p) => p.identity.batch)).toEqual([0, 2]);
     expect(() => new PublicationLog(path, { program: fixture.programAddress, pool: VAULT })).toThrow("another program or pool");
     expect(() => log.append({ ...originEntry(), identity: { ...originEntry().identity, sequence: 3 } })).toThrow("out of order");
+  });
+});
+
+describe("unsigned transactions and submission", () => {
+  const wallet = Keypair.generate();
+  const NOW = 120000 + 60 * 5 + 10;
+
+  async function services() {
+    const source = await open();
+    const program = loadProgram(connection as unknown as Connection, idlPath);
+    const transactions = new CoxTransactions({
+      connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes,
+    }, () => NOW);
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), now: () => NOW });
+    return { source, program, transactions, submissions };
+  }
+
+  function decode(built: UnsignedTransaction) {
+    const tx = VersionedTransaction.deserialize(Buffer.from(built.transaction, "base64"));
+    const keys = tx.message.staticAccountKeys;
+    return { tx, keys, instructions: tx.message.compiledInstructions.map((i) => ({ program: keys[i.programIdIndex]!.toBase58(), accounts: i.accountKeyIndexes.map((k) => keys[k]!.toBase58()), data: Buffer.from(i.data) })) };
+  }
+
+  it("builds a deposit for the next request nonce, paid and signed by the wallet only", async () => {
+    const { program, transactions } = await services();
+    const pool = program.coder.accounts.decode("pool", connection.accounts.get(POOL)!.data);
+    const nonce = BigInt(pool.nextRequestNonce.toString());
+    const built = await transactions.deposit({ owner: wallet.publicKey.toBase58(), toClass: "ETH", amount: "2500000", minimumUnits: "0", expiryBatch: 10 });
+    const request = PublicKey.findProgramAddressSync([Buffer.from("request"), new PublicKey(POOL).toBuffer(), Buffer.from(new BigUint64Array([nonce]).buffer)], program.programId)[0];
+    expect(built).toMatchObject({ operation: "deposit", owner: wallet.publicKey.toBase58(), nonce: nonce.toString(), requestId: request.toBase58(), targetBatch: { batch: 6, cutoff: 120360 }, expiryBatch: 10, toClass: "ETH", amount: "2500000", minimumUnits: "0", lastValidBlockHeight: 4242 });
+    const { tx, keys, instructions } = decode(built);
+    expect(tx.message.header.numRequiredSignatures).toBe(1);
+    expect(keys[0]!.equals(wallet.publicKey)).toBe(true);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0]!.program).toBe(fixture.programAddress);
+    const position = PublicKey.findProgramAddressSync([Buffer.from("position"), new PublicKey(POOL).toBuffer(), wallet.publicKey.toBuffer()], program.programId)[0];
+    expect(instructions[0]!.accounts).toEqual([
+      wallet.publicKey.toBase58(), "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC", POOL, position.toBase58(), request.toBase58(), VAULT,
+      associatedTokenAddress(wallet.publicKey, new PublicKey(MINT)).toBase58(), TOKEN_PROGRAM.toBase58(), SystemProgram.programId.toBase58(),
+    ]);
+    expect(instructions[0]!.data.subarray(0, 8)).toEqual(discriminator("global", "deposit"));
+  });
+
+  it("validates inputs before touching the chain and reports a simulated rejection", async () => {
+    const { transactions } = await services();
+    const owner = wallet.publicKey.toBase58();
+    await expect(transactions.deposit({ owner, toClass: "DOGE", amount: "1", minimumUnits: "0", expiryBatch: 10 })).rejects.toThrow("not a class");
+    await expect(transactions.deposit({ owner, toClass: "BTC", amount: "0", minimumUnits: "0", expiryBatch: 10 })).rejects.toThrow("out of range");
+    await expect(transactions.deposit({ owner, toClass: "BTC", amount: "1.5", minimumUnits: "0", expiryBatch: 10 })).rejects.toThrow("integer string");
+    await expect(transactions.deposit({ owner, toClass: "BTC", amount: "1", minimumUnits: "0", expiryBatch: 5 })).rejects.toThrow("expiryBatch");
+    await expect(transactions.switch({ owner, fromClass: "BTC", toClass: "BTC", units: "1", minimumUnits: "0", expiryBatch: 10 })).rejects.toThrow("must differ");
+    await expect(transactions.withdraw({ owner: POOL, amount: "1" })).rejects.toThrow("can sign");
+    await expect(transactions.cancel({ owner, requestId: REQUEST })).rejects.toThrow("does not belong");
+    connection.simulationError = "Insufficient unlocked units";
+    await expect(transactions.redeem({ owner, fromClass: "BTC", units: "1", minimumProceeds: "0", expiryBatch: 10 })).rejects.toThrow("Insufficient unlocked units");
+  });
+
+  it("builds cancel for the owner's request and creates the payout token account before redeem", async () => {
+    const { transactions, program } = await services();
+    const cancel = decode(await transactions.cancel({ owner: OWNER, requestId: REQUEST }));
+    expect(cancel.instructions[0]!.data.subarray(0, 8)).toEqual(discriminator("global", "cancel"));
+    expect(cancel.instructions[0]!.accounts).toContain(REQUEST);
+    const redeem = decode(await transactions.redeem({ owner: OWNER, fromClass: "BTC", units: "1000", minimumProceeds: "0", expiryBatch: 6 }));
+    expect(redeem.instructions.map((i) => i.program)).toEqual(["ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL", fixture.programAddress]);
+    expect(redeem.instructions[0]!.data).toEqual(Buffer.from([1]));
+  });
+
+  it("relays exactly the signed bytes, refuses unsigned or foreign transactions and tracks the result", async () => {
+    const { transactions, submissions } = await services();
+    const built = await transactions.withdraw({ owner: wallet.publicKey.toBase58(), amount: "5" });
+    const tx = VersionedTransaction.deserialize(Buffer.from(built.transaction, "base64"));
+    await expect(submissions.submit(built.transaction)).rejects.toThrow("not fully signed");
+    tx.sign([wallet]);
+    const signed = Buffer.from(tx.serialize()).toString("base64");
+    const submission = await submissions.submit(signed);
+    expect(connection.sent.map((b) => b.toString("base64"))).toEqual([signed]);
+    expect(submission).toMatchObject({ owner: wallet.publicKey.toBase58(), operation: "withdraw", transaction: signed, state: "submitted", submittedAt: NOW });
+    connection.status = { slot: 77, confirmationStatus: "finalized", err: null };
+    expect(await submissions.get(submission.signature)).toMatchObject({ state: "finalized", slot: 77 });
+    expect(await submissions.submit(signed)).toMatchObject({ state: "finalized" });
+    expect(connection.sent).toHaveLength(1);
+    const reopened = new CoxSubmissions({ connection: connection as unknown as Connection, programId: new PublicKey(fixture.programAddress), path: join(dir, "submissions.json") });
+    expect(await reopened.get(submission.signature)).toMatchObject({ state: "finalized", transaction: signed });
+    const transfer = SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: new PublicKey(VAULT), lamports: 1 });
+    const foreign = new VersionedTransaction(new TransactionMessage({ payerKey: wallet.publicKey, recentBlockhash: built.recentBlockhash, instructions: [transfer] }).compileToV0Message());
+    foreign.sign([wallet]);
+    await expect(submissions.submit(Buffer.from(foreign.serialize()).toString("base64"))).rejects.toThrow("outside COX");
+  });
+
+  it("serves builders, submission and lookup over HTTP", async () => {
+    const { source, transactions, submissions } = await services();
+    const server = createCoxApiServer({ source, transactions, submissions, now: () => NOW });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const client = createCoxApiClient({ baseUrl });
+    const json = { "content-type": "application/json" };
+    try {
+      const built = (await client.buildWithdraw({ owner: wallet.publicKey.toBase58(), amount: "5" })).data;
+      const tx = VersionedTransaction.deserialize(Buffer.from(built.transaction, "base64"));
+      tx.sign([wallet]);
+      const submitted = (await client.submitTransaction(Buffer.from(tx.serialize()).toString("base64"))).data;
+      expect((await client.submission(submitted.signature)).data.signature).toBe(submitted.signature);
+      await expect(client.submission("1".repeat(64))).rejects.toMatchObject({ code: "TRANSACTION_NOT_FOUND", httpStatus: 404 });
+      await expect(client.buildDeposit({ owner: wallet.publicKey.toBase58(), toClass: "NOPE", amount: "1", minimumUnits: "0", expiryBatch: 10 })).rejects.toMatchObject({ code: "INVALID_REQUEST", httpStatus: 400 });
+      connection.simulationError = "Pool paused";
+      await expect(client.buildWithdraw({ owner: wallet.publicKey.toBase58(), amount: "5" })).rejects.toMatchObject({ code: "TRANSACTION_REJECTED", httpStatus: 422 });
+      expect((await fetch(`${baseUrl}/v1/transactions/withdraw`, { method: "POST", body: "{}" })).status).toBe(415);
+      expect((await fetch(`${baseUrl}/v1/transactions/withdraw`, { method: "POST", headers: json, body: JSON.stringify({ pad: "x".repeat(9000) }) })).status).toBe(413);
+      expect((await fetch(`${baseUrl}/v1/transactions/publish`, { method: "POST", headers: json, body: "{}" })).status).toBe(404);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
   });
 });

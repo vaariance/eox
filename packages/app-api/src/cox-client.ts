@@ -8,8 +8,15 @@ import type {
   CoxPublicationPage,
   CoxStatus,
   CryptoComposition,
+  DepositInput,
   Portfolio,
   Publication,
+  RedeemInput,
+  RequestActionInput,
+  Submission,
+  SwitchInput,
+  UnsignedTransaction,
+  WithdrawInput,
 } from "./cox-types.js";
 import { COX_APP_API_SCHEMA_VERSION } from "./cox-types.js";
 
@@ -36,6 +43,7 @@ export interface CoxPublicationSubscription {
 
 const ASSET_PATTERN = /^[A-Z0-9]{2,12}$/;
 const OWNER_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const SIGNATURE_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
 
 function checkSequence(value: number | null, name: string): void {
   if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new CoxApiError("INVALID_REQUEST", `invalid ${name}`, 0);
@@ -45,8 +53,8 @@ export function createCoxApiClient(options: CoxApiClientOptions) {
   const baseUrl = options.baseUrl.replace(/\/+$/, "");
   const doFetch = options.fetch ?? fetch;
 
-  async function get<T>(path: string): Promise<CoxApiResponse<T>> {
-    const res = await doFetch(`${baseUrl}/v1/${path}`, { headers: { accept: "application/json" } });
+  async function get<T>(path: string, init?: RequestInit): Promise<CoxApiResponse<T>> {
+    const res = await doFetch(`${baseUrl}/v1/${path}`, { ...init, headers: { accept: "application/json", ...(init?.body ? { "content-type": "application/json" } : {}) } });
     const body = (await res.json()) as CoxApiResponse<T> | CoxApiErrorBody;
     if (body.schemaVersion !== COX_APP_API_SCHEMA_VERSION) {
       throw new CoxApiError("INTERNAL_ERROR", `unsupported schema version ${String(body.schemaVersion)}`, res.status);
@@ -55,8 +63,21 @@ export function createCoxApiClient(options: CoxApiClientOptions) {
     return body;
   }
 
+  const post = <T>(path: string, body: unknown) => get<T>(path, { method: "POST", body: JSON.stringify(body) });
+
   return {
     deployment: () => get<CoxDeployment>("deployment"),
+    buildDeposit: (input: DepositInput) => post<UnsignedTransaction>("transactions/deposit", input),
+    buildSwitch: (input: SwitchInput) => post<UnsignedTransaction>("transactions/switch", input),
+    buildRedeem: (input: RedeemInput) => post<UnsignedTransaction>("transactions/redeem", input),
+    buildCancel: (input: RequestActionInput) => post<UnsignedTransaction>("transactions/cancel", input),
+    buildRefund: (input: RequestActionInput) => post<UnsignedTransaction>("transactions/refund", input),
+    buildWithdraw: (input: WithdrawInput) => post<UnsignedTransaction>("transactions/withdraw", input),
+    submitTransaction: (signedBase64: string) => post<Submission>("transactions/submit", { transaction: signedBase64 }),
+    submission: (signature: string) => {
+      if (!SIGNATURE_PATTERN.test(signature)) throw new CoxApiError("INVALID_REQUEST", "invalid signature", 0);
+      return get<Submission>(`transactions/${signature}`);
+    },
     status: () => get<CoxStatus>("status"),
     assets: () => get<CoxAsset[]>("assets"),
     crypto: () => get<CryptoComposition>("crypto"),

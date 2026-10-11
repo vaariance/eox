@@ -93,6 +93,12 @@ describe("cox.app-api/v1 on the fixture", () => {
     expect((await fetch(`${baseUrl}/v1/status`, { method: "POST" })).status).toBe(405);
   });
 
+  it("does not build or track transactions on the fixture", async () => {
+    await expect(client.buildDeposit({ owner: ALICE, toClass: "SYNA", amount: "1", minimumUnits: "0", expiryBatch: 9 })).rejects.toMatchObject({ code: "NOT_LIVE", httpStatus: 409 });
+    await expect(client.submission("1".repeat(64))).rejects.toMatchObject({ code: "NOT_LIVE" });
+    expect((await fetch(`${baseUrl}/v1/transactions/deposit`)).status).toBe(405);
+  });
+
   it("serves a wallet's positions, payable, refundable deposits and receipts", async () => {
     const alice = (await client.portfolio(ALICE)).data;
     expect(alice).toMatchObject({ appliedSequence: 3, payable: "11", refundable: "0", pending: "25", positions: [{ classId: "SYNA", units: "90000000000000", locked: "0" }] });
@@ -115,7 +121,8 @@ describe("CORS for the public deployment", () => {
       const preflight = await fetch(`${url}/v1/publications/stream`, { method: "OPTIONS", headers: { origin: "https://app.example", "access-control-request-headers": "last-event-id" } });
       expect(preflight.status).toBe(204);
       expect(preflight.headers.get("access-control-allow-headers")).toContain("last-event-id");
-      expect(preflight.headers.get("access-control-allow-methods")).toBe("GET");
+      expect(preflight.headers.get("access-control-allow-methods")).toBe("GET, POST");
+      expect(preflight.headers.get("access-control-allow-headers")).toContain("content-type");
       expect((await fetch(`${url}/v1/status`, { method: "POST" })).status).toBe(405);
     } finally {
       open.closeAllConnections();
