@@ -46,6 +46,7 @@
         "programs": [
           {
             "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+            "enabled": false,
             "discriminators": [
               "81b1b6a0b8e0db05",
               "b3d38eb76c6814d6",
@@ -108,7 +109,13 @@
                   "7": "11111111111111111111111111111111"
                 }
               }
-            ]
+            ],
+            "linkage": {
+              "kind": "cox-v1",
+              "poolId": "0",
+              "pool": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+              "methodology": null
+            }
           }
         ]
       }

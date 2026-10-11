@@ -45,7 +45,14 @@ function publish(poolAccount: PublicKey) {
   return new VersionedTransaction(message);
 }
 
-test("signs a well-formed publish and refuses one aimed at another pool", () => {
-  checkSolanaPolicy("oracle-operator", binding, publish(pool), operator);
-  assert.throws(() => checkSolanaPolicy("oracle-operator", binding, publish(Keypair.generate().publicKey), operator), (e) => e instanceof PolicyRejection && e.code === "TARGET_NOT_BOUND");
+test("ships disabled for pool 0 with no methodology until Peter supplies the activated accounts", () => {
+  assert.equal(cox.enabled, false);
+  assert.deepEqual(cox.linkage, { kind: "cox-v1", poolId: "0", pool: pool.toBase58(), methodology: null });
+  assert.throws(() => checkSolanaPolicy("oracle-operator", binding, publish(pool), operator), (e) => e instanceof PolicyRejection && /not enabled/.test(e.message));
+});
+
+test("once enabled, accepts a well-formed publish and refuses one aimed at another pool", () => {
+  const enabled = { solana: { ...binding.solana!, programs: [{ ...cox, enabled: true }] } };
+  checkSolanaPolicy("oracle-operator", enabled, publish(pool), operator);
+  assert.throws(() => checkSolanaPolicy("oracle-operator", enabled, publish(Keypair.generate().publicKey), operator), (e) => e instanceof PolicyRejection && e.code === "TARGET_NOT_BOUND");
 });
