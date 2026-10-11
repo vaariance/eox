@@ -16,7 +16,7 @@ every page.
 | Variable | Meaning |
 | --- | --- |
 | `COX_API_URL` | Base URL of a `cox.app-api/v1` server. Defaults to the public fixture, `https://cox-app-api-529206295845.us-central1.run.app`. Use `http://127.0.0.1:8790` for a local `pnpm --filter @eox/app-api-server start`. |
-| `COX_DEMO_WALLET` | Wallet whose portfolio is shown. On fixture data it defaults to the first fixture wallet; on live data, unset means no portfolio. |
+| `COX_DEMO_WALLET` | Wallet whose portfolio is shown on fixture data. Defaults to the first fixture wallet. Ignored on live data, where the connected wallet is shown. |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Solana RPC for the wallet adapter. Defaults to public devnet. |
 
 The app is built with webpack (`next dev --webpack`, `next build --webpack`).
@@ -29,5 +29,30 @@ Every page reads through `src/lib/data.ts`, which returns the types from
 "redeemable, about" figures are a holder's units multiplied by the latest
 published class state and are labelled as approximate.
 
-Not connected yet: the portfolio of the connected wallet, and sending buy
-(deposit), switch, redeem, cancel and withdraw requests. Both wait for the live app API.
+## Sending requests
+
+On a live API (`origin: "live"`) the Buy, Switch, Redeem, Cancel, Refund and
+Withdraw buttons work. The app builds no transaction itself:
+
+1. `src/lib/requests.ts` turns the form into exact integers (collateral base
+   units, units at scale 10^12) and an inclusive expiry batch.
+2. A server action (`src/app/actions.ts`) asks the app API for the unsigned
+   transaction.
+3. The browser checks that the connected wallet is its fee payer and only
+   signer, and the wallet signs it.
+4. The signed bytes go back to the app API, which sends them and reports
+   their state.
+
+The portfolio, positions and requests shown are the connected wallet's, read
+through the app API and refreshed every 15 seconds. On fixture data the
+buttons are disabled and a demo wallet is shown.
+
+Before the first publication every page keeps its layout and shows a dash for
+values that do not exist yet.
+
+```sh
+pnpm --filter @eox/web test
+```
+
+Not checked yet: a request signed by a real wallet and filled by a
+publication.
