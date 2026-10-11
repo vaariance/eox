@@ -205,6 +205,7 @@ describe("verdict server", () => {
     expect(list.verdicts.map((verdict) => verdict.cutoff)).toEqual([BASE + 120, BASE + 60]);
 
     expect(await (await fetch(`${base}/healthz`)).json()).toEqual({ schema: MONITOR_SCHEMA, checked: 3, mismatches: 1, started: true, latestCutoff: BASE + 120 });
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ schema: MONITOR_SCHEMA, checked: 3, mismatches: 1, started: true, latestCutoff: BASE + 120 });
   });
 
   it("refuses writes, unknown routes, unknown cutoffs and a bad limit", async () => {
