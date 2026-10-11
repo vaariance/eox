@@ -26,13 +26,15 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "allowImportingTsExtensions": true
   },
   "include": [
     "next-env.d.ts",
     "src",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    "test"
   ],
   "exclude": [
     "node_modules"
