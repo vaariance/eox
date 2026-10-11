@@ -1,9 +1,21 @@
 import { createHash } from "node:crypto";
 import type { ArchivedCutoff } from "./archive.js";
 
+export interface ArchivedChange {
+  cutoff: number;
+  admissible: boolean;
+  snapshotDigest: string | null;
+}
+
+export interface ChangePage {
+  after: string | null;
+  cutoffs: ArchivedChange[];
+}
+
 export interface EvidenceSource {
   hasArtifact(sha256: string): Promise<boolean>;
   cutoff(cutoff: number): Promise<ArchivedCutoff | null>;
+  changes(after: string | null, limit: number): Promise<ChangePage>;
 }
 
 export class EvidenceUnavailable extends Error {
@@ -32,6 +44,17 @@ export function httpEvidenceSource(baseUrl: string, doFetch: typeof fetch = fetc
   }
 
   return {
+    async changes(after, limit) {
+      const query = new URLSearchParams({ limit: String(limit) });
+      if (after !== null) query.set("after", after);
+      const response = await get(`/v1/prices/changes?${query.toString()}`);
+      if (!response) throw new EvidenceUnavailable("evidence API has no price change feed");
+      const body = (await response.json()) as Partial<ChangePage>;
+      if (!Array.isArray(body.cutoffs) || (body.after !== null && typeof body.after !== "string")) {
+        throw new EvidenceUnavailable("evidence API returned a malformed change page");
+      }
+      return { after: body.after ?? null, cutoffs: body.cutoffs };
+    },
     async cutoff(cutoff) {
       if (!Number.isSafeInteger(cutoff) || cutoff <= 0 || cutoff % 60 !== 0) throw new EvidenceUnavailable(`invalid cutoff ${cutoff}`);
       const response = await get(`/v1/prices/cutoffs/${cutoff}`);
