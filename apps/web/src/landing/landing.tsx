@@ -115,6 +115,8 @@ const styles = stylex.create({
     borderColor: color.line,
   },
   chipExtra: { display: { default: "inline-flex", [NARROW]: "none" } },
+  chipCompact: { display: { default: "none", [NARROW]: "inline-flex" } },
+  chipMore: { color: color.muted },
 
   product: {
     display: "grid",
@@ -451,6 +453,7 @@ const questions: Question[] = [
 
 export async function Landing() {
   const board = await loadBoard();
+  const total = Math.max(board?.count ?? 30, ROSTER.length);
   const star = board?.star ?? { rank: 1, id: "SOL", name: "Solana", lead: 0 };
   const up = star.lead >= 0;
   const picks = [...new Set([star.id, ...(board?.top ?? []).map((row) => row.id), "SOL", "BTC", "ETH"])].slice(0, 3);
@@ -485,6 +488,8 @@ export async function Landing() {
                 {id}
               </span>
             ))}
+            <span {...stylex.props(styles.chip, styles.chipMore, styles.chipExtra)}>+{total - ROSTER.length} more</span>
+            <span {...stylex.props(styles.chip, styles.chipMore, styles.chipCompact)}>+{total - ROSTER_NARROW} more</span>
           </div>
         </header>
 
