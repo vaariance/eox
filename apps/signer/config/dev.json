@@ -89,7 +89,7 @@
         "programs": [
           {
             "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
-            "enabled": false,
+            "enabled": true,
             "discriminators": [
               "81b1b6a0b8e0db05",
               "b3d38eb76c6814d6",
