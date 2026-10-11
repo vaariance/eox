@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import anchor from "@coral-xyz/anchor";
-import { discriminator } from "@cox/client";
+import { CoxInstructions, decodeState, discriminator } from "@cox/client";
 import type { AddressInfo } from "node:net";
 import { Keypair, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction, type AccountInfo, type Connection } from "@solana/web3.js";
 import { createCoxApiClient, type Publication, type UnsignedTransaction } from "@eox/app-api";
@@ -15,7 +15,7 @@ import { directorySource, gcsSource, PublicationArchive, PublicationArchiveMissi
 import { PublicationLog } from "../src/cox/publication-log.js";
 import { createCoxApiServer } from "../src/cox/server.js";
 import { CoxSubmissions } from "../src/cox/submissions.js";
-import { associatedTokenAddress, CoxTransactions } from "../src/cox/transactions.js";
+import { associatedTokenAddress, CoxTransactions, FeeChangedError } from "../src/cox/transactions.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const idlPath = join(root, "packages", "cox", "idl", "cox.json");
@@ -40,6 +40,7 @@ class FixtureConnection {
   readonly signatures = new Map<string, { signature: string; slot: number; err: null }[]>();
   readonly sent: Buffer[] = [];
   simulationError: string | null = null;
+  returnData: { programId: string; data: [string, "base64"] } | null = null;
   status: { slot: number; confirmationStatus: string; err: unknown } | null = null;
 
   async getLatestBlockhash() {
@@ -47,7 +48,7 @@ class FixtureConnection {
   }
 
   async simulateTransaction() {
-    if (!this.simulationError) return { context: { slot: 1 }, value: { err: null, logs: [] } };
+    if (!this.simulationError) return { context: { slot: 1 }, value: { err: null, logs: [], returnData: this.returnData } };
     return { context: { slot: 1 }, value: { err: { InstructionError: [0, { Custom: 6000 }] }, logs: [`Program log: AnchorError occurred. Error Message: ${this.simulationError}.`] } };
   }
 
@@ -114,8 +115,9 @@ function originEntry(): Publication {
       manifestDigest: null, snapshotDigest: null, stateDigest: PREDECESSOR, committedAt: null, finalization: { transaction: null, slot: null, finalized: true },
     },
     prices: [], benchmarkGross: null, benchmark: "100000000000000", references: [], classes: [],
-    flows: { acceptedDeposits: "0", newPayable: "0", transferResidual: "0", flowResidual: "0", executed: 0, rejected: 0 },
-    ledger: { active: "0", pending: "0", refundable: null, payable: "0", residual: "0", vault: "0" },
+    flows: { acceptedDeposits: "0", newPayable: "0", transferResidual: "0", flowResidual: "0", fees: "0", executed: 0, rejected: 0 },
+    ledger: { active: "0", pending: "0", refundable: null, payable: "0", residual: "0", fees: "0", vault: "0" },
+    fees: null,
     receiptRoot: null,
   };
 }
@@ -217,8 +219,8 @@ describe("live COX source on the compiled-program account fixtures", () => {
     expect(portfolio!.positions[0]).toEqual({ classId: "BTC", units: "2000000000000000000", locked: "0" });
     expect(portfolio!.requests).toEqual([{
       requestId: REQUEST, owner: OWNER, operation: "deposit", fromClass: null, toClass: "BTC", amount: "1000000", units: null, minimumUnits: "0", minimumProceeds: null,
-      targetBatch: 1, expiryBatch: 20, state: "filled",
-      receipt: { requestId: REQUEST, sequence: 1, batch: 1, status: "filled", minted: "1000000000000000000", proceeds: "0" },
+      targetBatch: 1, expiryBatch: 20, state: "filled", feeTerms: { version: "0", bps: 0, cap: "0" },
+      receipt: { requestId: REQUEST, sequence: 1, batch: 1, status: "filled", minted: "1000000000000000000", proceeds: "0", gross: null, fee: "0" },
     }]);
     expect(await source.portfolio("11111111111111111111111111111111")).toBeNull();
   });
@@ -229,7 +231,7 @@ describe("transaction rate limit", () => {
     const source = await open();
     const program = loadProgram(connection as unknown as Connection, idlPath);
     const transactions = new CoxTransactions({ connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes });
-    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json") });
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), feeVersion: async () => 0n });
     const server = createCoxApiServer({ source, transactions, submissions, postLimit: { perMinute: 2, trustForwardedFor: true } });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1/transactions/withdraw`;
@@ -346,7 +348,7 @@ describe("unsigned transactions and submission", () => {
     const transactions = new CoxTransactions({
       connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes,
     }, () => NOW);
-    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), now: () => NOW });
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), now: () => NOW, feeVersion: async () => 0n });
     return { source, program, transactions, submissions };
   }
 
@@ -414,7 +416,7 @@ describe("unsigned transactions and submission", () => {
     expect(await submissions.get(submission.signature)).toMatchObject({ state: "finalized", slot: 77 });
     expect(await submissions.submit(signed)).toMatchObject({ state: "finalized" });
     expect(connection.sent).toHaveLength(1);
-    const reopened = new CoxSubmissions({ connection: connection as unknown as Connection, programId: new PublicKey(fixture.programAddress), path: join(dir, "submissions.json") });
+    const reopened = new CoxSubmissions({ connection: connection as unknown as Connection, programId: new PublicKey(fixture.programAddress), path: join(dir, "submissions.json"), feeVersion: async () => 0n });
     expect(await reopened.get(submission.signature)).toMatchObject({ state: "finalized", transaction: signed });
     const transfer = SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: new PublicKey(VAULT), lamports: 1 });
     const foreign = new VersionedTransaction(new TransactionMessage({ payerKey: wallet.publicKey, recentBlockhash: built.recentBlockhash, instructions: [transfer] }).compileToV0Message());
@@ -442,6 +444,210 @@ describe("unsigned transactions and submission", () => {
       expect((await fetch(`${baseUrl}/v1/transactions/withdraw`, { method: "POST", body: "{}" })).status).toBe(415);
       expect((await fetch(`${baseUrl}/v1/transactions/withdraw`, { method: "POST", headers: json, body: JSON.stringify({ pad: "x".repeat(9000) }) })).status).toBe(413);
       expect((await fetch(`${baseUrl}/v1/transactions/publish`, { method: "POST", headers: json, body: "{}" })).status).toBe(404);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+  });
+});
+
+describe("fee upgrade on the compiled fee-account fixtures", () => {
+  const feeFixture = JSON.parse(readFileSync(join(root, "packages", "cox", "fixtures", "fee-accounts.json"), "utf8")) as { accounts: { address: string; dataHex: string; name: string; owner: string }[] };
+  const feeOwner = "7sR7Xp1CoU2JWz3mLPYZvADm39yPXtj2UGswk2cpZuKD";
+  const wallet = Keypair.generate();
+  const NOW = 120000 + 60 * 5 + 10;
+  let feeMint = "";
+  let feeLedger = 0n;
+
+  beforeEach(() => {
+    for (const account of feeFixture.accounts) connection.set(account.address, new PublicKey(account.owner), Buffer.from(account.dataHex, "hex"));
+    const program = loadProgram(connection as unknown as Connection, idlPath);
+    const pool = program.coder.accounts.decode("pool", connection.accounts.get(POOL)!.data);
+    feeMint = pool.collateralMint.toBase58();
+    feeLedger = [pool.active, pool.pending, pool.payable, pool.residual, pool.fees].reduce((sum: bigint, v: { toString(): string }) => sum + BigInt(v.toString()), 0n);
+    connection.set(VAULT, TOKEN_PROGRAM, tokenAccount(feeMint, feeLedger));
+    connection.set(feeMint, TOKEN_PROGRAM, mintAccount(6));
+  });
+
+  function seedLog(): void {
+    const program = loadProgram(connection as unknown as Connection, idlPath);
+    const publication = program.coder.accounts.decode("publication", connection.accounts.get(PUBLICATION)!.data);
+    const previous = decodeState(Buffer.from(publication.statePreimage)).previousState;
+    const log = new PublicationLog(join(dir, "publications.jsonl"), { program: fixture.programAddress, pool: POOL });
+    log.append(originEntry());
+    log.append({ ...originEntry(), identity: { ...originEntry().identity, sequence: 1, batch: 1, predecessorSequence: 0, predecessorBatch: 0, stateDigest: Buffer.from(previous).toString("hex") } });
+  }
+
+  async function services(feeVersion = 1n) {
+    const source = await open();
+    const program = loadProgram(connection as unknown as Connection, idlPath);
+    const transactions = new CoxTransactions({
+      connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes,
+    }, () => NOW);
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), now: () => NOW, feeVersion: async () => feeVersion });
+    return { source, program, transactions, submissions };
+  }
+
+  function quoteReturn(program: ReturnType<typeof loadProgram>, values: { sequence: number; minted: string; proceeds: string; gross: string; fee: string; feeVersion: number }) {
+    const data = program.coder.types.encode("feeQuoteRead", {
+      sequence: new anchor.BN(values.sequence), minted: new anchor.BN(values.minted), proceeds: new anchor.BN(values.proceeds),
+      gross: new anchor.BN(values.gross), fee: new anchor.BN(values.fee), feeVersion: new anchor.BN(values.feeVersion),
+    });
+    connection.returnData = { programId: program.programId.toBase58(), data: [Buffer.from(data).toString("base64"), "base64"] };
+  }
+
+  it("serves the migrated publication with committed and batch fees and reconciles the vault including committed fees", async () => {
+    seedLog();
+    const source = await open();
+    await source.tick();
+    const latest = (await source.publications()).at(-1)!;
+    expect(latest.identity.sequence).toBe(2);
+    expect(latest.ledger.fees).toBe("6200");
+    expect(latest.flows).toMatchObject({ acceptedDeposits: "31000000", fees: "6200", flowResidual: "0" });
+    const { active, pending, payable, residual, fees, vault } = latest.ledger;
+    expect(BigInt(active) + BigInt(pending) + BigInt(payable) + BigInt(residual) + BigInt(fees)).toBe(BigInt(vault));
+    expect(latest.fees).toEqual({ policy: "COX/FEES/V1", active: { version: "1", bps: 2, cap: "2000000" }, scheduled: null });
+    const status = await source.status(120120 + 25);
+    expect(status.fees).toEqual({ policy: "COX/FEES/V1", migrated: true, active: { version: "1", bps: 2, cap: "2000000" }, scheduled: null, committed: "6200" });
+    expect(status.reconciliation).toEqual({ sequence: 2, vault: feeLedger.toString(), ledger: feeLedger.toString(), fees: "6200", covered: true });
+    connection.set(VAULT, TOKEN_PROGRAM, tokenAccount(feeMint, feeLedger - 6200n));
+    await source.tick();
+    expect(await source.status(120120 + 25)).toMatchObject({ state: "incident", reconciliation: { covered: false } });
+  });
+
+  it("restores a schema 3 publication from the publisher archive after a restart", async () => {
+    seedLog();
+    const bytes = connection.accounts.get(PUBLICATION)!.data;
+    const program = loadProgram(connection as unknown as Connection, idlPath);
+    const stateDigest = Buffer.from(program.coder.accounts.decode("publication", bytes).stateDigest).toString("hex");
+    const directory = join(dir, "history");
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(join(directory, "2.json"), JSON.stringify({
+      schema: "cox.publication-archive/v1",
+      identity: { program: fixture.programAddress, pool: POOL, genesisHash: "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG" },
+      address: PUBLICATION, sequence: "2", batch: "2", stateDigest,
+      accountSha256: createHash("sha256").update(bytes).digest("hex"), accountBase64: bytes.toString("base64"), finalizedSlot: 91,
+    }));
+    const archive = new PublicationArchive(directorySource(directory), program, new PublicKey(POOL), "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
+    const { publication, slot } = await archive.read(2n);
+    expect(publication.schemaVersion).toBe(3);
+    expect(publication.state.feeState?.fees.toString()).toBe("6200");
+    expect(slot).toBe(91);
+    connection.accounts.delete(PUBLICATION);
+    const restarted = await LiveCoxSource.open({ connection: connection as unknown as Connection, program, poolId: 0n, network: "solana-devnet", logPath: join(dir, "publications.jsonl"), archive });
+    connection.set(PUBLICATION, new PublicKey(fixture.programAddress), bytes);
+    await restarted.tick();
+    expect((await restarted.publications()).map((p) => [p.identity.sequence, p.ledger.fees])).toEqual([[0, "0"], [1, "0"], [2, "6200"]]);
+  });
+
+  it("shows a request's locked fee terms and the fee charged on its committed receipt", async () => {
+    const source = await open();
+    const portfolio = await source.portfolio(feeOwner);
+    expect(portfolio!.requests).toHaveLength(1);
+    expect(portfolio!.requests[0]).toMatchObject({
+      operation: "deposit", amount: "1000000", state: "filled", feeTerms: { version: "1", bps: 2, cap: "2000000" },
+      receipt: { status: "filled", gross: "1000000", fee: "200" },
+    });
+  });
+
+  it("builds fee-aware trades only for the quoted fee version", async () => {
+    const { transactions } = await services();
+    const owner = wallet.publicKey.toBase58();
+    await expect(transactions.deposit({ owner, toClass: "ETH", amount: "2500000", minimumUnits: "0", expiryBatch: 10 })).rejects.toThrow("expectedFeeVersion is required");
+    await expect(transactions.deposit({ owner, toClass: "ETH", amount: "2500000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: "0" })).rejects.toThrow(FeeChangedError);
+    await expect(transactions.deposit({ owner, toClass: "ETH", amount: "2500000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: "-1" })).rejects.toThrow("integer string");
+    const built = await transactions.deposit({ owner, toClass: "ETH", amount: "2500000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: "1" });
+    expect(built.feeTerms).toEqual({ version: "1", bps: 2, cap: "2000000" });
+    const data = Buffer.from(VersionedTransaction.deserialize(Buffer.from(built.transaction, "base64")).message.compiledInstructions.at(-1)!.data);
+    expect(data.subarray(0, 8)).toEqual(discriminator("global", "deposit_with_fee"));
+    expect(data.length).toBe(49);
+    expect(data.readBigUInt64LE(41)).toBe(1n);
+    const trades: [string, () => Promise<UnsignedTransaction>][] = [
+      ["switch_with_fee", () => transactions.switch({ owner: feeOwner, fromClass: "BTC", toClass: "ETH", units: "1000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: "1" })],
+      ["redeem_with_fee", () => transactions.redeem({ owner: feeOwner, fromClass: "BTC", units: "1000", minimumProceeds: "0", expiryBatch: 10, expectedFeeVersion: "1" })],
+    ];
+    for (const [name, call] of trades) {
+      const instruction = Buffer.from(VersionedTransaction.deserialize(Buffer.from((await call()).transaction, "base64")).message.compiledInstructions.at(-1)!.data);
+      expect(instruction.subarray(0, 8)).toEqual(discriminator("global", name));
+      expect(instruction.readBigUInt64LE(instruction.length - 8)).toBe(1n);
+    }
+    connection.simulationError = "FeeVersionChanged";
+    await expect(transactions.deposit({ owner, toClass: "ETH", amount: "2500000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: "1" })).rejects.toThrow(FeeChangedError);
+  });
+
+  it("refuses to relay a trade signed for a fee version the pool no longer has", async () => {
+    const { program, transactions } = await services();
+    const built = await transactions.deposit({ owner: wallet.publicKey.toBase58(), toClass: "ETH", amount: "2500000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: "1" });
+    const tx = VersionedTransaction.deserialize(Buffer.from(built.transaction, "base64"));
+    tx.sign([wallet]);
+    const signed = Buffer.from(tx.serialize()).toString("base64");
+    await expect((await services(2n)).submissions.submit(signed)).rejects.toThrow(FeeChangedError);
+    expect(connection.sent).toHaveLength(0);
+    const keys = { owner: wallet.publicKey, pool: new PublicKey(POOL), vault: new PublicKey(VAULT), position: PublicKey.default, request: PublicKey.default, userToken: PublicKey.default };
+    const old = new VersionedTransaction(new TransactionMessage({ payerKey: wallet.publicKey, recentBlockhash: built.recentBlockhash, instructions: [new CoxInstructions(program).deposit(keys, 1, 5n, 0n, 10n)] }).compileToV0Message());
+    old.sign([wallet]);
+    const current = (await services(1n)).submissions;
+    await expect(current.submit(Buffer.from(old.serialize()).toString("base64"))).rejects.toThrow(FeeChangedError);
+    expect(await current.submit(signed)).toMatchObject({ operation: "deposit", state: "submitted" });
+    expect(connection.sent).toHaveLength(1);
+  });
+
+  it("quotes gross value, fee, net and the fee version from the program's fee quote", async () => {
+    const { program, transactions } = await services();
+    quoteReturn(program, { sequence: 2, minted: "999800000000000000", proceeds: "0", gross: "1000000", fee: "200", feeVersion: 1 });
+    expect(await transactions.quoteDeposit({ owner: wallet.publicKey.toBase58(), toClass: "BTC", amount: "1000000" })).toEqual({
+      operation: "deposit", fromClass: null, toClass: "BTC", amount: "1000000", units: null,
+      gross: "1000000", fee: "200", net: "999800", mintedUnits: "999800000000000000", proceeds: null,
+      feeTerms: { version: "1", bps: 2, cap: "2000000" }, scheduledFees: null, observedSequence: 2, estimate: true,
+    });
+    quoteReturn(program, { sequence: 2, minted: "0", proceeds: "99998000000", gross: "100000000000", fee: "2000000", feeVersion: 1 });
+    expect(await transactions.quoteRedeem({ owner: feeOwner, fromClass: "BTC", units: "1000" })).toMatchObject({ gross: "100000000000", fee: "2000000", net: "99998000000", proceeds: "99998000000", mintedUnits: null });
+    quoteReturn(program, { sequence: 2, minted: "1", proceeds: "0", gross: "1000000", fee: "200", feeVersion: 2 });
+    await expect(transactions.quoteDeposit({ owner: wallet.publicKey.toBase58(), toClass: "BTC", amount: "1000000" })).rejects.toThrow(FeeChangedError);
+    quoteReturn(program, { sequence: 3, minted: "1", proceeds: "0", gross: "1000000", fee: "200", feeVersion: 1 });
+    await expect(transactions.quoteDeposit({ owner: wallet.publicKey.toBase58(), toClass: "BTC", amount: "1000000" })).rejects.toThrow("advanced while quoting");
+    await expect(transactions.quoteSwitch({ owner: feeOwner, fromClass: "BTC", toClass: "BTC", units: "1" })).rejects.toThrow("must differ");
+  });
+
+  it("matches the committed fee-aware response examples for the web app", async () => {
+    seedLog();
+    const { source, program, transactions } = await services();
+    await source.tick();
+    const holder = Keypair.fromSeed(Buffer.alloc(32, 7)).publicKey.toBase58();
+    quoteReturn(program, { sequence: 2, minted: "999800000000000000", proceeds: "0", gross: "1000000", fee: "200", feeVersion: 1 });
+    const quote = await transactions.quoteDeposit({ owner: holder, toClass: "BTC", amount: "1000000" });
+    const { transaction: _transaction, recentBlockhash: _blockhash, ...built } = await transactions.deposit({ owner: holder, toClass: "BTC", amount: "1000000", minimumUnits: "999800000000000000", expiryBatch: 10, expectedFeeVersion: quote.feeTerms.version });
+    const examples = {
+      schema: "cox.app-api/fee-examples/v1",
+      source: "Responses produced by the live source, builders and quote over packages/cox/fixtures/fee-accounts.json (compiled fee-upgrade accounts, synthetic devnet pool). The quote's simulated return mirrors that fixture's committed receipt. Not live market data.",
+      status: { fees: (await source.status(120120 + 25)).fees, reconciliation: (await source.status(120120 + 25)).reconciliation },
+      publication: (await source.publications()).at(-1),
+      portfolio: await source.portfolio(feeOwner),
+      quote,
+      unsignedDeposit: built,
+      feeChangedError: { schemaVersion: "cox.app-api/v1", error: { code: "FEE_CHANGED", message: new FeeChangedError().message } },
+    };
+    await expect(`${JSON.stringify(examples, null, 2)}\n`).toMatchFileSnapshot("../fixtures/cox-fee-examples.json");
+  });
+
+  it("serves quotes over HTTP and answers a changed fee version with FEE_CHANGED", async () => {
+    seedLog();
+    const { source, program, transactions, submissions } = await services();
+    await source.tick();
+    const server = createCoxApiServer({ source, transactions, submissions, now: () => NOW });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const client = createCoxApiClient({ baseUrl });
+    try {
+      quoteReturn(program, { sequence: 2, minted: "999800000000000000", proceeds: "0", gross: "1000000", fee: "200", feeVersion: 1 });
+      const quote = (await client.quoteDeposit({ owner: wallet.publicKey.toBase58(), toClass: "BTC", amount: "1000000" })).data;
+      expect(quote).toMatchObject({ fee: "200", net: "999800", feeTerms: { version: "1" } });
+      const built = (await client.buildDeposit({ owner: wallet.publicKey.toBase58(), toClass: "BTC", amount: "1000000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: quote.feeTerms.version })).data;
+      expect(built.feeTerms).toEqual(quote.feeTerms);
+      await expect(client.buildDeposit({ owner: wallet.publicKey.toBase58(), toClass: "BTC", amount: "1000000", minimumUnits: "0", expiryBatch: 10, expectedFeeVersion: "0" })).rejects.toMatchObject({ code: "FEE_CHANGED", httpStatus: 409 });
+      expect((await fetch(`${baseUrl}/v1/quotes/deposit`)).status).toBe(405);
+      expect((await fetch(`${baseUrl}/v1/quotes/constructor`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(404);
+      expect((await client.status()).status.fees).toMatchObject({ migrated: true, committed: "6200" });
     } finally {
       server.closeAllConnections();
       server.close();
