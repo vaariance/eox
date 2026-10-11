@@ -6,6 +6,8 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { Check, Copy, LogOut, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { shortAddress } from "@/lib/address";
+import { walletError } from "@/lib/errors";
+import { useSnackbar } from "./snackbar";
 
 const primary = "flex h-10 cursor-pointer items-center gap-2 whitespace-nowrap rounded-pill bg-accent px-3 text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90 sm:px-4";
 const row = "flex h-11 w-full cursor-pointer items-center gap-3 rounded-control px-3 text-left text-sm transition-colors duration-150 hover:bg-surface-2";
@@ -15,7 +17,7 @@ export function WalletButton() {
   const { wallets, wallet, select, connect, disconnect, publicKey, connected, connecting } = useWallet();
   const dialog = useRef<HTMLDialogElement>(null);
   const [chosen, setChosen] = useState<WalletName | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { fail } = useSnackbar();
   const [balance, setBalance] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -28,7 +30,7 @@ export function WalletButton() {
   useEffect(() => {
     if (!chosen || wallet?.adapter.name !== chosen || connected || connecting) return;
     setChosen(null);
-    connect().catch((cause: unknown) => setError(cause instanceof Error && cause.message ? cause.message : "The wallet did not connect."));
+    connect().catch((cause: unknown) => fail(walletError(cause), "Wallet not connected"));
   }, [chosen, wallet, connected, connecting, connect]);
 
   useEffect(() => {
@@ -51,12 +53,10 @@ export function WalletButton() {
   }, [connection, publicKey]);
 
   const open = () => {
-    setError(null);
     dialog.current?.showModal();
   };
 
   const pick = (name: WalletName) => {
-    setError(null);
     setChosen(name);
     select(name);
   };
@@ -129,7 +129,6 @@ export function WalletButton() {
                 </button>
               ))
             )}
-            {error && <p role="alert" className="px-3 py-2 text-xs text-down">{error}</p>}
           </div>
         )}
       </dialog>

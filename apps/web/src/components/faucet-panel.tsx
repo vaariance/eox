@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type FaucetBalances, faucetBalances } from "@/app/faucet-actions";
 import { CIRCLE_FAUCET_URL, SOL_FAUCET_URL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
+import { useSnackbar } from "./snackbar";
 
 const card = "rounded-card border border-line bg-surface p-4 shadow-card";
 const link = "flex h-11 items-center justify-center gap-2 rounded-pill bg-accent px-4 text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90";
@@ -19,7 +20,7 @@ export function FaucetPanel() {
   const { publicKey } = useWallet();
   const [mounted, setMounted] = useState(false);
   const [balances, setBalances] = useState<FaucetBalances | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  const { fail } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const owner = mounted ? (publicKey?.toBase58() ?? null) : null;
@@ -32,8 +33,8 @@ export function FaucetPanel() {
     const result = await faucetBalances(owner);
     setLoading(false);
     if (result.ok) setBalances(result.value);
-    setProblem(result.ok ? null : result.message);
-  }, [owner]);
+    if (!result.ok) fail(result.message, "Balances not loaded");
+  }, [owner, fail]);
 
   useEffect(() => {
     void refresh();
@@ -92,7 +93,6 @@ export function FaucetPanel() {
           </button>
         </div>
         {!owner && <p className="mt-3 text-sm text-muted">Connect a wallet to see its balances.</p>}
-        {problem && <p role="alert" className="mt-3 text-xs text-down">{problem}</p>}
         {owner && balances && (
           <dl className="mt-3 flex flex-col gap-2 text-sm">
             <div className="flex justify-between"><dt className="text-muted">Devnet SOL</dt><dd className="num">{show(balances.lamports, 9, 4)}</dd></div>
