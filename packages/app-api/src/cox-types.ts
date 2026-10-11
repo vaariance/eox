@@ -117,7 +117,7 @@ export interface ClassValuation {
 export interface LedgerTotals {
   active: BaseUnits;
   pending: BaseUnits;
-  refundable: BaseUnits;
+  refundable: BaseUnits | null;
   payable: BaseUnits;
   residual: BaseUnits;
   vault: BaseUnits;
@@ -163,11 +163,19 @@ export interface CoxStatus {
   state: SystemState;
   executing: boolean;
   monitor: { sequence: number; verdict: MonitorVerdict } | null;
+  reconciliation: VaultReconciliation | null;
   currentBatch: Batch | null;
 }
 
+export interface VaultReconciliation {
+  sequence: number;
+  vault: BaseUnits;
+  ledger: BaseUnits;
+  covered: boolean;
+}
+
 export type RequestOperation = "deposit" | "switch" | "redeem";
-export type ReceiptStatus = "filled" | "condition-failed" | "expired" | "zero-value-class";
+export type ReceiptStatus = "filled" | "condition-failed" | "expired" | "zero-value-class" | "safety-rejected";
 export type RequestState = "queued" | ReceiptStatus | "cancelled" | "refunded";
 
 export interface Receipt {
@@ -234,6 +242,10 @@ export type CoxErrorCode =
   | "UNKNOWN_ASSET"
   | "UNKNOWN_CLASS"
   | "UNKNOWN_WALLET"
+  | "NOT_LIVE"
+  | "NOTHING_TO_DO"
+  | "TRANSACTION_REJECTED"
+  | "TRANSACTION_NOT_FOUND"
   | "INVALID_REQUEST"
   | "NOT_FOUND"
   | "METHOD_NOT_ALLOWED"
@@ -242,6 +254,74 @@ export type CoxErrorCode =
 export interface CoxApiErrorBody {
   schemaVersion: typeof COX_APP_API_SCHEMA_VERSION;
   error: { code: CoxErrorCode; message: string };
+}
+
+export type TransactionOperation = "deposit" | "switch" | "redeem" | "cancel" | "refund" | "withdraw";
+
+export interface DepositInput {
+  owner: string;
+  toClass: ClassId;
+  amount: BaseUnits;
+  minimumUnits: UnitQuanta;
+  expiryBatch: number;
+}
+
+export interface SwitchInput {
+  owner: string;
+  fromClass: ClassId;
+  toClass: ClassId;
+  units: UnitQuanta;
+  minimumUnits: UnitQuanta;
+  expiryBatch: number;
+}
+
+export interface RedeemInput {
+  owner: string;
+  fromClass: ClassId;
+  units: UnitQuanta;
+  minimumProceeds: BaseUnits;
+  expiryBatch: number;
+}
+
+export interface RequestActionInput {
+  owner: string;
+  requestId: string;
+}
+
+export interface WithdrawInput {
+  owner: string;
+  amount: BaseUnits;
+}
+
+export interface UnsignedTransaction {
+  operation: TransactionOperation;
+  owner: string;
+  transaction: string;
+  recentBlockhash: string;
+  lastValidBlockHeight: number;
+  requestId: string | null;
+  nonce: string | null;
+  targetBatch: Batch | null;
+  expiryBatch: number | null;
+  fromClass: ClassId | null;
+  toClass: ClassId | null;
+  amount: BaseUnits | null;
+  units: UnitQuanta | null;
+  minimumUnits: UnitQuanta | null;
+  minimumProceeds: BaseUnits | null;
+}
+
+export type SubmissionState = "submitted" | "confirmed" | "finalized" | "failed" | "expired";
+
+export interface Submission {
+  signature: string;
+  owner: string;
+  operation: TransactionOperation | null;
+  transaction: string;
+  submittedAt: UnixSeconds;
+  state: SubmissionState;
+  slot: number | null;
+  error: string | null;
 }
 
 export function batchFor(now: UnixSeconds, origin: UnixSeconds): Batch {
