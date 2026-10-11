@@ -3,7 +3,7 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Check, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { type FaucetBalances, faucetBalances } from "@/app/swap-actions";
+import { type FaucetBalances, faucetBalances } from "@/app/faucet-actions";
 import { CIRCLE_FAUCET_URL, SOL_FAUCET_URL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
 
@@ -15,7 +15,7 @@ function show(value: string, digits: number, places = 2): string {
   return formatAmount(Number(BigInt(value)) / 10 ** digits, places);
 }
 
-export function FaucetPanel({ poolTakesCircleUsdc }: { poolTakesCircleUsdc: boolean }) {
+export function FaucetPanel() {
   const { publicKey } = useWallet();
   const [mounted, setMounted] = useState(false);
   const [balances, setBalances] = useState<FaucetBalances | null>(null);
@@ -96,10 +96,7 @@ export function FaucetPanel({ poolTakesCircleUsdc }: { poolTakesCircleUsdc: bool
         {owner && balances && (
           <dl className="mt-3 flex flex-col gap-2 text-sm">
             <div className="flex justify-between"><dt className="text-muted">Devnet SOL</dt><dd className="num">{show(balances.lamports, 9, 4)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Devnet USDC (Circle)</dt><dd className="num">{show(balances.circleUsdc, 6)}</dd></div>
-            {!poolTakesCircleUsdc && (
-              <div className="flex justify-between"><dt className="text-muted">Pool test token</dt><dd className="num">{show(balances.poolCollateral, 6)}</dd></div>
-            )}
+            <div className="flex justify-between"><dt className="text-muted">Devnet USDC</dt><dd className="num">{show(balances.usdc, 6)}</dd></div>
           </dl>
         )}
         <p className="mt-3 text-xs text-muted">A faucet can take up to a minute to arrive. Press Check again after sending.</p>
