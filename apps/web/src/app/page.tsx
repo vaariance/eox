@@ -4,7 +4,7 @@ import { PriceSource } from "@/components/price-source";
 import { Sparkline } from "@/components/sparkline";
 import { getAssets, getCrypto, getDeployment, getPublications } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
-import { CRYPTO_CLASS, changeSince, classViews, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
+import { CRYPTO_CLASS, changeSince, decimalsOf, classViews, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 const WINDOW = 4 * HOUR;
@@ -12,7 +12,7 @@ const WINDOW = 4 * HOUR;
 export default async function MarketsPage() {
   const [assets, crypto, deployment, publications] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications()]);
   const current = latestOf(publications);
-  const classes = classViews(current, deployment.collateralDecimals);
+  const classes = classViews(current, decimalsOf(deployment));
   const active = classes.reduce((sum, item) => sum + item.backing, 0);
   const level = levelSeries(publications);
   const cryptoClass = findClass(classes, CRYPTO_CLASS);

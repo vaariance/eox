@@ -1,8 +1,21 @@
-import type { ClassValuation, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
+import type { ClassValuation, CoxDeployment, CoxStatus, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
 
 export const PRICE_DIGITS = 8;
 export const SCALE_DIGITS = 12;
 export const CRYPTO_CLASS = "CRYPTO";
+export const SAMPLE_SOURCE = "apps/web sample data";
+const DEFAULT_DECIMALS = 0;
+const BATCH_SECONDS = 60;
+
+export function decimalsOf(deployment: CoxDeployment): number {
+  return deployment.collateralDecimals ?? DEFAULT_DECIMALS;
+}
+
+export function batchCutoff(status: CoxStatus, batch: number): number | null {
+  if (status.currentBatch) return status.currentBatch.cutoff + (batch - status.currentBatch.batch) * BATCH_SECONDS;
+  if (status.latestBatch !== null && status.latestCutoff !== null) return status.latestCutoff + (batch - status.latestBatch) * BATCH_SECONDS;
+  return null;
+}
 
 export interface Point {
   cutoff: number;
@@ -45,7 +58,7 @@ export function referenceSeries(publications: readonly Publication[], assetId: s
 }
 
 export function levelSeries(publications: readonly Publication[]): Point[] {
-  return publications.map((publication) => ({ cutoff: publication.identity.cutoff, value: toNumber(publication.cryptoLevel, SCALE_DIGITS) }));
+  return publications.map((publication) => ({ cutoff: publication.identity.cutoff, value: toNumber(publication.benchmark, SCALE_DIGITS) }));
 }
 
 export function latest(points: readonly Point[]): number {
@@ -59,8 +72,8 @@ export function changeSince(points: readonly Point[], seconds: number): number {
 }
 
 function classView(valuation: ClassValuation, decimals: number): ClassView {
-  const backing = toNumber(valuation.postFlow.backing, decimals);
-  const units = toNumber(valuation.postFlow.units, SCALE_DIGITS);
+  const backing = toNumber(valuation.final.backing, decimals);
+  const units = toNumber(valuation.final.units, SCALE_DIGITS);
   return { id: valuation.classId, backing, units, unitValue: units > 0 ? backing / units : null };
 }
 

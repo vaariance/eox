@@ -5,7 +5,6 @@ import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
 import { SCALE_DIGITS, toNumber } from "@/lib/view";
 
 const SHOWN = 40;
-const BATCH_SECONDS = 60;
 
 export default async function PublicationsPage() {
   const [crypto, publications] = await Promise.all([getCrypto(), getPublications()]);
@@ -25,7 +24,7 @@ export default async function PublicationsPage() {
           <thead>
             <tr className="border-b border-line text-left text-xs text-muted">
               <th scope="col" className="px-4 py-3 font-normal">Publication</th>
-              <th scope="col" className="px-4 py-3 font-normal">Batch cutoff</th>
+              <th scope="col" className="px-4 py-3 font-normal">Batch and cutoff</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">CRYPTO level</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Fallback prices</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Oldest trade</th>
@@ -34,31 +33,27 @@ export default async function PublicationsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((publication, index) => {
-              const older = rows[index + 1];
-              const missed = older ? (publication.identity.cutoff - older.identity.cutoff) / BATCH_SECONDS - 1 : 0;
+            {rows.map((publication) => {
+              const { identity } = publication;
               const fallback = publication.prices.filter((price) => price.step !== 1).length;
-              const oldest = Math.max(...publication.prices.map((price) => price.tradeAgeMinutes));
+              const oldest = Math.max(0, ...publication.prices.map((price) => price.tradeAgeMinutes));
               return (
-                <Fragment key={publication.identity.sequence}>
+                <Fragment key={identity.sequence}>
                   <tr className="border-b border-line">
-                    <th scope="row" className="num px-4 py-3 text-left font-normal">#{formatWhole(publication.identity.sequence)}</th>
-                    <td className="num whitespace-nowrap px-4 py-3 text-muted">{formatUtcTime(publication.identity.cutoff)}</td>
-                    <td className="num px-4 py-3 text-right">{formatAmount(toNumber(publication.cryptoLevel, SCALE_DIGITS), 4)}</td>
+                    <th scope="row" className="num px-4 py-3 text-left font-normal">#{formatWhole(identity.sequence)}</th>
+                    <td className="num whitespace-nowrap px-4 py-3 text-muted">#{formatWhole(identity.batch)} · {formatUtcTime(identity.cutoff)}</td>
+                    <td className="num px-4 py-3 text-right">{formatAmount(toNumber(publication.benchmark, SCALE_DIGITS), 4)}</td>
                     <td className="num px-4 py-3 text-right">{fallback} of {publication.prices.length}</td>
                     <td className="num px-4 py-3 text-right">{oldest === 0 ? "This minute" : `${oldest} min`}</td>
-                    <td className="num px-4 py-3 text-right">{publication.executedRequests}</td>
-                    <td className="num px-4 py-3 text-right">{publication.rejectedRequests}</td>
+                    <td className="num px-4 py-3 text-right">{publication.flows.executed}</td>
+                    <td className="num px-4 py-3 text-right">{publication.flows.rejected}</td>
                   </tr>
-                  {missed > 0 && older && (
+                  {identity.missedBatches.length > 0 && (
                     <tr className="border-b border-line bg-surface-2">
                       <td colSpan={7} className="px-4 py-3 text-warn">
                         <span className="flex items-center gap-1.5">
                           <CircleAlert size={14} aria-hidden="true" />
-                          {missed === 1
-                            ? `No publication for the ${formatUtcTime(older.identity.cutoff + BATCH_SECONDS)} batch.`
-                            : `No publication for ${missed} batches after ${formatUtcTime(older.identity.cutoff)}.`}{" "}
-                          Queued requests waited for the next publication.
+                          No publication for {identity.missedBatches.length === 1 ? "batch" : "batches"} {identity.missedBatches.map((batch) => `#${formatWhole(batch)}`).join(", ")}. Queued requests waited for the next publication.
                         </span>
                       </td>
                     </tr>

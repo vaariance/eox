@@ -3,7 +3,8 @@
 import { ArrowDownUp, Info } from "lucide-react";
 import { useState } from "react";
 import { COLLATERAL, SWAP_CHARGE_BPS } from "@/lib/config";
-import { formatAmount, formatUtcTime } from "@/lib/format";
+import type { Batch } from "@eox/app-api";
+import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
 import type { ClassView } from "@/lib/view";
 import { Countdown } from "./countdown";
 import { WalletAction } from "./wallet-action";
@@ -16,7 +17,7 @@ interface Holding {
   units: number;
 }
 
-export function SwapForm({ classes, holdings, nextCutoff }: { classes: ClassView[]; holdings: Holding[]; nextCutoff: number }) {
+export function SwapForm({ classes, holdings, nextBatch }: { classes: ClassView[]; holdings: Holding[]; nextBatch: Batch | null }) {
   const [from, setFrom] = useState(CASH);
   const [to, setTo] = useState("CRYPTO");
   const [amount, setAmount] = useState("250");
@@ -83,7 +84,7 @@ export function SwapForm({ classes, holdings, nextCutoff }: { classes: ClassView
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Target batch</dt>
-            <dd className="num">{formatUtcTime(nextCutoff)} · closes in <Countdown /></dd>
+            <dd className="num">{nextBatch ? <>#{formatWhole(nextBatch.batch)} · {formatUtcTime(nextBatch.cutoff)} · closes in <Countdown /></> : "No open batch"}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">You receive</dt>

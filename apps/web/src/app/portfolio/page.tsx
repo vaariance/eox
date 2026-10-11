@@ -1,29 +1,36 @@
 import Link from "next/link";
-import { Change } from "@/components/change";
 import { RequestList } from "@/components/request-list";
 import { WalletAction } from "@/components/wallet-action";
 import { WalletNote } from "@/components/wallet-note";
-import { getDeployment, getPortfolio, getPublications } from "@/lib/data";
+import { getDeployment, getPortfolio, getPublications, getStatus } from "@/lib/data";
 import { formatAmount, formatWhole } from "@/lib/format";
-import { CRYPTO_CLASS, SCALE_DIGITS, classViews, findClass, latestOf, toNumber } from "@/lib/view";
+import { CRYPTO_CLASS, SCALE_DIGITS, classViews, decimalsOf, findClass, latestOf, toNumber } from "@/lib/view";
 
 export default async function PortfolioPage() {
-  const [deployment, portfolio, publications] = await Promise.all([getDeployment(), getPortfolio(), getPublications()]);
-  const decimals = deployment.collateralDecimals;
+  const [deployment, portfolio, publications, status] = await Promise.all([getDeployment(), getPortfolio(), getPublications(), getStatus()]);
+  const decimals = decimalsOf(deployment);
+
+  if (!portfolio) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="font-display text-title font-semibold tracking-tight">Portfolio</h1>
+        <p className="max-w-2xl text-sm text-muted">There is no wallet to show yet. Looking up a connected wallet arrives with the live API.</p>
+      </div>
+    );
+  }
+
   const classes = classViews(latestOf(publications), decimals);
-  const rows = portfolio.positions.map((position) => ({
-    classId: position.classId,
-    units: toNumber(position.units, SCALE_DIGITS),
-    locked: toNumber(position.lockedUnits, SCALE_DIGITS),
-    unitValue: findClass(classes, position.classId).unitValue,
-    redeemable: toNumber(position.redeemableValue, decimals),
-    deposited: toNumber(position.depositedBasis, decimals),
-  }));
-  const redeemable = rows.reduce((sum, row) => sum + row.redeemable, 0);
-  const deposited = rows.reduce((sum, row) => sum + row.deposited, 0);
-  const pendingDeposits = portfolio.pending
-    .filter((request) => request.state === "queued" && request.amount !== null)
-    .reduce((sum, request) => sum + toNumber(request.amount ?? "0", decimals), 0);
+  const rows = portfolio.positions.map((position) => {
+    const units = toNumber(position.units, SCALE_DIGITS);
+    const unitValue = findClass(classes, position.classId).unitValue;
+    return { classId: position.classId, units, locked: toNumber(position.locked, SCALE_DIGITS), unitValue, redeemable: unitValue === null ? null : units * unitValue };
+  });
+  const redeemable = rows.reduce((sum, row) => sum + (row.redeemable ?? 0), 0);
+  const cards = [
+    { label: "Redeemable now, about", value: redeemable, note: "Your units at the latest unit values" },
+    { label: "Pending deposits", value: toNumber(portfolio.pending, decimals), note: "Still yours until the batch executes" },
+    { label: "Refundable", value: toNumber(portfolio.refundable, decimals), note: "From rejected, expired or cancelled deposits" },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,29 +38,21 @@ export default async function PortfolioPage() {
         <h1 className="font-display text-title font-semibold tracking-tight">Portfolio</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           <WalletNote /> Your return comes from unit values, not from the reference charts.
-          {portfolio.valuedAtSequence !== null && ` Valued at publication #${formatWhole(portfolio.valuedAtSequence)}.`}
+          {portfolio.appliedSequence !== null && ` Up to date with publication #${formatWhole(portfolio.appliedSequence)}.`}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">Redeemable value</div>
-          <div className="num mt-2 text-2xl">{formatAmount(redeemable)} <span className="text-xs text-muted">tUSDC</span></div>
-          {deposited > 0 && <div className="mt-1 text-xs"><Change ratio={redeemable / deposited - 1} /> <span className="text-muted">on deposits</span></div>}
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">Deposited</div>
-          <div className="num mt-2 text-2xl">{formatAmount(deposited)} <span className="text-xs text-muted">tUSDC</span></div>
-          <div className="mt-1 text-xs text-muted">In active positions</div>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">Pending deposits</div>
-          <div className="num mt-2 text-2xl">{formatAmount(pendingDeposits)} <span className="text-xs text-muted">tUSDC</span></div>
-          <div className="mt-1 text-xs text-muted">Still yours until the batch executes</div>
-        </div>
+        {cards.map((card) => (
+          <div key={card.label} className="rounded-card border border-line bg-surface p-4 shadow-card">
+            <div className="text-xs text-muted">{card.label}</div>
+            <div className="num mt-2 text-2xl">{formatAmount(card.value)} <span className="text-xs text-muted">tUSDC</span></div>
+            <div className="mt-1 text-xs text-muted">{card.note}</div>
+          </div>
+        ))}
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Ready to withdraw</div>
-          <div className="num mt-2 text-2xl">{formatAmount(toNumber(portfolio.withdrawalPayable, decimals))} <span className="text-xs text-muted">tUSDC</span></div>
+          <div className="num mt-2 text-2xl">{formatAmount(toNumber(portfolio.payable, decimals))} <span className="text-xs text-muted">tUSDC</span></div>
           <div className="mt-3 flex flex-col gap-2">
             <WalletAction needsWallet="Connect wallet to withdraw" className="h-10 w-full rounded-pill bg-accent text-sm font-medium text-accent-ink" />
           </div>
@@ -65,16 +64,14 @@ export default async function PortfolioPage() {
         {rows.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted">No positions yet.</p>
         ) : (
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[620px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
                 <th scope="col" className="px-4 py-3 font-normal">Class</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Units</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Locked in requests</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Unit value</th>
-                <th scope="col" className="px-4 py-3 text-right font-normal">Redeemable (tUSDC)</th>
-                <th scope="col" className="px-4 py-3 text-right font-normal">Deposited (tUSDC)</th>
-                <th scope="col" className="px-4 py-3 text-right font-normal">Profit and loss</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal">Redeemable, about (tUSDC)</th>
               </tr>
             </thead>
             <tbody>
@@ -86,9 +83,7 @@ export default async function PortfolioPage() {
                   <td className="num px-4 py-3 text-right">{formatAmount(row.units)}</td>
                   <td className="num px-4 py-3 text-right">{formatAmount(row.locked)}</td>
                   <td className="num px-4 py-3 text-right">{row.unitValue === null ? "n/a" : formatAmount(row.unitValue, 6)}</td>
-                  <td className="num px-4 py-3 text-right">{formatAmount(row.redeemable)}</td>
-                  <td className="num px-4 py-3 text-right">{formatAmount(row.deposited)}</td>
-                  <td className="px-4 py-3 text-right">{row.deposited > 0 ? <Change ratio={row.redeemable / row.deposited - 1} /> : "n/a"}</td>
+                  <td className="num px-4 py-3 text-right">{row.redeemable === null ? "n/a" : formatAmount(row.redeemable)}</td>
                 </tr>
               ))}
             </tbody>
@@ -96,7 +91,7 @@ export default async function PortfolioPage() {
         )}
       </section>
 
-      <RequestList pending={portfolio.pending} receipts={portfolio.receipts} decimals={decimals} />
+      <RequestList requests={portfolio.requests} status={status} decimals={decimals} />
     </div>
   );
 }

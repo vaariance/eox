@@ -8,13 +8,9 @@ import { RequestList } from "@/components/request-list";
 import { TradeForm } from "@/components/trade-form";
 import { getAssets, getCrypto, getDeployment, getPortfolio, getPublications, getStatus } from "@/lib/data";
 import { formatAmount, formatChange, formatPrice } from "@/lib/format";
-import { SCALE_DIGITS, changeSince, classViews, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries, toNumber } from "@/lib/view";
+import { SCALE_DIGITS, changeSince, classViews, decimalsOf, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries, toNumber } from "@/lib/view";
 
 const HOUR = 3600;
-
-export async function generateStaticParams() {
-  return (await getAssets()).map((asset) => ({ id: asset.assetId }));
-}
 
 export default async function AssetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,7 +25,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   const asset = assets.find((item) => item.assetId === id);
   if (!asset) notFound();
 
-  const decimals = deployment.collateralDecimals;
+  const decimals = decimalsOf(deployment);
   const current = latestOf(publications);
   const classes = classViews(current, decimals);
   const claim = findClass(classes, asset.assetId);
@@ -41,7 +37,8 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   const referenceHour = changeSince(reference, HOUR);
   const verb = (ratio: number) => (ratio >= 0 ? "rose" : "fell");
   const size = (ratio: number) => formatChange(Math.abs(ratio)).slice(1);
-  const holding = portfolio.positions.find((item) => item.classId === asset.assetId);
+  const holding = portfolio?.positions.find((item) => item.classId === asset.assetId);
+  const heldUnits = holding ? toNumber(holding.units, SCALE_DIGITS) : 0;
   const involved = (classId: string | null) => classId === asset.assetId;
 
   return (
@@ -95,27 +92,26 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
             ]}
           />
           <RequestList
-            pending={portfolio.pending.filter((request) => involved(request.fromClass) || involved(request.toClass))}
-            receipts={[]}
+            requests={(portfolio?.requests ?? []).filter((request) => involved(request.fromClass) || involved(request.toClass))}
+            status={status}
             decimals={decimals}
           />
         </div>
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={classes.filter((item) => item.id !== asset.assetId)} nextCutoff={status.currentBatch.cutoff} />
+          <TradeForm claim={claim} others={classes.filter((item) => item.id !== asset.assetId)} nextBatch={status.currentBatch} />
           <section className="rounded-card border border-line bg-surface p-4 shadow-card">
             <h2 className="text-sm font-medium">Your position</h2>
             {holding ? (
               <dl className="mt-3 flex flex-col gap-2 text-sm">
-                <div className="flex justify-between"><dt className="text-muted">Units</dt><dd className="num">{formatAmount(toNumber(holding.units, SCALE_DIGITS))}</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Redeemable value</dt><dd className="num">{formatAmount(toNumber(holding.redeemableValue, decimals))} tUSDC</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Deposited</dt><dd className="num">{formatAmount(toNumber(holding.depositedBasis, decimals))} tUSDC</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Units</dt><dd className="num">{formatAmount(heldUnits)}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Locked in requests</dt><dd className="num">{formatAmount(toNumber(holding.locked, SCALE_DIGITS))}</dd></div>
                 <div className="flex justify-between border-t border-line pt-2">
-                  <dt className="text-muted">Profit and loss</dt>
-                  <dd><Change ratio={toNumber(holding.redeemableValue, decimals) / toNumber(holding.depositedBasis, decimals) - 1} /></dd>
+                  <dt className="text-muted">Redeemable now, about</dt>
+                  <dd className="num">{claim.unitValue === null ? "n/a" : `${formatAmount(heldUnits * claim.unitValue)} tUSDC`}</dd>
                 </div>
               </dl>
             ) : (
-              <p className="mt-3 text-sm text-muted">You hold no {asset.assetId} units.</p>
+              <p className="mt-3 text-sm text-muted">{portfolio ? `You hold no ${asset.assetId} units.` : "Connect a wallet to see your position."}</p>
             )}
           </section>
         </div>

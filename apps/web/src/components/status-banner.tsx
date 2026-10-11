@@ -13,7 +13,9 @@ const states: Record<SystemState, { label: string; tone: string; Icon: typeof Ci
 
 const verdicts = { match: "matches", mismatch: "mismatch", pending: "checking" };
 
-export function StatusBanner({ status, sample }: { status: CoxStatus; sample: boolean }) {
+const sources = { sample: "Sample data, not from the API", fixture: "Fixture data from the app API" };
+
+export function StatusBanner({ status, source }: { status: CoxStatus; source: "sample" | "fixture" | "live" }) {
   const state = states[status.state];
   const mismatch = status.monitor?.verdict === "mismatch";
 
@@ -24,21 +26,25 @@ export function StatusBanner({ status, sample }: { status: CoxStatus; sample: bo
           <state.Icon size={14} aria-hidden="true" />
           {state.label}
         </span>
-        {status.latestSequence === null || status.latestCutoff === null ? (
+        {status.latestSequence === null || status.latestBatch === null ? (
           <span>No publication yet</span>
         ) : (
           <span>
-            Publication <span className="num text-ink">#{formatWhole(status.latestSequence)}</span> for the{" "}
-            <span className="num text-ink">{formatUtcTime(status.latestCutoff)}</span> batch
+            Publication <span className="num text-ink">#{formatWhole(status.latestSequence)}</span> for batch{" "}
+            <span className="num text-ink">#{formatWhole(status.latestBatch)}</span>
+            {status.latestCutoff !== null && <span className="num"> ({formatUtcTime(status.latestCutoff)})</span>}
           </span>
         )}
-        <span>
-          Next cutoff in <span className="text-ink"><Countdown /></span>
-        </span>
+        {status.executing && <span className="text-warn">Filling the accepted batch</span>}
+        {status.currentBatch && (
+          <span>
+            Batch <span className="num text-ink">#{formatWhole(status.currentBatch.batch)}</span> closes in <span className="text-ink"><Countdown /></span>
+          </span>
+        )}
         <span className={mismatch ? "text-down" : undefined}>
           Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{status.monitor ? verdicts[status.monitor.verdict] : "no verdict yet"}</span>
         </span>
-        {sample && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Sample data, not from the API</span>}
+        {source !== "live" && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">{sources[source]}</span>}
       </div>
       <p className="mx-auto w-full max-w-7xl px-4 pb-2 pt-1 text-xs text-muted sm:px-6">
         Solana devnet · Test collateral (tUSDC has no real value) · MVP-0 is a test mechanism · Prices attested by the operator from exchange data

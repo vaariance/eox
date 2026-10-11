@@ -3,7 +3,8 @@
 import { Info } from "lucide-react";
 import { useState } from "react";
 import { COLLATERAL } from "@/lib/config";
-import { formatAmount, formatUtcTime } from "@/lib/format";
+import type { Batch } from "@eox/app-api";
+import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
 import type { ClassView } from "@/lib/view";
 import { Countdown } from "./countdown";
 import { WalletAction } from "./wallet-action";
@@ -18,7 +19,7 @@ const operations: { id: Operation; label: string }[] = [
 
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-export function TradeForm({ claim, others, nextCutoff }: { claim: ClassView; others: ClassView[]; nextCutoff: number }) {
+export function TradeForm({ claim, others, nextBatch }: { claim: ClassView; others: ClassView[]; nextBatch: Batch | null }) {
   const [operation, setOperation] = useState<Operation>("deposit");
   const [amount, setAmount] = useState("250");
   const [target, setTarget] = useState(others[0].id);
@@ -95,7 +96,7 @@ export function TradeForm({ claim, others, nextCutoff }: { claim: ClassView; oth
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted">Target batch</dt>
-            <dd className="num">{formatUtcTime(nextCutoff)} · closes in <Countdown /></dd>
+            <dd className="num">{nextBatch ? <>#{formatWhole(nextBatch.batch)} · {formatUtcTime(nextBatch.cutoff)} · closes in <Countdown /></> : "No open batch"}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Last unit value</dt>

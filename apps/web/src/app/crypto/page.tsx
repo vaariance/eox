@@ -5,19 +5,19 @@ import { PriceSource } from "@/components/price-source";
 import { TradeForm } from "@/components/trade-form";
 import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { formatAmount } from "@/lib/format";
-import { CRYPTO_CLASS, SCALE_DIGITS, changeSince, classViews, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, toNumber } from "@/lib/view";
+import { CRYPTO_CLASS, changeSince, classViews, decimalsOf, findClass, latest, latestOf, levelSeries, priceOf, priceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 
 export default async function CryptoPage() {
   const [assets, crypto, deployment, publications, status] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications(), getStatus()]);
   const current = latestOf(publications);
-  const classes = classViews(current, deployment.collateralDecimals);
+  const classes = classViews(current, decimalsOf(deployment));
   const claim = findClass(classes, CRYPTO_CLASS);
   const level = levelSeries(publications);
   const members = crypto.members.map((member) => {
     const asset = assets.find((item) => item.assetId === member.assetId);
-    const weight = toNumber(member.weight, SCALE_DIGITS);
+    const weight = Number(member.weightNumerator) / Number(member.weightDenominator);
     const priceHour = changeSince(priceSeries(publications, member.assetId), HOUR);
     return { id: member.assetId, name: asset?.name ?? "", weight, priceHour, contribution: priceHour * weight };
   });
@@ -88,7 +88,7 @@ export default async function CryptoPage() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={classes.filter((item) => item.id !== CRYPTO_CLASS)} nextCutoff={status.currentBatch.cutoff} />
+          <TradeForm claim={claim} others={classes.filter((item) => item.id !== CRYPTO_CLASS)} nextBatch={status.currentBatch} />
           <p className="px-1 text-xs text-muted">
             A CRYPTO position follows the benchmark. It is not cash and it is not risk-free: its unit value can fall.
           </p>
