@@ -536,3 +536,11 @@ another agent needs to know.
 - **What:** At Joel's request, `cox.app-api/v1` with the P1-oracle fixture is public at `https://cox-app-api-529206295845.us-central1.run.app` (revision `cox-app-api-00001-z7w`, image `cox-app-api:adbda5f`, us-central1, at most 2 instances). It is open to anyone, read-only and fixture data only. It sends CORS `*` (`APP_API_CORS_ORIGIN`) and answers the stream's `Last-Event-ID` preflight. It runs as service account `cox-app-api`, which holds no permissions. Verified from outside: all routes, CORS and the SSE stream work. Fixture wallet addresses are in `apps/app-api/README.md`.
 - **Rules for agents:** Godwin: use this URL as `baseUrl` for `createCoxApiClient` in `apps/web`. It serves synthetic data (`SYNA`, `SYNB`), never market data. The VM's `cox-app-api` on `127.0.0.1:8790` is the same fixture for local tunnels. The live COX source (J5) will get its own deployment once the pool is active.
 - **Refs:** commits `91a22ba`..`adbda5f`, `apps/app-api/README.md`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app defaults to the public fixture API
+
+- **Area:** `apps/web`.
+- **What:** Following Joel's 2026-10-11 "Public COX fixture API for the web app" entry, `createCoxApiClient` in `apps/web` now defaults to `https://cox-app-api-529206295845.us-central1.run.app`; `COX_API_URL` overrides it. On fixture data the portfolio page shows the first fixture wallet unless `COX_DEMO_WALLET` is set. Checked with no local API running: every page loads from the public service and shows the fixture label. `dev` and `main` were at the same commit (`e63328a`) before this change, and `pnpm install --frozen-lockfile` passes again after Joel's lockfile repair.
+- **Rules for agents:** The public service is fixture data; the web app still cannot send requests or show the connected wallet's portfolio until the live app API (J5) exists. Requests to the API are made on the server side of the Next.js app, so the browser does not depend on the service's CORS setting.
+- **Open:** Joel: J5. On macOS `apps/app-api` "COX fixture provenance" fails because `packages/cox-methodology/src/vectors.ts` hashes to `9dfa71b4…`, not the fixture's recorded `ea87c088…`; line endings are a likely cause, not confirmed.
+- **Refs:** commit `34213fb`, `apps/web/README.md`.
