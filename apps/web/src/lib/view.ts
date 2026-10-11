@@ -2,6 +2,10 @@ import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, Portfolio, Pri
 
 export const PRICE_DIGITS = 8;
 export const SCALE_DIGITS = 12;
+
+export function unitDigits(decimals: number): number {
+  return SCALE_DIGITS + decimals;
+}
 export const CRYPTO_CLASS = "CRYPTO";
 const DEFAULT_DECIMALS = 0;
 const BATCH_SECONDS = 60;
@@ -70,7 +74,7 @@ export function changeSince(points: readonly Point[], seconds: number): number {
 
 function classView(valuation: ClassValuation, decimals: number): ClassView {
   const backing = toNumber(valuation.final.backing, decimals);
-  const units = toNumber(valuation.final.units, SCALE_DIGITS);
+  const units = toNumber(valuation.final.units, unitDigits(decimals));
   return { id: valuation.classId, backing, units, unitValue: units > 0 ? backing / units : null };
 }
 
@@ -102,9 +106,9 @@ export interface Holding {
   locked: number;
 }
 
-export function holdingsOf(portfolio: Portfolio | null): Holding[] | null {
+export function holdingsOf(portfolio: Portfolio | null, decimals: number): Holding[] | null {
   if (!portfolio) return null;
-  return portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS), locked: toNumber(position.locked, SCALE_DIGITS) }));
+  return portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, unitDigits(decimals)), locked: toNumber(position.locked, unitDigits(decimals)) }));
 }
 
 export function unlockedProblem(holdings: readonly Holding[] | null, classId: string, wanted: number): string | null {

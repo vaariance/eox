@@ -10,7 +10,7 @@ import { RequestList } from "@/components/request-list";
 import { TradeForm } from "@/components/trade-form";
 import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { formatAmount, formatChange, formatPrice } from "@/lib/format";
-import { changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
+import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 const EMPTY = "—";
@@ -33,7 +33,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   const current = currentOf(publications);
   const classes = classViews(current, assets, decimals);
   const claim = findClass(classes, asset.assetId);
-  const others = classes.filter((item) => item.id !== asset.assetId);
+  const cryptoClass = findClass(classes, CRYPTO_CLASS);
 
   const price = priceSeries(publications, asset.assetId);
   const reference = referenceSeries(publications, asset.assetId);
@@ -105,8 +105,8 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
           <RequestList classId={asset.assetId} status={status} decimals={decimals} />
         </div>
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={others} nextBatch={status.currentBatch} decimals={decimals} />
-          <MyPosition classId={asset.assetId} unitValue={claim.unitValue} />
+          <TradeForm claim={claim} crypto={cryptoClass} nextBatch={status.currentBatch} decimals={decimals} />
+          <MyPosition classId={asset.assetId} unitValue={claim.unitValue} decimals={decimals} />
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import type { CoxRequest, CoxStatus, RequestState } from "@eox/app-api";
 import { CircleCheck, CircleX, Clock, Undo2 } from "lucide-react";
 import { COLLATERAL } from "@/lib/config";
 import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
-import { SCALE_DIGITS, batchCutoff, toNumber } from "@/lib/view";
+import { CRYPTO_CLASS, batchCutoff, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { SendButton } from "./send-button";
 
@@ -19,7 +19,13 @@ const states: Record<RequestState, { label: string; tone: string; Icon: typeof C
   refunded: { label: "Refunded", tone: "text-muted", Icon: Undo2, note: null },
 };
 
-const operations = { deposit: "Buy", switch: "Switch", redeem: "Redeem" };
+function operationLabel(request: CoxRequest): string {
+  if (request.operation === "deposit") return request.toClass === CRYPTO_CLASS ? "Swap in" : "Buy";
+  if (request.operation === "redeem") return request.fromClass === CRYPTO_CLASS ? "Swap out" : "Redeem";
+  if (request.fromClass === CRYPTO_CLASS) return "Buy";
+  if (request.toClass === CRYPTO_CLASS) return "Sell";
+  return "Switch";
+}
 
 function subject(request: CoxRequest): string {
   if (request.fromClass && request.toClass) return `${request.fromClass} → ${request.toClass}`;
@@ -28,12 +34,12 @@ function subject(request: CoxRequest): string {
 
 function size(request: CoxRequest, decimals: number): string {
   if (request.amount !== null) return `${formatAmount(toNumber(request.amount, decimals))} ${COLLATERAL.symbol}`;
-  return `${formatAmount(toNumber(request.units ?? "0", SCALE_DIGITS))} units`;
+  return `${formatAmount(toNumber(request.units ?? "0", unitDigits(decimals)))} ${request.fromClass ?? ""}`;
 }
 
 function minimum(request: CoxRequest, decimals: number): string {
   if (request.minimumProceeds !== null && BigInt(request.minimumProceeds) > 0n) return `Min ${formatAmount(toNumber(request.minimumProceeds, decimals))} ${COLLATERAL.symbol}`;
-  if (request.minimumUnits !== null && BigInt(request.minimumUnits) > 0n) return `Min ${formatAmount(toNumber(request.minimumUnits, SCALE_DIGITS))} units`;
+  if (request.minimumUnits !== null && BigInt(request.minimumUnits) > 0n) return `Min ${formatAmount(toNumber(request.minimumUnits, unitDigits(decimals)))} ${request.toClass ?? ""}`;
   return "No minimum";
 }
 
@@ -42,7 +48,7 @@ function detail(request: CoxRequest, decimals: number): string {
   if (request.state === "queued") return `${minimum(request, decimals)} · expires after batch #${formatWhole(request.expiryBatch)}`;
   if (request.state === "filled" && request.receipt) {
     if (request.operation === "redeem") return `Received ${formatAmount(toNumber(request.receipt.proceeds, decimals))} ${COLLATERAL.symbol}`;
-    return `Received ${formatAmount(toNumber(request.receipt.minted, SCALE_DIGITS))} ${request.toClass ?? ""} units`;
+    return `Received ${formatAmount(toNumber(request.receipt.minted, unitDigits(decimals)))} ${request.toClass ?? ""}`;
   }
   return state.note ?? "";
 }
@@ -75,7 +81,7 @@ export function RequestList({ classId = null, status, decimals }: { classId?: st
                 {state.label}
               </span>
               <span className="w-40">
-                {operations[request.operation]} <span className="text-muted">{subject(request)}</span>
+                {operationLabel(request)} <span className="text-muted">{subject(request)}</span>
               </span>
               <span className="num w-36">{size(request, decimals)}</span>
               <span className="num w-60 text-muted">{when(request, status)}</span>

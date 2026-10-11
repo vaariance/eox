@@ -17,14 +17,14 @@ const fixed = "flex h-11 w-full items-center rounded-control border border-line 
 
 export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; nextBatch: Batch | null; decimals: number }) {
   const { portfolio } = useAccount();
-  const holdings = holdingsOf(portfolio);
+  const holdings = holdingsOf(portfolio, decimals);
   const open = useOpenBatch(nextBatch);
   const [buying, setBuying] = useState(true);
   const [amount, setAmount] = useState("250");
 
   const parsed = Number(amount);
   const valid = Number.isFinite(parsed) && parsed > 0;
-  const unitValue = crypto.unitValue ?? 10 ** -decimals;
+  const unitValue = crypto.unitValue ?? 1;
   const held = buying || holdings === null ? null : (holdings.find((item) => item.classId === CRYPTO_CLASS)?.units ?? 0);
   const unitsProblem = valid && !buying ? unlockedProblem(holdings, CRYPTO_CLASS, parsed) : null;
   const planned = planRequest({
@@ -40,8 +40,8 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
   const gross = valid ? (buying ? parsed / unitValue : parsed * unitValue) : null;
   const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;
   const estimate = gross === null ? null : gross - (charge ?? 0);
-  const give = buying ? COLLATERAL.symbol : "CRYPTO units";
-  const get = buying ? "CRYPTO units" : COLLATERAL.symbol;
+  const give = buying ? COLLATERAL.symbol : "CRYPTO";
+  const get = buying ? "CRYPTO" : COLLATERAL.symbol;
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 shadow-card">
@@ -49,7 +49,7 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
         <div className="rounded-control bg-surface-2 p-3">
           <div className="mb-2 flex items-center justify-between text-xs text-muted">
             <label htmlFor="swap-amount">You give</label>
-            {held !== null && <span className="num">You hold {formatAmount(held)} units</span>}
+            {held !== null && <span className="num">You hold {formatAmount(held)} CRYPTO</span>}
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
             <input id="swap-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
@@ -73,10 +73,6 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
 
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
-            <dt className="text-muted">This is a</dt>
-            <dd>{buying ? "Buy" : "Sell"} request</dd>
-          </div>
-          <div className="flex justify-between">
             <dt className="text-muted">Target batch</dt>
             <dd className="num"><TargetBatch batch={open.batch} seconds={open.seconds} /></dd>
           </div>
@@ -95,11 +91,11 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
         <p className="flex gap-2 rounded-control bg-surface-2 p-3 text-xs text-muted">
           <Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>
-            A swap is queued and fills at the unit value fixed by the next publication, so the amount you get is an estimate. Selling leaves {COLLATERAL.symbol} ready to withdraw on the Portfolio page. To back one asset, swap into CRYPTO first, then switch on the CRYPTO page.
+            A swap is queued and fills at the next publication, so the amount you get is an estimate. Swapping back leaves {COLLATERAL.symbol} ready to withdraw on the Portfolio page.
           </span>
         </p>
 
-        <SendButton intent={planned.intent} label={buying ? "Queue buy" : "Queue sell"} connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton intent={planned.intent} label="Swap" connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

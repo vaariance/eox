@@ -1,7 +1,7 @@
 import type { Batch } from "@eox/app-api";
 import { parseScaled } from "./amounts";
 
-export const UNIT_DIGITS = 12;
+const QUANTA_DIGITS = 12;
 const BATCH_SECONDS = 60;
 const U64_MAX = (1n << 64n) - 1n;
 const U128_MAX = (1n << 128n) - 1n;
@@ -46,6 +46,7 @@ export function openBatch(known: Batch, now: number): Batch {
 
 export function planRequest(input: PlanInput): Planned {
   const { operation, collateralDecimals, fromClass, toClass } = input;
+  const unitDigits = QUANTA_DIGITS + collateralDecimals;
   if (input.targetBatch === null || !Number.isSafeInteger(input.targetBatch) || input.targetBatch < 0) return refuse("There is no open batch to join.");
   if (!Number.isSafeInteger(input.validForBatches) || input.validForBatches < 1) return refuse("Choose how many batches the request stays valid for.");
   const expiryBatch = input.targetBatch + input.validForBatches - 1;
@@ -55,14 +56,14 @@ export function planRequest(input: PlanInput): Planned {
     const amount = parseScaled(input.amount, collateralDecimals);
     if (amount === null) return refuse(`Enter an amount with at most ${collateralDecimals} decimal places.`);
     if (amount <= 0n || amount > U64_MAX) return refuse("Enter an amount above zero.");
-    const minimumUnits = minimumOf(input.minimum, UNIT_DIGITS, U128_MAX);
+    const minimumUnits = minimumOf(input.minimum, unitDigits, U128_MAX);
     if (minimumUnits === null) return refuse("The minimum units is not a valid number.");
     return { intent: { operation, toClass, amount: amount.toString(), minimumUnits: minimumUnits.toString(), expiryBatch }, problem: null };
   }
 
   if (fromClass === null) return refuse("Choose the class to take units from.");
-  const units = parseScaled(input.amount, UNIT_DIGITS);
-  if (units === null) return refuse(`Enter units with at most ${UNIT_DIGITS} decimal places.`);
+  const units = parseScaled(input.amount, unitDigits);
+  if (units === null) return refuse(`Enter an amount with at most ${unitDigits} decimal places.`);
   if (units <= 0n || units > U128_MAX) return refuse("Enter an amount above zero.");
 
   if (operation === "redeem") {
@@ -73,7 +74,7 @@ export function planRequest(input: PlanInput): Planned {
 
   if (toClass === null) return refuse("Choose a class to switch into.");
   if (toClass === fromClass) return refuse("A switch cannot end in the class it started from.");
-  const minimumUnits = minimumOf(input.minimum, UNIT_DIGITS, U128_MAX);
+  const minimumUnits = minimumOf(input.minimum, unitDigits, U128_MAX);
   if (minimumUnits === null) return refuse("The minimum units is not a valid number.");
   return { intent: { operation, fromClass, toClass, units: units.toString(), minimumUnits: minimumUnits.toString(), expiryBatch }, problem: null };
 }

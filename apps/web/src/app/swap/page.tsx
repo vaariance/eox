@@ -13,7 +13,7 @@ export default async function SwapPage() {
       <div>
         <h1 className="font-display text-title font-semibold tracking-tight">Swap</h1>
         <p className="mt-1 text-sm text-muted">
-          Move between {COLLATERAL.symbol} and CRYPTO, the benchmark class. Putting {COLLATERAL.symbol} into CRYPTO backs the whole pilot market. From there you can switch into a single asset to back it against the market.
+          Swap {COLLATERAL.symbol} for CRYPTO and back. CRYPTO is what you pay with on COX: once you hold it, you can buy any asset from the Markets page.
         </p>
       </div>
       <SwapForm crypto={crypto} nextBatch={status.currentBatch} decimals={decimals} />

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { shortAddress } from "@/lib/address";
 import { COLLATERAL } from "@/lib/config";
 import { formatAmount, formatWhole } from "@/lib/format";
-import { CRYPTO_CLASS, type ClassView, SCALE_DIGITS, toNumber } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { RequestList } from "./request-list";
 import { SendButton } from "./send-button";
@@ -13,9 +13,9 @@ import { SendButton } from "./send-button";
 export function PortfolioView({ classes, status, decimals }: { classes: ClassView[]; status: CoxStatus; decimals: number }) {
   const { portfolio, owner, live, loading } = useAccount();
   const rows = (portfolio?.positions ?? []).map((position) => {
-    const units = toNumber(position.units, SCALE_DIGITS);
+    const units = toNumber(position.units, unitDigits(decimals));
     const unitValue = classes.find((item) => item.id === position.classId)?.unitValue ?? null;
-    return { classId: position.classId, units, locked: toNumber(position.locked, SCALE_DIGITS), unitValue, redeemable: unitValue === null ? null : units * unitValue };
+    return { classId: position.classId, units, locked: toNumber(position.locked, unitDigits(decimals)), unitValue, redeemable: unitValue === null ? null : units * unitValue };
   });
   const redeemable = rows.reduce((sum, row) => sum + (row.redeemable ?? 0), 0);
   const payable = portfolio?.payable ?? "0";
