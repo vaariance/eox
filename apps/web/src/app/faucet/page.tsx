@@ -11,7 +11,7 @@ export default function FaucetPage() {
           Get free test funds for Solana devnet. You need a little devnet SOL to pay network fees, and devnet USDC from Circle to test with. Neither has any real value.
         </p>
       </div>
-      <FaucetPanel poolMint={POOL_COLLATERAL} poolTakesCircleUsdc={POOL_COLLATERAL === CIRCLE_DEVNET_USDC} />
+      <FaucetPanel poolTakesCircleUsdc={POOL_COLLATERAL === CIRCLE_DEVNET_USDC} />
     </div>
   );
 }

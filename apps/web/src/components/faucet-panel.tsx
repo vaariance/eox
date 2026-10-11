@@ -1,10 +1,9 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Check, Copy, ExternalLink, RefreshCw, TriangleAlert } from "lucide-react";
+import { Check, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { type FaucetBalances, faucetBalances } from "@/app/swap-actions";
-import { shortAddress } from "@/lib/address";
 import { CIRCLE_FAUCET_URL, SOL_FAUCET_URL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
 
@@ -16,7 +15,7 @@ function show(value: string, digits: number, places = 2): string {
   return formatAmount(Number(BigInt(value)) / 10 ** digits, places);
 }
 
-export function FaucetPanel({ poolMint, poolTakesCircleUsdc }: { poolMint: string; poolTakesCircleUsdc: boolean }) {
+export function FaucetPanel({ poolTakesCircleUsdc }: { poolTakesCircleUsdc: boolean }) {
   const { publicKey } = useWallet();
   const [mounted, setMounted] = useState(false);
   const [balances, setBalances] = useState<FaucetBalances | null>(null);
@@ -82,14 +81,6 @@ export function FaucetPanel({ poolMint, poolTakesCircleUsdc }: { poolMint: strin
         <a href={CIRCLE_FAUCET_URL} target="_blank" rel="noreferrer" className={`${link} mt-3`}>
           Open the Circle faucet <ExternalLink size={14} aria-hidden="true" />
         </a>
-        {!poolTakesCircleUsdc && (
-          <p role="note" className="mt-3 flex gap-2 rounded-control bg-surface-2 p-3 text-xs text-warn">
-            <TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-            <span>
-              The live pool does not take Circle's devnet USDC yet. It takes its own test token ({shortAddress(poolMint)}), so USDC from this faucet cannot be used to buy until the pool is moved to USDC.
-            </span>
-          </p>
-        )}
       </section>
 
       <section className={card}>

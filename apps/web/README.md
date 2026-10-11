@@ -70,8 +70,8 @@ is about 250,000,000 CRYPTO units.
 
 The Faucet page links to Solana's devnet SOL faucet and Circle's devnet USDC
 faucet, shows the connected wallet's address to paste there, and reads its
-devnet SOL, Circle USDC and pool test token balances. While the pool's
-collateral mint is not Circle's devnet USDC
-(`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`), the page says that USDC from
-the faucet cannot be used to buy yet. The navigation no longer links to
+devnet SOL, Circle USDC and pool test token balances. The pool's collateral
+mint is not Circle's devnet USDC
+(`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`) yet; the page does not say
+so. The navigation no longer links to
 Publications; the page is still at `/publications`.
