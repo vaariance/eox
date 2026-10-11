@@ -65,3 +65,13 @@ The collateral is the pool's devnet test mint
 `5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X`, not Circle's devnet USDC. One
 collateral base unit buys one whole unit in an empty class, so 250 test USDC
 is about 250,000,000 CRYPTO units.
+
+## Faucet page
+
+The Faucet page links to Solana's devnet SOL faucet and Circle's devnet USDC
+faucet, shows the connected wallet's address to paste there, and reads its
+devnet SOL, Circle USDC and pool test token balances. While the pool's
+collateral mint is not Circle's devnet USDC
+(`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`), the page says that USDC from
+the faucet cannot be used to buy yet. The navigation no longer links to
+Publications; the page is still at `/publications`.
