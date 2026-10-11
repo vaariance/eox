@@ -61,9 +61,10 @@ interface SendButtonProps {
   problem?: string | null;
   className: string;
   quiet?: boolean;
+  hideSuccess?: boolean;
 }
 
-export function SendButton({ intent, label, connectLabel, problem = null, className, quiet = false }: SendButtonProps) {
+export function SendButton({ intent, label, connectLabel, problem = null, className, quiet = false, hideSuccess = false }: SendButtonProps) {
   const { live, owner, refresh } = useAccount();
   const { signTransaction } = useWallet();
   const [mounted, setMounted] = useState(false);
@@ -126,7 +127,7 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
       {wallet && !live && !quiet && <p className="text-xs text-muted">This page shows fixture data, so nothing can be sent from it.</p>}
       {wallet && live && problem && phase.step === "idle" && !quiet && <p role="alert" className="text-xs text-down">{problem}</p>}
       {phase.step === "failed" && <p role="alert" className="text-xs text-down">{phase.message}</p>}
-      {phase.step === "sent" && (
+      {phase.step === "sent" && (bad || !hideSuccess) && (
         <p role="status" className={`text-xs ${bad ? "text-down" : "text-up"}`}>
           {summary(phase.built, phase.submission)}{" "}
           <a href={`https://explorer.solana.com/tx/${phase.submission.signature}?cluster=devnet`} target="_blank" rel="noreferrer" className="underline">
