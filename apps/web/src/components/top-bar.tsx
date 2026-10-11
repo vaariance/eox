@@ -7,7 +7,7 @@ import { NetworkSwitcher } from "./network-switcher";
 import { WalletButton } from "./wallet-button";
 
 const links = [
-  { href: "/", label: "Markets" },
+  { href: "/markets", label: "Markets" },
   { href: "/crypto", label: "CRYPTO" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/swap", label: "Swap" },
@@ -15,7 +15,7 @@ const links = [
 ];
 
 function isCurrent(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/assets");
+  if (href === "/markets") return pathname.startsWith("/markets") || pathname.startsWith("/assets");
   return pathname.startsWith(href);
 }
 
@@ -58,7 +58,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bar backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-6 px-4 sm:px-6">
-        <Link href="/" className="font-display text-lg font-semibold tracking-tight text-ink">
+        <Link href="/markets" className="font-display text-lg font-semibold tracking-tight text-ink">
           COX
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">

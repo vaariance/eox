@@ -47,7 +47,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="flex flex-col gap-6">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted">
-        <Link href="/" className="hover:text-ink">Markets</Link>
+        <Link href="/markets" className="hover:text-ink">Markets</Link>
         <ChevronRight size={12} aria-hidden="true" />
         <span className="text-ink">{asset.assetId}</span>
       </nav>

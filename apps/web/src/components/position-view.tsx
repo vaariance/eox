@@ -177,7 +177,7 @@ export function PositionView({ classId, claim, crypto, values, reference, price,
               <p className="mt-1 text-xs text-muted">CRYPTO is what you pay with. Swap it to and from {COLLATERAL.symbol}, or use it to buy an asset.</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Link href="/swap" className="flex h-11 items-center justify-center rounded-pill bg-accent text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90">Swap</Link>
-                <Link href="/" className="flex h-11 items-center justify-center rounded-pill border border-line text-sm transition-colors duration-150 hover:bg-surface-2">Markets</Link>
+                <Link href="/markets" className="flex h-11 items-center justify-center rounded-pill border border-line text-sm transition-colors duration-150 hover:bg-surface-2">Markets</Link>
               </div>
             </section>
           ) : (

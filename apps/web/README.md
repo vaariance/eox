@@ -12,7 +12,7 @@ Install workspace dependencies from the repository root, then run:
 pnpm --filter @eox/web dev
 ```
 
-Open <http://localhost:3100>. The default fixture API is hosted remotely, so a local API is optional. If the configured API is unavailable, the app displays an error and retry control rather than substituting built-in prices.
+Open <http://localhost:3100> for the landing page, or <http://localhost:3100/markets> for the app. The default fixture API is hosted remotely, so a local API is optional. If the configured API is unavailable, the app displays an error and retry control rather than substituting built-in prices.
 
 ## Configuration
 
