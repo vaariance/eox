@@ -1,7 +1,7 @@
 import { SwapForm } from "@/components/swap-form";
 import { COLLATERAL } from "@/lib/config";
 import { getDeployment, getPortfolio, getPublications, getStatus } from "@/lib/data";
-import { SCALE_DIGITS, classViews, decimalsOf, latestOf, toNumber } from "@/lib/view";
+import { SCALE_DIGITS, classViews, decimalsOf, livePoolId, latestOf, toNumber } from "@/lib/view";
 
 export default async function SwapPage() {
   const [deployment, portfolio, publications, status] = await Promise.all([getDeployment(), getPortfolio(), getPublications(), getStatus()]);
@@ -16,7 +16,7 @@ export default async function SwapPage() {
           Move between {COLLATERAL.name} and any class, or from one class to another. Putting {COLLATERAL.symbol} into CRYPTO backs the whole pilot market; putting it into one asset backs that asset against the market.
         </p>
       </div>
-      <SwapForm classes={classes} holdings={holdings} nextBatch={status.currentBatch} />
+      <SwapForm classes={classes} holdings={holdings} nextBatch={status.currentBatch} decimals={decimalsOf(deployment)} poolId={livePoolId(deployment)} />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { PriceSource } from "@/components/price-source";
 import { TradeForm } from "@/components/trade-form";
 import { getAssets, getCrypto, getDeployment, getPortfolio, getPublications, getStatus } from "@/lib/data";
 import { formatAmount } from "@/lib/format";
-import { CRYPTO_CLASS, SCALE_DIGITS, changeSince, classViews, decimalsOf, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, toNumber } from "@/lib/view";
+import { CRYPTO_CLASS, SCALE_DIGITS, changeSince, classViews, decimalsOf, livePoolId, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, toNumber } from "@/lib/view";
 
 const HOUR = 3600;
 
@@ -90,7 +90,7 @@ export default async function CryptoPage() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={classes.filter((item) => item.id !== CRYPTO_CLASS)} holdings={holdings} nextBatch={status.currentBatch} />
+          <TradeForm claim={claim} others={classes.filter((item) => item.id !== CRYPTO_CLASS)} holdings={holdings} nextBatch={status.currentBatch} decimals={decimalsOf(deployment)} poolId={livePoolId(deployment)} />
           <p className="px-1 text-xs text-muted">
             A CRYPTO position follows the benchmark. It is not cash and it is not risk-free: its unit value can fall.
           </p>
