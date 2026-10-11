@@ -40,9 +40,6 @@ export function StatusBanner({ status, origin }: { status: CoxStatus; origin: Co
         </span>
         {origin === "fixture" && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Fixture data: synthetic assets, not market prices</span>}
       </div>
-      <p className="mx-auto w-full max-w-7xl px-4 pb-2 pt-1 text-xs text-muted sm:px-6">
-        Solana devnet · Test collateral (tUSDC has no real value) · MVP-0 is a test mechanism · Prices attested by the operator from exchange data
-      </p>
     </div>
   );
 }
