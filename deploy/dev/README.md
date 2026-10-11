@@ -1,17 +1,16 @@
 # Dev server
 
 A single Compute Engine VM running the evidence store (Postgres 16 via docker
-compose) and the six ingestion pipelines on an hourly cron.
+compose), the COX price archiver and the read-only APIs. The EOX hourly ingests
+were removed on 2026-10-10; their data stays in the database as a read-only archive.
 
 | | |
 |---|---|
 | Project | `colosseum-eox` |
 | Instance | `eox-dev`, `europe-west1-b` (moved from `us-central1-a` on 2026-10-10 so Bybit is reachable), e2-small, Debian 12 |
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
-| Ingests | hourly at :05 UTC as system user `eox`; each job holds its own lock in `/opt/eox/locks` (a run still in progress is skipped, not doubled) and is stopped after 50 minutes; log in `/opt/eox/logs/ingest.log` |
 | Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
-| App API (fixture) | systemd `eox-app-api`, `127.0.0.1:8790` on the VM only; logs via `journalctl -u eox-app-api` |
-| App API (live) | systemd `eox-app-api-live`, `127.0.0.1:8791` on the VM only; reads finalized `eox-oracle` publications on Solana devnet and evidence readiness from the evidence API; state in `/opt/eox/state/app-api-live`; logs via `journalctl -u eox-app-api-live` |
+| App API (COX fixture) | systemd `cox-app-api`, `127.0.0.1:8790` on the VM only; `cox.app-api/v1` from `apps/app-api/fixtures/cox-fixture.json` (P1 oracle, synthetic); logs via `journalctl -u cox-app-api`. Replaced the EOX fixture service `eox-app-api` on 2026-10-10 |
 | Backups | daily 05:30 UTC to `gs://colosseum-eox-db-backups`, kept 30 days, log in `/opt/eox/logs/backup.log` |
 | Service account | `eox-dev-vm`, which can only create objects in the backup bucket |
 
@@ -21,7 +20,6 @@ compose) and the six ingestion pipelines on an hourly cron.
 |---|---|
 | `/opt/eox/app` | `git archive` of the deployed commit (no git clone, no GitHub credentials) |
 | `/opt/eox/.env` | `POSTGRES_PASSWORD` and `DATABASE_URL`, mode 600, generated on first deploy and kept afterwards |
-| `/opt/eox/run-ingests.sh` | runs all six ingests, used by cron |
 | `/opt/eox/DEPLOYED_COMMIT` | short hash of the deployed commit |
 
 ## Deploy
@@ -41,27 +39,12 @@ project.
 ## Connect
 
 Open a tunnel, then use `localhost:5434` with the password from the VM (add
-`-L 8787:localhost:8787` for the evidence API, `-L 8790:localhost:8790` for the fixture app API and
-`-L 8791:localhost:8791` for the live app API):
+`-L 8787:localhost:8787` for the evidence API and `-L 8790:localhost:8790` for the COX app API):
 
 ```bash
 gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b -- -L 5434:localhost:5433 -N
 gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b --command "sudo cat /opt/eox/.env"
 ```
-
-## Private RPC for the live app API
-
-The live app API uses the public devnet RPC unless `/opt/eox/app-api-live.env`
-exists. That file is never in the repo; it holds the private RPC URL (which
-contains the provider's API key) and overrides the unit's defaults:
-
-```bash
-gcloud compute ssh eox-dev --account=$GCP_ACCOUNT --project=colosseum-eox --zone=europe-west1-b --   'read -rs -p "RPC URL: " url && echo && sudo install -m 600 -o eox -g eox /dev/null /opt/eox/app-api-live.env    && printf "SOLANA_RPC_URL=%s
-SOLANA_RPC_INTERVAL_MS=200
-" "$url" | sudo tee /opt/eox/app-api-live.env >/dev/null    && sudo systemctl restart eox-app-api-live'
-```
-
-The URL is read without echo, so it stays out of shell history and logs.
 
 ## Backups and restore
 

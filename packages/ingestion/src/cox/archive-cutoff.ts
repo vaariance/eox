@@ -19,7 +19,7 @@ import {
   type RosterAsset,
   type UsdtResolution,
 } from "@eox/price-feeds";
-import { snapshotDigest } from "./digest.js";
+import { snapshotDigest, type DigestedPrice } from "./digest.js";
 
 export interface ArchiveResult {
   cutoff: number;
@@ -72,7 +72,8 @@ export async function archiveCutoff(
   let usdt: Promise<UsdtResolution> | null = null;
   const usdtOnce = () => (usdt ??= resolveUsdtUsd(deps, cutoff));
   const observationIds: string[] = [];
-  const digested = [];
+  const digested: DigestedPrice[] = [];
+  let resolved = 0;
   let admissible = true;
 
   for (const asset of [...roster].sort((a, b) => a.position - b.position)) {
@@ -106,7 +107,10 @@ export async function archiveCutoff(
       },
     });
     observationIds.push(observation!.id);
-    digested.push({ assetId: asset.assetId, venue: price.venue, step: price.step, candleStart: price.candleStart, priceE8: price.priceE8, tradeAgeMinutes: price.tradeAgeMinutes });
+    resolved += 1;
+    if (price.priceE8 !== null && price.rejection === null) {
+      digested.push({ assetId: asset.assetId, venue: price.venue, step: price.step, candleStart: price.candleStart, priceE8: price.priceE8, tradeAgeMinutes: price.tradeAgeMinutes });
+    }
     if (price.rejection) {
       admissible = false;
       await recordIncident({ cutoff, kind: "asset_inadmissible", assetId: asset.assetId, venue: price.venue, detail: price.rejection, rawSha256 });
@@ -125,8 +129,9 @@ export async function archiveCutoff(
     await recordIncident({ cutoff, kind: "archive_late", assetId: null, venue: null, detail: `archived ${Math.round(now() / 1000 - cutoff)} s after the cutoff`, rawSha256: null });
   }
   if (!admissible) {
-    await recordIncident({ cutoff, kind: "snapshot_inadmissible", assetId: null, venue: null, detail: `${digested.length} of ${roster.length} assets priced`, rawSha256: null });
+    await recordIncident({ cutoff, kind: "snapshot_inadmissible", assetId: null, venue: null, detail: `${digested.length} of ${roster.length} assets admissible`, rawSha256: null });
   }
-  const snapshot = await recordSnapshot({ cutoff, observationIds, snapshotDigest: snapshotDigest(cutoff, digested), admissible });
-  return { cutoff, snapshot, resolved: digested.length, admissible, late };
+  const digest = admissible && digested.length === roster.length ? snapshotDigest(cutoff, digested) : null;
+  const snapshot = await recordSnapshot({ cutoff, observationIds, snapshotDigest: digest, admissible: digest !== null });
+  return { cutoff, snapshot, resolved, admissible: digest !== null, late };
 }

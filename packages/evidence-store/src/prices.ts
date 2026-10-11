@@ -35,7 +35,7 @@ const OBSERVATION_COLUMNS = `
 
 const SNAPSHOT_COLUMNS = `
   snapshots.id::text, cutoff::float8 AS cutoff, observation_ids::text[] AS "observationIds",
-  snapshot_digest AS "snapshotDigest", admissible, recorded_at AS "recordedAt"`;
+  snapshot_digest AS "snapshotDigest", digest_encoding AS "digestEncoding", admissible, recorded_at AS "recordedAt"`;
 
 const INCIDENT_COLUMNS = `
   id::text, cutoff::float8 AS cutoff, kind, asset_id AS "assetId", venue, detail, raw_sha256 AS "rawSha256",
@@ -121,9 +121,9 @@ export async function recordAssetResolution(resolution: NewAssetResolution): Pro
 
 export async function recordSnapshot(snapshot: NewSnapshot): Promise<Snapshot> {
   const { rows } = await pool.query(
-    `INSERT INTO snapshots (cutoff, observation_ids, snapshot_digest, admissible) VALUES ($1, $2::bigint[], $3, $4)
+    `INSERT INTO snapshots (cutoff, observation_ids, snapshot_digest, digest_encoding, admissible) VALUES ($1, $2::bigint[], $3, $4, $5)
      RETURNING ${SNAPSHOT_COLUMNS}`,
-    [snapshot.cutoff, snapshot.observationIds, snapshot.snapshotDigest, snapshot.admissible],
+    [snapshot.cutoff, snapshot.observationIds, snapshot.snapshotDigest, snapshot.snapshotDigest === null ? null : "COX/WIRE/V1", snapshot.admissible],
   );
   return rows[0];
 }

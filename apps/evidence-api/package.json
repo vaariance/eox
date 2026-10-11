@@ -10,9 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@eox/evidence-store": "workspace:*",
-    "@eox/ingestion": "workspace:*",
-    "@eox/methodology": "workspace:*"
+    "@eox/evidence-store": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

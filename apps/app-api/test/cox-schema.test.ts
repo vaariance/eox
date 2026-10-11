@@ -7,10 +7,10 @@ const origin = 1_800_000_000 - (1_800_000_000 % 60);
 
 describe("batch clock", () => {
   it("assigns a request to the first cutoff strictly after its submission time", () => {
-    expect(batchFor(origin - 1, origin)).toEqual({ cutoff: origin, commitDeadline: origin + 55, state: "open" });
-    expect(batchFor(origin, origin).cutoff).toBe(origin + 60);
-    expect(batchFor(origin + 59, origin).cutoff).toBe(origin + 60);
-    expect(batchFor(origin + 60, origin).cutoff).toBe(origin + 120);
+    expect(batchFor(origin - 1, origin)).toEqual({ batch: 0, cutoff: origin, acceptanceDeadline: origin + 55 });
+    expect(batchFor(origin, origin)).toEqual({ batch: 1, cutoff: origin + 60, acceptanceDeadline: origin + 115 });
+    expect(batchFor(origin + 59, origin).batch).toBe(1);
+    expect(batchFor(origin + 60, origin)).toMatchObject({ batch: 2, cutoff: origin + 120 });
   });
 
   it("rejects an origin that is not on a minute boundary", () => {

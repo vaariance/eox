@@ -65,6 +65,7 @@ describe("COX archiver", () => {
     expect(record.snapshot!.snapshotDigest).toBe(
       snapshotDigest(cutoff, ROSTER.map((a) => ({ assetId: a.assetId, venue: "kraken" as const, step: 1, candleStart: cutoff - 60, priceE8: "150000000", tradeAgeMinutes: 0 }))),
     );
+    expect(record.snapshot!.digestEncoding).toBe("COX/WIRE/V1");
     await expect(archiveCutoff(deps(everyoneTrades, cutoff, cutoff + 8), ROSTER, cutoff)).rejects.toThrow(/already archived/);
   });
 
@@ -87,7 +88,7 @@ describe("COX archiver", () => {
     expect(result).toMatchObject({ resolved: 29, admissible: false, late: true });
     const kinds = (await getCutoff(cutoff)).incidents.map((i) => i.kind);
     expect(kinds).toEqual(expect.arrayContaining(["venue_unavailable", "asset_unresolved", "archive_late", "snapshot_inadmissible"]));
-    expect((await getCutoff(cutoff)).snapshot).toMatchObject({ admissible: false });
+    expect((await getCutoff(cutoff)).snapshot).toMatchObject({ admissible: false, snapshotDigest: null, digestEncoding: null });
   });
 
   it("feeds archived cutoffs in order and reports the feed check", async () => {

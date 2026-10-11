@@ -65,6 +65,7 @@ export async function cutoffView(record: CutoffRecord) {
     cutoff: record.cutoff,
     snapshot: {
       digest: snapshot.snapshotDigest,
+      digestEncoding: snapshot.digestEncoding,
       admissible: snapshot.admissible,
       recordedAtMs: snapshot.recordedAt.getTime(),
     },
