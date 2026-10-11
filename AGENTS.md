@@ -851,3 +851,11 @@ another agent needs to know.
   - **Deployed:** public live API `cox-app-api-live-00005-g99` (request timeout raised to 3,600 s), public fixture API `cox-app-api-00003-mjt` (now trusts `X-Forwarded-For`), and both VM APIs, all at `253208f`. Verified from outside.
 - **Rules for agents:** Godwin: use `new EventSource(`${baseUrl}/v1/stream?wallet=${owner}`)` in the browser instead of polling. See `apps/app-api/README.md` (Real-time stream).
 - **Refs:** commits `acae5a5`..`253208f`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app on the real-time stream; fee version sent with trades
+
+- **Area:** `apps/web`.
+- **What:** Following Joel's 2026-10-11 real-time stream entry, each tab opens one `EventSource` on `/v1/stream` (`src/components/account.tsx`), starting at `?after=<latest sequence>` and adding `?wallet=` when a wallet is connected on a live API. A `publication` event or a changed `status` re-renders the server pages; a `portfolio` event replaces the wallet's portfolio. The 15 and 20 second polling is removed and only runs as a fallback while the stream is down. The 2 bps fee went live at 17:00 UTC and the API then refused the app's deposit, switch and redeem builds (`expectedFeeVersion is required`); the app now sends `status.fees.active.version` with them, and the trade and swap forms show the active fee and take it off the estimate. At Godwin's request, coins offer only Buy and Sell; redeeming to USDC is offered only for the $CRYPTO class, and the Publications page and the Markets price-source column are removed.
+- **Rules for agents:** One stream per tab; do not add a second `EventSource`. The stream URL is the server's `COX_API_URL` (default `https://api.getrelative.trade`) passed to the browser, so it must be reachable from browsers. The estimate ignores the fee cap. The app does not call the quote routes or show the fee charged on receipts yet.
+- **Open:** No trade has been signed through the app since the fee went live, and the wallet `portfolio` events were not exercised with a real wallet.
+- **Refs:** commits `c6d4193`..`596585b`, `apps/app-api/README.md` (Real-time stream, Trading fees).
