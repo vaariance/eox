@@ -841,3 +841,13 @@ another agent needs to know.
 - **Rules for agents:** `$CRYPTO` is display text only. The class id sent to the app API is still `CRYPTO` (`CRYPTO_CLASS` in `src/lib/view.ts`); show class names through `nameOf`. "Pool TVL" is active backing only: it excludes pending deposits, payables and the residual line. The app no longer shows the queued-fill and estimate explanations that `product.md` G3 asks for on trading screens; that was Godwin's decision, so do not assume they are present. A stale `.next/dev` folder from old dev sessions can fail the build's type check; delete it and rebuild.
 - **Open:** <https://cox-web.vercel.app> is not redeployed. Nothing was checked with a connected wallet after the restyle.
 - **Refs:** commits `2e6848b`..`00cd8c3`.
+
+### 2026-10-11 · Joel (Claude Code) · Real-time SSE stream for the web app
+
+- **Area:** `apps/app-api` (`src/cox/live-stream.ts`), `packages/app-api`; Cloud Run `cox-app-api-live`, `cox-app-api`; dev VM.
+- **What:** At Joel's request, `GET /v1/stream?wallet=` pushes three kinds of server-sent events: `publication` (its id is the sequence, so `Last-Event-ID` resumes), `status` (on connect, then whenever anything other than the clock changes) and, with a wallet, `portfolio` (on connect, then when that wallet's positions, requests or receipts change). Joel chose SSE over a WebSocket because the updates only go one way.
+  - **Polling:** status is checked every 5 s and after each publication. A portfolio is read after each publication and every 15 s, once per wallet.
+  - **Limits:** 8 streams per client, 500 per instance and 200 distinct wallets. Over a limit the response is 429 `RATE_LIMITED`.
+  - **Deployed:** public live API `cox-app-api-live-00005-g99` (request timeout raised to 3,600 s), public fixture API `cox-app-api-00003-mjt` (now trusts `X-Forwarded-For`), and both VM APIs, all at `253208f`. Verified from outside.
+- **Rules for agents:** Godwin: use `new EventSource(`${baseUrl}/v1/stream?wallet=${owner}`)` in the browser instead of polling. See `apps/app-api/README.md` (Real-time stream).
+- **Refs:** commits `acae5a5`..`253208f`.
