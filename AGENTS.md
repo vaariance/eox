@@ -687,3 +687,10 @@ another agent needs to know.
 - **Rules for agents:** Never serve the reused publication as an older sequence. A `null` fixed valuation means the batch was not observed before reuse, not zero.
 - **Open:** Peter: `packages/cox-client/test/swap.test.ts` bundle test and the publisher's `fsync` tests fail on Windows only (`/C:/` path and `EPERM`).
 - **Refs:** `apps/app-api/src/cox/live-source.ts`, `apps/app-api/src/cox/publication-archive.ts`, `deploy/dev/README.md`, commits `ade5bb5`..`6111d6a`.
+
+### 2026-10-11 · Joel (Claude Code) · Public live app API
+
+- **Area:** `apps/app-api`, GCP Cloud Run `cox-app-api-live` (europe-west1), `apps/rpc-proxy` tokens.
+- **What:** At Joel's request the live `cox.app-api/v1` is public at `https://cox-app-api-live-529206295845.europe-west1.run.app`. It runs as service account `cox-app-api-live`, which can only read the RPC secret `cox-app-api-live-rpc-urls` and objects in `gs://colosseum-cox-publication-archives-dev`. One always-on instance (`min=max=1`, CPU always allocated); state is in `/tmp`, so each start rebuilds history from the archive bucket (records are verified by content hash, account hash, state and predecessor chain). RPC goes through Joel's Cloudflare proxy with its own fourth token, then public devnet. CORS `*`; POST transaction routes are limited to 30 per client per minute (429 `RATE_LIMITED`, client = last `X-Forwarded-For` entry). The container now runs on Node 24 (`node:24.21.0-slim`). Verified from outside: publications 0 to 54 without gaps, 30 assets priced, status fresh, vault reconciled, CORS, builder validation and the rate limit.
+- **Rules for agents:** Godwin: use this URL for the live web app; check `deployment.origin` is `live`. It is devnet and test collateral only. Never raise the instance count without moving submission tracking to shared storage: submission lookups are per instance.
+- **Refs:** `apps/app-api/README.md`, commits `9a133d2`..`9a65246`.
