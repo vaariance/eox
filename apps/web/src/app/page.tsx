@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Change } from "@/components/change";
 import { FirstPublication } from "@/components/first-publication";
 import { PriceSource } from "@/components/price-source";
+import { RowLink } from "@/components/row-link";
 import { Sparkline } from "@/components/sparkline";
 import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
@@ -14,7 +15,7 @@ const EMPTY = "—";
 
 function EmptyRow({ id, name, href }: { id: string; name: string; href: string }) {
   return (
-    <tr className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
+    <RowLink href={href} className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
       <th scope="row" className="px-4 py-3 text-left font-normal">
         <Link href={href} className="flex items-baseline gap-2">
           <span className="font-medium text-ink">{id}</span>
@@ -28,7 +29,7 @@ function EmptyRow({ id, name, href }: { id: string; name: string; href: string }
       <td className="px-4 py-3 text-muted">{EMPTY}</td>
       <td className="num px-4 py-3 text-right">{formatAmount(0)}</td>
       <td className="num px-4 py-3 text-right text-muted">n/a</td>
-    </tr>
+    </RowLink>
   );
 }
 
@@ -84,7 +85,7 @@ export default async function MarketsPage() {
               const claim = findClass(classes, asset.assetId);
               if (!current) return <EmptyRow key={asset.assetId} id={asset.assetId} name={asset.name} href={`/assets/${asset.assetId}`} />;
               return (
-                <tr key={asset.assetId} className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
+                <RowLink key={asset.assetId} href={`/assets/${asset.assetId}`} className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
                   <th scope="row" className="px-4 py-3 text-left font-normal">
                     <Link href={`/assets/${asset.assetId}`} className="flex items-baseline gap-2">
                       <span className="font-medium text-ink">{asset.assetId}</span>
@@ -98,10 +99,10 @@ export default async function MarketsPage() {
                   <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(changeSince(reference, WINDOW))} /></td>
                   <td className="num px-4 py-3 text-right">{formatAmount(claim.backing)}</td>
                   <td className="num px-4 py-3 text-right">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</td>
-                </tr>
+                </RowLink>
               );
             })}
-            <tr className="bg-bg">
+            <RowLink href="/crypto" className="bg-bg transition-colors duration-150 hover:bg-surface-2">
               <th scope="row" className="px-4 py-3 text-left font-normal">
                 <Link href="/crypto" className="flex items-baseline gap-2">
                   <span className="font-medium text-ink">CRYPTO</span>
@@ -115,7 +116,7 @@ export default async function MarketsPage() {
               <td className="px-4 py-3">{current ? <Sparkline points={level.slice(-SPARK)} tone={direction(changeSince(level, WINDOW))} /> : <span className="text-muted">{EMPTY}</span>}</td>
               <td className="num px-4 py-3 text-right">{formatAmount(cryptoClass.backing)}</td>
               <td className="num px-4 py-3 text-right">{cryptoClass.unitValue === null ? "n/a" : formatAmount(cryptoClass.unitValue, 6)}</td>
-            </tr>
+            </RowLink>
           </tbody>
         </table>
       </div>
