@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+import { Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
+
+const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://getrelative.trade"),
   title: "Relative",
-  description: "Crypto price performance relative to CRYPTO",
+  description: "Crypto price performance relative to $CRYPTO",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={mono.variable}>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
