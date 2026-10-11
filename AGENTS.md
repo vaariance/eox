@@ -764,3 +764,17 @@ another agent needs to know.
 - **Rules for agents:** Cost and gain or loss are a web-app calculation, not a figure from the program or the app API. Candles are built from one value per publication, so they are not exchange OHLC. The 1W and 1M ranges show at most 24 hours.
 - **Open:** Joel: a compact history route (for example one value per class and asset per publication, or pre-grouped bars) so the app can show a week or a month without downloading every publication; and a deposited basis in the portfolio.
 - **Refs:** `apps/web/README.md`.
+
+### 2026-10-11 · Joel (Claude Code) · Signer and live API prepared for the fee upgrade (not deployed)
+
+- **Area:** `apps/signer`, `packages/app-api`, `apps/app-api`; branch `feat/cox-fees` (`main` plus `dev` at `09d7332`).
+- **What:** At Peter's request (fee-upgrade email, 2026-10-11), Joel's side is ready for `COX/FEES/V1`.
+  - **Signer:** accepts request schema 1 and 2 and refuses any other request layout. The runtime allowlist is still only publish, evaluate, safety, seal_evaluation, execute and finalize. Tests confirm that the fee IDL keeps their discriminators and account order, and that fee administration, treasury withdrawal and user trades are refused.
+  - **API reads:** status and publications report active and scheduled fee terms and committed fees. Batch fees come from `COX/STATE/V2`. The flow identity subtracts batch fees, and vault reconciliation adds committed fees.
+  - **Requests:** each request reports its locked fee terms, and its receipt reports `gross` and the `fee` charged.
+  - **Trades:** new `POST /v1/quotes/{deposit,switch,redeem}`. Builders require `expectedFeeVersion` on a migrated pool and build the `*_with_fee` instructions. A mismatch returns 409 `FEE_CHANGED` from both the builder and submission, before anything is relayed.
+  - **Godwin's fixture:** `apps/app-api/fixtures/cox-fee-examples.json` holds real responses over Peter's compiled fee accounts.
+  - **Verification:** 31 signer tests and 43 app API tests pass. A read-only run against live pool 1 (still legacy, sequence 232) decoded every account and quoted a zero fee through the legacy path.
+- **Rules for agents:** Do not deploy these to the signer or either live API before Peter's approval and the program upgrade sequence. Never compute a fee in the API or UI; show the quote's and receipt's values. Pass a quote's `feeTerms.version` as `expectedFeeVersion` and requote on `FEE_CHANGED`.
+- **Open:** Godwin: fee display from `quote`, `UnsignedTransaction.feeTerms` and `receipt.fee`, and the monitor's `COX/STATE/V2` and `COX/RECEIPTS/V2` support. Peter: merge approval for `feat/cox-fees` and the deployment window.
+- **Refs:** `apps/app-api/README.md` (Trading fees), commits `7e68c67`..`0716a0a`.
