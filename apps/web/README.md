@@ -72,3 +72,13 @@ faucet, shows the connected wallet's address to paste there, and reads its
 devnet SOL and USDC balances (`COX_RPC_URL`, default public devnet). The
 navigation no longer links to Publications; the page is still at
 `/publications`.
+
+## Gain or loss
+
+The Portfolio page and each "Your position" box show what a position cost,
+what it is worth now and the difference, to six decimal places. The app API
+has no deposited basis, so `src/lib/basis.ts` works the cost out from the
+wallet's filled requests at average cost: a swap in costs its USDC amount, a
+buy costs the value moved from CRYPTO (`receipt.proceeds`), and a sale or swap
+out reduces the cost in proportion. No figure is shown when the filled
+requests do not account for the units held.
