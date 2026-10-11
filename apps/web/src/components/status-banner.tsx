@@ -20,7 +20,7 @@ export function StatusBanner({ status, origin }: { status: CoxStatus; origin: Co
   if (status.state === "fresh" && !mismatch && origin !== "fixture") return null;
   return (
     <div className="border-b border-line bg-bg">
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-1 px-4 pt-2 text-xs text-muted sm:px-6">
+      <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 text-xs text-muted sm:px-6">
         <span className={`flex items-center gap-1.5 ${state.tone}`}>
           <state.Icon size={14} aria-hidden="true" />
           {state.label}
