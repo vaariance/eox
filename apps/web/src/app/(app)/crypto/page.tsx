@@ -57,7 +57,7 @@ export default async function CryptoPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="min-w-0">
           {current ? (
             <AssetChart series={[{ id: "level", label: "$CRYPTO level", points: level, digits: 4, baseline: 100 }]} />
           ) : (
@@ -65,11 +65,9 @@ export default async function CryptoPage() {
               The chart starts with the first price update.
             </section>
           )}
-          <MyPosition classId={CRYPTO_CLASS} unitValue={claim.unitValue} decimals={decimals} />
         </div>
-        <div>
-          <SwapForm crypto={claim} nextBatch={status.currentBatch} decimals={decimals} />
-        </div>
+        <SwapForm crypto={claim} nextBatch={status.currentBatch} decimals={decimals} />
+        <MyPosition classId={CRYPTO_CLASS} unitValue={claim.unitValue} decimals={decimals} />
       </div>
     </div>
   );
