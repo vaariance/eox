@@ -9,7 +9,7 @@ async function attempt<T>(call: () => Promise<T>): Promise<Outcome<T>> {
     return { ok: true, value: await call() };
   } catch (error) {
     if (error instanceof CoxApiError) return { ok: false, code: error.code, message: error.message };
-    return { ok: false, code: "UNAVAILABLE", message: "The COX API could not be reached." };
+    return { ok: false, code: "UNAVAILABLE", message: "The Relative API could not be reached." };
   }
 }
 

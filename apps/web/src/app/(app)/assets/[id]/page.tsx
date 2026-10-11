@@ -76,7 +76,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between text-xs text-muted">
-            <span>COX reference</span>
+            <span>Relative reference</span>
             {current && <span className="flex items-center gap-1">1h <Change ratio={referenceHour} /></span>}
           </div>
           <div className="num mt-2 text-2xl">{current ? formatAmount(latest(reference), 4) : EMPTY}</div>
@@ -94,7 +94,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
           {current ? (
             <AssetChart
               series={[
-                { id: "reference", label: "COX reference", points: reference, digits: 4, baseline: 100 },
+                { id: "reference", label: "Relative reference", points: reference, digits: 4, baseline: 100 },
                 { id: "price", label: "Price", points: price, digits: latest(price) >= 1 ? 2 : latest(price) >= 0.01 ? 4 : 6 },
                 { id: "crypto", label: "CRYPTO", points: level, digits: 4, baseline: 100 },
               ]}

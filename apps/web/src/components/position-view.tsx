@@ -78,7 +78,7 @@ export function PositionView({ classId, claim, crypto, values, reference, price,
     ...(holding && since.length > 1
       ? [{ id: "worth", label: `Worth (${COLLATERAL.symbol})`, points: since.map((point) => ({ cutoff: point.cutoff, value: point.value * units })), digits: 6, compare: paid ?? undefined, lines: paid === null ? [] : [{ value: paid, label: `Paid ${formatAmount(paid, 4)}`, tone: "ink" as const }] }]
       : []),
-    ...(reference.length > 1 ? [{ id: "reference", label: "COX reference", points: reference, digits: 4, marks }] : []),
+    ...(reference.length > 1 ? [{ id: "reference", label: "Relative reference", points: reference, digits: 4, marks }] : []),
     ...(price.length > 1 ? [{ id: "price", label: "Price (USD)", points: price, digits: price[price.length - 1].value >= 1 ? 2 : 6, marks }] : []),
   ];
   const empty = loading ? "Loading your position." : live && !owner ? "Connect a wallet to see your position." : `You hold no ${classId} right now.`;

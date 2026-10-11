@@ -59,7 +59,7 @@ export function TopBar() {
     <header className="sticky top-0 z-40 border-b border-line bg-bar backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-6 px-4 sm:px-6">
         <Link href="/markets" className="font-display text-lg font-semibold tracking-tight text-ink">
-          COX
+          Relative
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
           <NavLinks pathname={pathname} />

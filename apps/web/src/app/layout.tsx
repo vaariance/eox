@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "COX",
+  metadataBase: new URL("https://getrelative.trade"),
+  title: "Relative",
   description: "Crypto price performance relative to CRYPTO",
 };
 

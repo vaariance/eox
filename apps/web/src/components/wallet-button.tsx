@@ -130,7 +130,7 @@ export function WalletButton() {
               ))
             )}
             {error && <p role="alert" className="px-3 py-2 text-xs text-down">{error}</p>}
-            <p className="px-3 pb-1 pt-2 text-xs text-muted">COX runs on Solana devnet with test collateral. Your keys stay in your wallet.</p>
+            <p className="px-3 pb-1 pt-2 text-xs text-muted">Relative runs on Solana devnet with test collateral. Your keys stay in your wallet.</p>
           </div>
         )}
       </dialog>

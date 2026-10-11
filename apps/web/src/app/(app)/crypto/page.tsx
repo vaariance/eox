@@ -105,7 +105,7 @@ export default async function CryptoPage() {
             Swap USDC and CRYPTO
           </Link>
           <p className="px-1 text-xs text-muted">
-            CRYPTO is what you pay with on COX. Swap USDC for it, then use it to buy any asset from the Markets page.
+            CRYPTO is what you pay with on Relative. Swap USDC for it, then use it to buy any asset from the Markets page.
           </p>
         </div>
       </div>

@@ -69,7 +69,7 @@ export default async function MarketsPage() {
               <th scope="col" className="px-4 py-3 font-normal">Asset</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Price (USD)</th>
               <th scope="col" className="px-4 py-3 font-normal">Price source</th>
-              <th scope="col" className="px-4 py-3 text-right font-normal">COX reference</th>
+              <th scope="col" className="px-4 py-3 text-right font-normal">Relative reference</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Reference, 1h</th>
               <th scope="col" className="px-4 py-3 font-normal">Last 4h</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Class backing</th>
