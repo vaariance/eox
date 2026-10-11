@@ -4,11 +4,13 @@
 
 ```bash
 APP_API_SOURCE=cox-fixture pnpm --filter @eox/app-api-server start   # http://127.0.0.1:8790; APP_API_CORS_ORIGIN=* to allow browsers
-APP_API_SOURCE=cox-live COX_RPC_URL=https://api.devnet.solana.com APP_API_STATE_DIR=./state   APP_API_PORT=8791 pnpm --filter @eox/app-api-server start             # live devnet pool 0
+APP_API_SOURCE=cox-live COX_RPC_URLS="https://api.devnet.solana.com" APP_API_STATE_DIR=./state   APP_API_PORT=8791 pnpm --filter @eox/app-api-server start             # live devnet pool 0
 ```
 
-Live settings: `COX_NETWORK` (`solana-devnet`; the RPC's genesis hash must
-match), `COX_POOL_ID` (default `0`), `COX_IDL_PATH` (default
+Live settings: `COX_RPC_URLS` (ordered https URLs separated by whitespace;
+every one must answer with the network's genesis hash at start-up, and a call
+moves to the next on a network error, 15 s timeout, HTTP 429 or 5xx; logs name
+hosts only, never the query string with its key), `COX_NETWORK` (`solana-devnet`), `COX_POOL_ID` (default `0`), `COX_IDL_PATH` (default
 `packages/cox/idl/cox.json`), `COX_POLL_MS` (default 5000). Until the pool
 exists with a sealed methodology the service logs and checks again every 30 s.
 

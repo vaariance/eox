@@ -13,7 +13,7 @@ Environment=APP_API_PORT=8791
 Environment=APP_API_SOURCE=cox-live
 Environment=COX_NETWORK=solana-devnet
 Environment=COX_POOL_ID=0
-Environment=COX_RPC_URL=https://api.devnet.solana.com
+Environment=COX_RPC_URLS=https://api.devnet.solana.com
 Environment=APP_API_STATE_DIR=/opt/eox/state/cox-app-api-live
 EnvironmentFile=-/opt/eox/cox-app-api-live.env
 ExecStart=/opt/eox/app/apps/app-api/node_modules/.bin/tsx src/main.ts
