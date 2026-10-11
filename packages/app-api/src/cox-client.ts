@@ -9,12 +9,16 @@ import type {
   CoxStatus,
   CryptoComposition,
   DepositInput,
+  DepositQuoteInput,
   Portfolio,
   Publication,
   RedeemInput,
+  RedeemQuoteInput,
   RequestActionInput,
   Submission,
   SwitchInput,
+  SwitchQuoteInput,
+  TradeQuote,
   UnsignedTransaction,
   WithdrawInput,
 } from "./cox-types.js";
@@ -67,6 +71,9 @@ export function createCoxApiClient(options: CoxApiClientOptions) {
 
   return {
     deployment: () => get<CoxDeployment>("deployment"),
+    quoteDeposit: (input: DepositQuoteInput) => post<TradeQuote>("quotes/deposit", input),
+    quoteSwitch: (input: SwitchQuoteInput) => post<TradeQuote>("quotes/switch", input),
+    quoteRedeem: (input: RedeemQuoteInput) => post<TradeQuote>("quotes/redeem", input),
     buildDeposit: (input: DepositInput) => post<UnsignedTransaction>("transactions/deposit", input),
     buildSwitch: (input: SwitchInput) => post<UnsignedTransaction>("transactions/switch", input),
     buildRedeem: (input: RedeemInput) => post<UnsignedTransaction>("transactions/redeem", input),

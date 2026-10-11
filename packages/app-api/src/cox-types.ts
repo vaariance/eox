@@ -12,6 +12,7 @@ export const MAX_TRADE_AGE_MINUTES = 30;
 export const DELAYED_AFTER_MISSED_CUTOFFS = 3;
 export const HALTED_AFTER_MISSED_CUTOFFS = 60;
 export const CRYPTO_CLASS = "CRYPTO";
+export const COX_FEE_POLICY = "COX/FEES/V1";
 
 export type CoxOrigin = "fixture" | "live";
 export type Scaled = string;
@@ -120,6 +121,7 @@ export interface LedgerTotals {
   refundable: BaseUnits | null;
   payable: BaseUnits;
   residual: BaseUnits;
+  fees: BaseUnits;
   vault: BaseUnits;
 }
 
@@ -128,8 +130,30 @@ export interface BatchFlows {
   newPayable: BaseUnits | null;
   transferResidual: BaseUnits | null;
   flowResidual: BaseUnits | null;
+  fees: BaseUnits;
   executed: number;
   rejected: number;
+}
+
+export interface FeeTerms {
+  version: string;
+  bps: number;
+  cap: BaseUnits;
+}
+
+export interface ScheduledFeeTerms extends FeeTerms {
+  activationCutoff: UnixSeconds;
+}
+
+export interface FeeConfiguration {
+  policy: typeof COX_FEE_POLICY | null;
+  active: FeeTerms;
+  scheduled: ScheduledFeeTerms | null;
+}
+
+export interface FeeStatus extends FeeConfiguration {
+  migrated: boolean;
+  committed: BaseUnits;
 }
 
 export interface Publication {
@@ -141,6 +165,7 @@ export interface Publication {
   classes: ClassValuation[];
   flows: BatchFlows;
   ledger: LedgerTotals;
+  fees: FeeConfiguration | null;
   receiptRoot: string | null;
 }
 
@@ -164,6 +189,7 @@ export interface CoxStatus {
   executing: boolean;
   monitor: { sequence: number; verdict: MonitorVerdict } | null;
   reconciliation: VaultReconciliation | null;
+  fees: FeeStatus | null;
   currentBatch: Batch | null;
 }
 
@@ -171,6 +197,7 @@ export interface VaultReconciliation {
   sequence: number;
   vault: BaseUnits;
   ledger: BaseUnits;
+  fees: BaseUnits;
   covered: boolean;
 }
 
@@ -185,6 +212,8 @@ export interface Receipt {
   status: ReceiptStatus;
   minted: UnitQuanta;
   proceeds: BaseUnits;
+  gross: BaseUnits | null;
+  fee: BaseUnits;
 }
 
 export interface CoxRequest {
@@ -200,6 +229,7 @@ export interface CoxRequest {
   targetBatch: number;
   expiryBatch: number;
   state: RequestState;
+  feeTerms: FeeTerms;
   receipt: Receipt | null;
 }
 
@@ -247,6 +277,7 @@ export type CoxErrorCode =
   | "TRANSACTION_REJECTED"
   | "TRANSACTION_NOT_FOUND"
   | "RATE_LIMITED"
+  | "FEE_CHANGED"
   | "INVALID_REQUEST"
   | "NOT_FOUND"
   | "METHOD_NOT_ALLOWED"
@@ -265,6 +296,7 @@ export interface DepositInput {
   amount: BaseUnits;
   minimumUnits: UnitQuanta;
   expiryBatch: number;
+  expectedFeeVersion?: string;
 }
 
 export interface SwitchInput {
@@ -274,6 +306,7 @@ export interface SwitchInput {
   units: UnitQuanta;
   minimumUnits: UnitQuanta;
   expiryBatch: number;
+  expectedFeeVersion?: string;
 }
 
 export interface RedeemInput {
@@ -282,6 +315,7 @@ export interface RedeemInput {
   units: UnitQuanta;
   minimumProceeds: BaseUnits;
   expiryBatch: number;
+  expectedFeeVersion?: string;
 }
 
 export interface RequestActionInput {
@@ -292,6 +326,44 @@ export interface RequestActionInput {
 export interface WithdrawInput {
   owner: string;
   amount: BaseUnits;
+}
+
+export type QuoteOperation = "deposit" | "switch" | "redeem";
+
+export interface DepositQuoteInput {
+  owner: string;
+  toClass: ClassId;
+  amount: BaseUnits;
+}
+
+export interface SwitchQuoteInput {
+  owner: string;
+  fromClass: ClassId;
+  toClass: ClassId;
+  units: UnitQuanta;
+}
+
+export interface RedeemQuoteInput {
+  owner: string;
+  fromClass: ClassId;
+  units: UnitQuanta;
+}
+
+export interface TradeQuote {
+  operation: QuoteOperation;
+  fromClass: ClassId | null;
+  toClass: ClassId | null;
+  amount: BaseUnits | null;
+  units: UnitQuanta | null;
+  gross: BaseUnits;
+  fee: BaseUnits;
+  net: BaseUnits;
+  mintedUnits: UnitQuanta | null;
+  proceeds: BaseUnits | null;
+  feeTerms: FeeTerms;
+  scheduledFees: ScheduledFeeTerms | null;
+  observedSequence: number;
+  estimate: true;
 }
 
 export interface UnsignedTransaction {
@@ -310,6 +382,7 @@ export interface UnsignedTransaction {
   units: UnitQuanta | null;
   minimumUnits: UnitQuanta | null;
   minimumProceeds: BaseUnits | null;
+  feeTerms: FeeTerms | null;
 }
 
 export type SubmissionState = "submitted" | "confirmed" | "finalized" | "failed" | "expired";
