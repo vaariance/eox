@@ -31,3 +31,8 @@ export function formatPrice(value: number): string {
   if (value >= 0.01) return formatAmount(value, 4);
   return formatAmount(value, 6);
 }
+
+export function formatSigned(value: number, digits = 4): string {
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}${formatAmount(Math.abs(value), digits)}`;
+}

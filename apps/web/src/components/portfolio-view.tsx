@@ -4,7 +4,8 @@ import type { CoxStatus } from "@eox/app-api";
 import Link from "next/link";
 import { shortAddress } from "@/lib/address";
 import { COLLATERAL } from "@/lib/config";
-import { formatAmount, formatWhole } from "@/lib/format";
+import { costBasis, paidFor } from "@/lib/basis";
+import { direction, formatAmount, formatSigned, formatWhole } from "@/lib/format";
 import { CRYPTO_CLASS, type ClassView, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { RequestList } from "./request-list";
@@ -12,15 +13,20 @@ import { SendButton } from "./send-button";
 
 export function PortfolioView({ classes, status, decimals }: { classes: ClassView[]; status: CoxStatus; decimals: number }) {
   const { portfolio, owner, live, loading } = useAccount();
+  const book = costBasis(portfolio?.requests ?? [], decimals);
   const rows = (portfolio?.positions ?? []).map((position) => {
     const units = toNumber(position.units, unitDigits(decimals));
     const unitValue = classes.find((item) => item.id === position.classId)?.unitValue ?? null;
-    return { classId: position.classId, units, locked: toNumber(position.locked, unitDigits(decimals)), unitValue, redeemable: unitValue === null ? null : units * unitValue };
+    const redeemable = unitValue === null ? null : units * unitValue;
+    const paid = paidFor(book, position.classId, units);
+    return { classId: position.classId, units, locked: toNumber(position.locked, unitDigits(decimals)), unitValue, redeemable, paid, change: redeemable === null || paid === null ? null : redeemable - paid };
   });
   const redeemable = rows.reduce((sum, row) => sum + (row.redeemable ?? 0), 0);
+  const total = rows.length > 0 && rows.every((row) => row.change !== null) ? rows.reduce((sum, row) => sum + (row.change ?? 0), 0) : null;
+  const tone = (value: number | null) => (value === null ? "text-muted" : { up: "text-up", down: "text-down", flat: "text-muted" }[direction(value)]);
   const payable = portfolio?.payable ?? "0";
   const cards = [
-    { label: "Redeemable now, about", value: redeemable, note: "Your units at the latest unit values" },
+    { label: "Worth now, about", value: redeemable, note: total === null ? "Your units at the latest unit values" : `Gain or loss so far: ${formatSigned(total, 6)} ${COLLATERAL.symbol}` },
     { label: "Pending buys", value: toNumber(portfolio?.pending ?? "0", decimals), note: "Still yours until the batch executes" },
     { label: "Refundable", value: toNumber(portfolio?.refundable ?? "0", decimals), note: "From rejected, expired or cancelled buys" },
   ];
@@ -48,7 +54,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
         {cards.map((card) => (
           <div key={card.label} className="rounded-card border border-line bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">{card.label}</div>
-            <div className="num mt-2 text-2xl">{formatAmount(card.value)} <span className="text-xs text-muted">{COLLATERAL.symbol}</span></div>
+            <div className="num mt-2 text-2xl">{formatAmount(card.value, 4)} <span className="text-xs text-muted">{COLLATERAL.symbol}</span></div>
             <div className="mt-1 text-xs text-muted">{card.note}</div>
           </div>
         ))}
@@ -71,14 +77,16 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
         {rows.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted">No positions yet.</p>
         ) : (
-          <table className="w-full min-w-[620px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
                 <th scope="col" className="px-4 py-3 font-normal">Class</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Units</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Locked in requests</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Unit value</th>
-                <th scope="col" className="px-4 py-3 text-right font-normal">Redeemable, about ({COLLATERAL.symbol})</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal">Paid ({COLLATERAL.symbol})</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal">Worth now, about ({COLLATERAL.symbol})</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal">Gain or loss</th>
               </tr>
             </thead>
             <tbody>
@@ -87,10 +95,12 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
                   <th scope="row" className="px-4 py-3 text-left font-medium">
                     <Link href={row.classId === CRYPTO_CLASS ? "/crypto" : `/assets/${row.classId}`}>{row.classId}</Link>
                   </th>
-                  <td className="num px-4 py-3 text-right">{formatAmount(row.units)}</td>
-                  <td className="num px-4 py-3 text-right">{formatAmount(row.locked)}</td>
+                  <td className="num px-4 py-3 text-right">{formatAmount(row.units, 4)}</td>
+                  <td className="num px-4 py-3 text-right">{formatAmount(row.locked, 4)}</td>
                   <td className="num px-4 py-3 text-right">{row.unitValue === null ? "n/a" : formatAmount(row.unitValue, 6)}</td>
-                  <td className="num px-4 py-3 text-right">{row.redeemable === null ? "n/a" : formatAmount(row.redeemable)}</td>
+                  <td className="num px-4 py-3 text-right">{row.paid === null ? "—" : formatAmount(row.paid, 4)}</td>
+                  <td className="num px-4 py-3 text-right">{row.redeemable === null ? "n/a" : formatAmount(row.redeemable, 6)}</td>
+                  <td className={`num px-4 py-3 text-right ${tone(row.change)}`}>{row.change === null ? "—" : formatSigned(row.change, 6)}</td>
                 </tr>
               ))}
             </tbody>
