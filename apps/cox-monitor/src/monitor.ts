@@ -1,5 +1,8 @@
 import { type ArchiveVerdict, checkArchivedCutoff, checkArtifacts } from "./archive.js";
 import type { ArchivedChange, EvidenceSource } from "./evidence-source.js";
+import { type CandleSource, checkAgainstVenues } from "./venue-check.js";
+
+export type VenueStatus = "pending" | "confirmed" | "mismatch" | "unverified" | "not-checked";
 
 export interface Verdict {
   cutoff: number;
@@ -7,6 +10,14 @@ export interface Verdict {
   findings: string[];
   snapshotDigest: string | null;
   checkedAtMs: number;
+  venues: VenueStatus;
+  venueNotes: string[];
+}
+
+export interface VenueSweep {
+  confirmed: number;
+  mismatches: number;
+  unverified: number;
 }
 
 export interface MonitorState {
@@ -74,11 +85,52 @@ export class ArchiveMonitor {
     return result;
   }
 
+  async sweepVenues(candles: CandleSource, options: { maxCutoffs?: number; settleSeconds?: number } = {}): Promise<VenueSweep> {
+    const { source, save, now = Date.now, log } = this.options;
+    const { maxCutoffs = 60, settleSeconds = 180 } = options;
+    const settled = Math.floor(now() / 1000) - settleSeconds;
+    const due = this.state.verdicts.filter((verdict) => verdict.verdict === "match" && verdict.venues === "pending" && verdict.cutoff <= settled).slice(0, maxCutoffs);
+    const sweep: VenueSweep = { confirmed: 0, mismatches: 0, unverified: 0 };
+    if (due.length === 0) return sweep;
+
+    const archived = [];
+    for (const verdict of due) {
+      const view = await source.cutoff(verdict.cutoff);
+      if (view) archived.push(view);
+    }
+    const checks = await checkAgainstVenues(archived, candles);
+    for (const verdict of due) {
+      const check = checks.get(verdict.cutoff);
+      if (!check) {
+        verdict.venues = "unverified";
+        verdict.venueNotes = ["the archive no longer serves this cutoff"];
+        sweep.unverified += 1;
+      } else if (check.findings.length > 0) {
+        verdict.venues = "mismatch";
+        verdict.verdict = "mismatch";
+        verdict.venueNotes = check.findings;
+        verdict.findings = [...verdict.findings, ...check.findings.map((finding) => `venue: ${finding}`)];
+        this.state.mismatches += 1;
+        sweep.mismatches += 1;
+        log?.(`VENUE MISMATCH cutoff ${verdict.cutoff}: ${check.findings.join("; ")}`);
+      } else if (check.unverified.length > 0) {
+        verdict.venues = "unverified";
+        verdict.venueNotes = check.unverified;
+        sweep.unverified += 1;
+      } else {
+        verdict.venues = "confirmed";
+        sweep.confirmed += 1;
+      }
+    }
+    await save(this.state);
+    return sweep;
+  }
+
   private async check(change: ArchivedChange): Promise<Verdict> {
     const { source, now = Date.now } = this.options;
     const archived = await source.cutoff(change.cutoff);
     if (archived === null) {
-      return { cutoff: change.cutoff, verdict: "mismatch", findings: ["the change feed lists this cutoff but the archive does not serve it"], snapshotDigest: null, checkedAtMs: now() };
+      return { cutoff: change.cutoff, verdict: "mismatch", findings: ["the change feed lists this cutoff but the archive does not serve it"], snapshotDigest: null, checkedAtMs: now(), venues: "not-checked", venueNotes: [] };
     }
     const check = checkArchivedCutoff(archived);
     const findings = [...check.findings];
@@ -87,7 +139,7 @@ export class ArchiveMonitor {
     }
     if (check.verdict === "match" || check.verdict === "mismatch") findings.push(...(await checkArtifacts(archived, source)));
     const verdict = findings.length > check.findings.length || check.verdict === "mismatch" ? "mismatch" : check.verdict;
-    return { cutoff: change.cutoff, verdict, findings, snapshotDigest: check.snapshotDigest, checkedAtMs: now() };
+    return { cutoff: change.cutoff, verdict, findings, snapshotDigest: check.snapshotDigest, checkedAtMs: now(), venues: verdict === "match" ? "pending" : "not-checked", venueNotes: [] };
   }
 
   private record(verdict: Verdict): void {
