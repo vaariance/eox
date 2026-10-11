@@ -1,14 +1,23 @@
 import type { Program } from "@coral-xyz/anchor";
 import { PublicKey, type AccountInfo } from "@solana/web3.js";
-import type { Accounts, Pool, Position, Request } from "./accounts.ts";
+import type { Accounts, Pool, Position, Publication, Request } from "./accounts.ts";
 import { addresses } from "./pdas.ts";
 import { decodeState, sha256 } from "./wire.ts";
 
 export function decodeAccount<K extends keyof Accounts>(program: Program, name: K, info: AccountInfo<Buffer>): Accounts[K] {
   if (!info.owner.equals(program.programId)) throw new Error("AccountOwnerMismatch");
   const account = program.coder.accounts.decode(name, info.data) as Accounts[K];
-  if (account.schemaVersion !== 1) throw new Error("AccountVersionMismatch");
+  if (account.schemaVersion !== (name === "batch" || name === "publication" ? 2 : 1)) throw new Error("AccountVersionMismatch");
   return account;
+}
+export function checkedPublication(programId: PublicKey, pool: PublicKey, value: Publication) {
+  if (value.schemaVersion !== 2) throw new Error("AccountVersionMismatch");
+  if (!value.pool.equals(pool) || !sha256(Buffer.from(value.statePreimage)).equals(Buffer.from(value.stateDigest))) throw new Error("PublicationIdentityMismatch");
+  const state = decodeState(Buffer.from(value.statePreimage));
+  if (!Buffer.from(state.program).equals(programId.toBuffer()) || !Buffer.from(state.pool).equals(pool.toBuffer()) || state.sequence.toString() !== value.sequence.toString() || state.batch.toString() !== value.batch.toString()
+    || !Buffer.from(state.snapshot).equals(Buffer.from(value.snapshotDigest)) || !Buffer.from(state.manifest).equals(Buffer.from(value.manifestDigest))) throw new Error("PublicationStateMismatch");
+  if (state.prices.length !== value.prices.length || state.prices.some((price, index) => price.toString() !== value.prices[index]!.priceE8.toString())) throw new Error("PublicationPriceMismatch");
+  return { ...value, state };
 }
 export function committedPosition(position: Position, pool: Pool): Position {
   if (position.appliedSequence.gt(pool.sequence)) throw new Error("InconsistentRead");
@@ -68,18 +77,15 @@ export class CoxReader {
   }
   async batch(poolId: bigint, batchId: bigint) {
     const key = this.pdas.pool(poolId);
-    const value = await this.account("batch", this.pdas.batch(key, batchId));
-    if (!value.pool.equals(key) || value.batchId.toString() !== batchId.toString()) throw new Error("BatchIdentityMismatch");
+    const value = await this.account("batch", this.pdas.batch(key));
+    if (!value.pool.equals(key)) throw new Error("BatchIdentityMismatch");
+    if (value.batchId.toString() !== batchId.toString()) throw new Error("CoxHistoryNotRetained");
     return value;
   }
   async publication(poolId: bigint, sequence: bigint) {
     const key = this.pdas.pool(poolId);
-    const value = await this.account("publication", this.pdas.publication(key, sequence));
-    if (!value.pool.equals(key) || value.sequence.toString() !== sequence.toString() || !sha256(Buffer.from(value.statePreimage)).equals(Buffer.from(value.stateDigest))) throw new Error("PublicationIdentityMismatch");
-    const state = decodeState(Buffer.from(value.statePreimage));
-    if (!Buffer.from(state.program).equals(this.program.programId.toBuffer()) || !Buffer.from(state.pool).equals(key.toBuffer()) || state.sequence !== sequence || state.batch.toString() !== value.batch.toString()
-      || !Buffer.from(state.snapshot).equals(Buffer.from(value.snapshotDigest)) || !Buffer.from(state.manifest).equals(Buffer.from(value.manifestDigest))) throw new Error("PublicationStateMismatch");
-    if (state.prices.length !== value.prices.length || state.prices.some((price, index) => price.toString() !== value.prices[index]!.priceE8.toString())) throw new Error("PublicationPriceMismatch");
-    return { ...value, state };
+    const value = await this.account("publication", this.pdas.publication(key));
+    if (value.sequence.toString() !== sequence.toString()) throw new Error("CoxHistoryNotRetained");
+    return checkedPublication(this.program.programId, key, value);
   }
 }

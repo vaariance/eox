@@ -4,7 +4,8 @@ import test from "node:test";
 import anchor, { type Idl } from "@coral-xyz/anchor";
 import { ComputeBudgetProgram, Connection, PublicKey, Transaction, type AccountInfo, type VersionedTransaction } from "@solana/web3.js";
 import { CoxInstructions } from "../src/builders.ts";
-import { CoxReader, committedPosition, committedRequest, decodeAccount } from "../src/readers.ts";
+import { CoxReader, checkedPublication, committedPosition, committedRequest, decodeAccount } from "../src/readers.ts";
+import { addresses } from "../src/pdas.ts";
 import { discriminator } from "../src/wire.ts";
 import type { Accounts } from "../src/accounts.ts";
 import { CoxSimulations } from "../src/simulations.ts";
@@ -30,10 +31,13 @@ test("actual SBF account bytes decode with the generated Anchor IDL", () => {
   assert.equal(program.programId.toBase58(), fixtures.programAddress);
   for (const name of ["registry", "methodology", "pool", "position", "request", "batch", "publication"] as const) {
     const value = fixture(name);
-    assert.equal(value.account.schemaVersion, 1);
+    assert.equal(value.account.schemaVersion, name === "batch" || name === "publication" ? 2 : 1);
     assert.throws(() => decodeAccount(program, name, { ...value.info, owner: PublicKey.default }), /AccountOwnerMismatch/);
     const damaged = Buffer.from(value.info.data); damaged[0] ^= 255;
     assert.throws(() => decodeAccount(program, name, { ...value.info, data: damaged }));
+    const wrongVersion = Buffer.from(value.info.data);
+    wrongVersion[8] = name === "batch" || name === "publication" ? 1 : 2;
+    assert.throws(() => decodeAccount(program, name, { ...value.info, data: wrongVersion }), /AccountVersionMismatch/);
   }
 });
 test("checked readers validate live account identities and publication preimage", async () => {
@@ -51,6 +55,32 @@ test("checked readers validate live account identities and publication preimage"
   const { account: publication } = fixture("publication");
   const value = await reader.publication(id, BigInt(publication.sequence.toString()));
   assert.equal(value.state.sequence.toString(), publication.sequence.toString());
+});
+test("rolling account addresses are fixed per pool and historical requests fail explicitly", async () => {
+  const pdas = addresses(program.programId);
+  const { account: pool, key } = fixture("pool");
+  const { account: batch, key: batchKey } = fixture("batch");
+  const { account: publication, key: publicationKey } = fixture("publication");
+  assert.ok(pdas.batch(key).equals(batchKey));
+  assert.ok(pdas.publication(key).equals(publicationKey));
+  const otherPool = pdas.pool(BigInt(pool.poolId.toString()) + 1n);
+  assert.ok(!pdas.batch(otherPool).equals(batchKey));
+  assert.ok(!pdas.publication(otherPool).equals(publicationKey));
+  await assert.rejects(reader.batch(BigInt(pool.poolId.toString()), BigInt(batch.batchId.toString()) + 1n), /CoxHistoryNotRetained/);
+  await assert.rejects(reader.publication(BigInt(pool.poolId.toString()), BigInt(publication.sequence.toString()) + 1n), /CoxHistoryNotRetained/);
+});
+test("archived publication verification rejects altered identity, preimage and prices", () => {
+  const { key } = fixture("pool");
+  const { account: publication } = fixture("publication");
+  assert.equal(checkedPublication(program.programId, key, publication).state.sequence.toString(), publication.sequence.toString());
+  assert.throws(() => checkedPublication(PublicKey.default, key, publication), /PublicationStateMismatch/);
+  assert.throws(() => checkedPublication(program.programId, PublicKey.default, publication), /PublicationIdentityMismatch/);
+  assert.throws(() => checkedPublication(program.programId, key, { ...publication, schemaVersion: 1 }), /AccountVersionMismatch/);
+  assert.throws(() => checkedPublication(program.programId, key, { ...publication, sequence: publication.sequence.addn(1) }), /PublicationStateMismatch/);
+  const preimage = [...publication.statePreimage]; preimage[0] = preimage[0]! ^ 1;
+  assert.throws(() => checkedPublication(program.programId, key, { ...publication, statePreimage: preimage }), /PublicationIdentityMismatch/);
+  const prices = publication.prices.map((price, index) => index === 0 ? { ...price, priceE8: price.priceE8.addn(1) } : price);
+  assert.throws(() => checkedPublication(program.programId, key, { ...publication, prices }), /PublicationPriceMismatch/);
 });
 test("staged credits remain unavailable until global finalization and apply once", () => {
   const { account: pool } = fixture("pool");
@@ -84,7 +114,7 @@ test("every unsigned builder uses actual IDL account flags and instruction bytes
     builder.deposit(keys, 0, 1n, 0n, 99n), builder.switch(keys, 0, 1, 1n, 0n, 99n), builder.redeem(keys, 0, 1n, 0n, 99n),
     builder.cancel({ owner, pool, vault, position, request }), builder.expire({ authority: owner, pool, vault, position, request }), builder.refund(keys), builder.withdraw({ owner, pool, vault, position, userToken }, 1n),
     builder.publish({ pool, vault, payer: owner, runtime: owner, methodology }, 1n, 1n, digest, [{ priceE8: 1n, venue: 0, step: 1, candleStart: 1800000000n, tradeAgeMinutes: 0 }], digest, 1800000060n),
-    builder.evaluate(process), builder.safety(process), builder.sealEvaluation({ pool, vault, batch }), builder.execute(process), builder.finalize({ pool, vault, batch, methodology, payer: owner }, 1n),
+    builder.evaluate(process), builder.safety(process), builder.sealEvaluation({ pool, vault, batch }), builder.execute(process), builder.finalize({ pool, vault, batch, methodology, payer: owner }),
     builder.materializePosition({ pool, vault, position }), builder.readReference(pool, 0), builder.readPosition(pool, owner), builder.quoteRequest(pool, 0, 255, 0, 1n, 0n),
     builder.pause(owner), builder.unpause(owner), builder.rotateRuntime(owner, PublicKey.default, 99n)
   ];

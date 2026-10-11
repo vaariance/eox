@@ -101,7 +101,7 @@ async function setup() {
   } as unknown as RemoteSigner;
   const options: TransportOptions = { program, connection, poolId, policy, runtime: runtime.publicKey, genesisHash: "genesis", network: "devnet",
     keyVersion: "version", programSha256: "unused", computeUnitLimit: 600000, computeUnitPriceMicroLamports: 1, signer,
-    clock: { nowSeconds: () => now }, store: { load: async () => structuredClone(state),
+    preservePublication: async () => {}, clock: { nowSeconds: () => now }, store: { load: async () => structuredClone(state),
       save: async (next: PublisherState) => { events.push(next.pending?.signedBase64 ? "save-signed" : next.pending ? "save-unsigned" : "save-clear"); state = structuredClone(next); } } };
   const chain = new SolanaChain(options);
   const publish = (): Operation => ({ id: "operation", kind: "publish", batchId: BigInt(pool.lastBatch.toString()) + 1n,
@@ -114,7 +114,7 @@ async function setup() {
     batch.cutoff = new anchor.BN((policy.origin + BigInt(batch.batchId.toString()) * 60n).toString());
     batch.predecessorSequence = pool.sequence; batch.predecessorDigest = pool.stateDigest;
     batch.cursor = new anchor.BN(cursor.toString()); batch.closedQueueEnd = new anchor.BN("1");
-    pool.stage = pdas.batch(poolKey, BigInt(batch.batchId.toString()));
+    pool.stage = pdas.batch(poolKey);
     await saveAccount("batch", batch, pool.stage); await saveAccount("pool", pool);
     const view = await chain.view();
     return { id: "crank", kind: "sealEvaluation" as const, batchId: view.stage!.batchId, sequence: view.stage!.sequence,
@@ -335,4 +335,62 @@ test("startup rejects collateral mint with wrong decimals, initialization or tok
   await assert.rejects(s.chain.initialize(), /CollateralMintMismatch/);
   mint.data[45] = 1; mint.owner = PublicKey.default;
   await assert.rejects(s.chain.initialize(), /CollateralMintMismatch/);
+});
+
+test("archive failure blocks signing and preserves the unsigned transaction for retry", async () => {
+  const s = await setup();
+  let calls = 0;
+  s.options.preservePublication = async () => { calls++; throw new Error("ArchiveDiskFailure"); };
+  await assert.rejects(s.chain.submit(s.publish()), /ArchiveDiskFailure/);
+  assert.equal(calls, 1); assert.equal(s.requests.length, 0); assert.equal(s.broadcasts.length, 0);
+  assert.equal(s.state().pending?.signedBase64, null);
+  const pending = structuredClone(s.state().pending);
+  await assert.rejects(new SolanaChain(s.options).recover(), /ArchiveDiskFailure/);
+  assert.deepEqual(s.state().pending, pending); assert.equal(s.requests.length, 0);
+  s.options.preservePublication = async () => {};
+  assert.equal(await new SolanaChain(s.options).recover(), true);
+  assert.equal(s.requests.length, 1); assert.equal(s.broadcasts.length, 1);
+});
+
+test("archive failure blocks rebroadcast of persisted signed bytes after restart", async () => {
+  const s = await setup(); await s.chain.submit(s.publish());
+  const pending = structuredClone(s.state().pending);
+  s.options.preservePublication = async () => { throw new Error("ArchiveUnavailable"); };
+  await assert.rejects(new SolanaChain(s.options).recover(), /ArchiveUnavailable/);
+  assert.deepEqual(s.state().pending, pending);
+  assert.equal(s.requests.length, 1); assert.equal(s.broadcasts.length, 1);
+  s.options.preservePublication = async () => {};
+  assert.equal(await new SolanaChain(s.options).recover(), true);
+  assert.equal(s.requests.length, 1); assert.equal(s.broadcasts.length, 2);
+  assert.deepEqual(s.broadcasts[0], s.broadcasts[1]);
+});
+
+test("publication is archived before signing with exact account bytes and finalized slot", async () => {
+  const s = await setup();
+  const publicationKey = addresses(s.options.program.programId).publication(addresses(s.options.program.programId).pool(s.options.poolId));
+  let calls = 0;
+  s.options.preservePublication = async (observed, slot) => {
+    calls++;
+    assert.equal(s.requests.length, 0); assert.equal(s.broadcasts.length, 0);
+    assert.equal(slot, 7);
+    assert.deepEqual(observed.data, s.map.get(publicationKey.toBase58())!.data);
+  };
+  await s.chain.submit(s.publish());
+  assert.equal(calls, 1); assert.equal(s.requests.length, 1);
+});
+
+test("pool and latest-publication mismatch blocks signing and archival", async () => {
+  const s = await setup();
+  let calls = 0; s.options.preservePublication = async () => { calls++; };
+  const publicationKey = addresses(s.options.program.programId).publication(addresses(s.options.program.programId).pool(s.options.poolId));
+  const observed = s.map.get(publicationKey.toBase58())!;
+  const publication = decodeAccount(s.options.program, "publication", observed);
+  s.pool.sequence = s.pool.sequence.addn(1); await s.saveAccount("pool", s.pool);
+  await assert.rejects(s.chain.submit(s.publish()), /PublicationPoolMismatch/);
+  assert.equal(calls, 0); assert.equal(s.requests.length, 0);
+  s.pool.sequence = publication.sequence;
+  s.pool.stateDigest = Array(32).fill(1); await s.saveAccount("pool", s.pool);
+  s.setState({ ...s.state(), pending: null });
+  await assert.rejects(s.chain.submit(s.publish()), /PublicationPoolMismatch/);
+  assert.equal(calls, 0); assert.equal(s.broadcasts.length, 0);
 });

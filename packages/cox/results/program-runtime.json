@@ -1,11 +1,11 @@
 {
   "assets": 30,
-  "elapsedMicros": "4142757",
+  "elapsedMicros": "4137267",
   "environment": "LiteSVM 0.6.1; compiled SBF; classic SPL token",
-  "maxComputeUnits": 520154,
+  "maxComputeUnits": 524153,
   "maxTransactionBytes": 1122,
   "programAddress": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
-  "programSha256": "16a778aa7dd2f3cae0d16577626a1393f02323ea8fb622963b29d63ea851be07",
+  "programSha256": "fd557e30dc1476d33076a83d7a2497753f03f6fedac0b4f9e11283e61e1e6172",
   "requests": 64,
   "schema": "cox.compiled-runtime-measurements/v1",
   "timingScope": "Local simulation including setup and token transactions; not network throughput or confirmation latency",
@@ -31,7 +31,7 @@
       "transactionBytes": 459
     },
     {
-      "computeUnits": 13478,
+      "computeUnits": 11978,
       "instruction": "register_methodology",
       "transactionBytes": 373
     },
@@ -61,7 +61,7 @@
       "transactionBytes": 365
     },
     {
-      "computeUnits": 426225,
+      "computeUnits": 426368,
       "instruction": "seal_methodology",
       "transactionBytes": 390
     },
@@ -71,22 +71,22 @@
       "transactionBytes": 469
     },
     {
-      "computeUnits": 433244,
+      "computeUnits": 433801,
       "instruction": "publish",
       "transactionBytes": 1122
     },
     {
-      "computeUnits": 46159,
+      "computeUnits": 46153,
       "instruction": "seal_evaluation",
       "transactionBytes": 361
     },
     {
-      "computeUnits": 48379,
+      "computeUnits": 48373,
       "instruction": "seal_evaluation",
       "transactionBytes": 361
     },
     {
-      "computeUnits": 357377,
+      "computeUnits": 362461,
       "instruction": "finalize",
       "transactionBytes": 461
     },
@@ -96,7 +96,17 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 55035,
+      "computeUnits": 52035,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -121,22 +131,7 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 59065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
       "computeUnits": 48565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -146,17 +141,7 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 48565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
+      "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -166,17 +151,17 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 54565,
+      "computeUnits": 48565,
       "instruction": "deposit",
       "transactionBytes": 527
     },
     {
-      "computeUnits": 47065,
+      "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
     {
-      "computeUnits": 56065,
+      "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -186,12 +171,57 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 59065,
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 53065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 51565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 56065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
     {
       "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 48565,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -206,7 +236,42 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 53065,
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 54565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -217,6 +282,21 @@
     },
     {
       "computeUnits": 53065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 51565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -231,152 +311,12 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 54565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 54565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 48565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 59065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
       "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
     {
-      "computeUnits": 56065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 60565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 48565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
       "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 48565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 53065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 54565,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 47065,
-      "instruction": "deposit",
-      "transactionBytes": 527
-    },
-    {
-      "computeUnits": 54565,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -396,7 +336,7 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 53065,
+      "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
@@ -406,987 +346,1047 @@
       "transactionBytes": 527
     },
     {
-      "computeUnits": 53065,
+      "computeUnits": 50065,
       "instruction": "deposit",
       "transactionBytes": 527
     },
     {
-      "computeUnits": 520154,
+      "computeUnits": 48565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 51565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 51565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 54565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 48565,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 47065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 50065,
+      "instruction": "deposit",
+      "transactionBytes": 527
+    },
+    {
+      "computeUnits": 524153,
       "instruction": "publish",
       "transactionBytes": 1122
     },
     {
-      "computeUnits": 91394,
+      "computeUnits": 91386,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91316,
+      "computeUnits": 91308,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91225,
+      "computeUnits": 91217,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91394,
+      "computeUnits": 91386,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91342,
+      "computeUnits": 91334,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 90923,
+      "computeUnits": 90915,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91329,
+      "computeUnits": 91321,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91303,
+      "computeUnits": 91295,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91251,
+      "computeUnits": 91243,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91316,
+      "computeUnits": 91308,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91381,
+      "computeUnits": 91373,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91290,
+      "computeUnits": 91282,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91212,
+      "computeUnits": 91204,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91394,
+      "computeUnits": 91386,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91381,
+      "computeUnits": 91373,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91394,
+      "computeUnits": 91386,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91040,
+      "computeUnits": 91032,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91329,
+      "computeUnits": 91321,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 90975,
+      "computeUnits": 90967,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91329,
+      "computeUnits": 91321,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91053,
+      "computeUnits": 91045,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91394,
+      "computeUnits": 91386,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91303,
+      "computeUnits": 91295,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91225,
+      "computeUnits": 91217,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91001,
+      "computeUnits": 90993,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91329,
+      "computeUnits": 91321,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91212,
+      "computeUnits": 91204,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91394,
+      "computeUnits": 91386,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91277,
+      "computeUnits": 91269,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91303,
+      "computeUnits": 91295,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91329,
+      "computeUnits": 91321,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91225,
+      "computeUnits": 91217,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91316,
+      "computeUnits": 91308,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91066,
+      "computeUnits": 91058,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91134,
+      "computeUnits": 91126,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91212,
+      "computeUnits": 91204,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91264,
+      "computeUnits": 91256,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91329,
+      "computeUnits": 91321,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91251,
+      "computeUnits": 91243,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91238,
+      "computeUnits": 91230,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91355,
+      "computeUnits": 91347,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91160,
+      "computeUnits": 91152,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91394,
+      "computeUnits": 91386,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91290,
+      "computeUnits": 91282,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91329,
+      "computeUnits": 91321,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91368,
+      "computeUnits": 91360,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91173,
+      "computeUnits": 91165,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 91342,
+      "computeUnits": 91334,
       "instruction": "evaluate",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 50740,
+      "computeUnits": 50734,
       "instruction": "seal_evaluation",
       "transactionBytes": 361
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 62374,
+      "computeUnits": 62366,
       "instruction": "safety",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 52958,
+      "computeUnits": 52952,
       "instruction": "seal_evaluation",
       "transactionBytes": 361
     },
     {
-      "computeUnits": 96521,
+      "computeUnits": 96513,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 96521,
+      "computeUnits": 96513,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 98764,
+      "computeUnits": 98756,
       "instruction": "execute",
       "transactionBytes": 427
     },
     {
-      "computeUnits": 366961,
+      "computeUnits": 366075,
       "instruction": "finalize",
       "transactionBytes": 461
     },

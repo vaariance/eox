@@ -22,7 +22,7 @@ Before enabling the service:
    dropped; do not reorder assets or substitute others.
 3. Have Joel bind the deployed program and six publisher/crank instructions
    in the signer, authorize the publisher service account and fund the runtime
-   account with devnet SOL. The identity must be available through VM metadata.
+   account with devnet SOL. The VM must be allowed to generate an ID token for the dedicated publisher identity.
 4. Check the archive is serving admissible P1 snapshots and synchronize the VM
    clock. Arrange startup before the methodology origin; set `enabled: true`
    only when these prerequisites are satisfied.
@@ -57,9 +57,11 @@ Signer request expiry and Solana blockhash expiry are distinct from trade expiry
 `deploy/dev/cox-publisher.service` is an installation template, not an installed
 or enabled service. It expects Linux, Node.js 24, `flock`, the installed workspace
 dependencies under `/opt/eox`, a dedicated `cox-publisher` user and configuration
-at `/etc/cox-publisher/dev.json`. The VM identity must have Joel's permitted
-signer role; authentication obtains an audience-bound identity token from
-metadata rather than a stored credential.
+at `/etc/cox-publisher/dev.json`. Authentication reads the VM's access token from metadata, then calls Google
+IAM `generateIdToken` for `cox-publisher@colosseum-eox.iam.gserviceaccount.com`
+with the signer audience and `includeEmail: true`. Only this impersonated
+publisher identity calls the signer. Tokens stay in memory; no key file or VM
+identity change is required.
 
 The service executes:
 
@@ -90,7 +92,22 @@ sealed methodology must match. Archive snapshots must match the sealed roster
 exactly: a reduced roster requires a corresponding archive snapshot and digest,
 not local filtering of a 30-asset snapshot.
 
-The authentication adapter uses the VM's attached service-account identity.
-Deployment must make the authorized publisher identity available through
-metadata; this template does not change the VM identity or grant permissions.
+Joel reports this impersonation permission and signer caller authorization are
+configured on `eox-dev`; the signer binding remains disabled pending the actual
+pool, vault, mint and sealed methodology addresses. The local adapter follows
+[Google's IAM API](https://docs.cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/generateIdToken).
+This template does not change the VM identity or grant permissions.
 See `VERIFICATION.md` for local test evidence and remaining deployment work.
+
+## Rolling storage upgrade
+
+The publisher now requires the build in
+`packages/cox/deploy/publisher-build.json`. It refuses enabled startup until
+the verified deployment record matches that build. The upgrade is prepared,
+not deployed. See `packages/cox/ROLLING-STORAGE-HANDOFF.md`.
+
+The full finalized publication is archived immutably under
+`${statePath}.history/<sequence>.json` before signing or rebroadcasting work
+that can replace it. Preserve this directory alongside the journal. Archive
+errors, history gaps and conflicting bytes halt signing. Verify backup/restore
+before live activation; local fsync alone is not a disaster-recovery policy.

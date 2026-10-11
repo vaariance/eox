@@ -11,7 +11,7 @@ export function addresses(programId: PublicKey = PROGRAM_ID) {
     vault: (pool: PublicKey) => derive(Buffer.from("vault"), pool.toBytes()),
     position: (pool: PublicKey, owner: PublicKey) => derive(Buffer.from("position"), pool.toBytes(), owner.toBytes()),
     request: (pool: PublicKey, nonce: bigint) => derive(Buffer.from("request"), pool.toBytes(), integer(nonce, 8)),
-    batch: (pool: PublicKey, batchId: bigint) => derive(Buffer.from("batch"), pool.toBytes(), integer(batchId, 8)),
-    publication: (pool: PublicKey, sequence: bigint) => derive(Buffer.from("publication"), pool.toBytes(), integer(sequence, 8))
+    batch: (pool: PublicKey) => derive(Buffer.from("batch"), pool.toBytes()),
+    publication: (pool: PublicKey) => derive(Buffer.from("publication"), pool.toBytes())
   };
 }

@@ -1,6 +1,7 @@
 import anchor, { type Idl } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { createSigningClient } from "@eox/signing";
+import { addresses } from "@cox/client";
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,8 @@ import { assertReady, COX_PROGRAM_ID, loadConfig } from "./config.ts";
 import { Journal } from "./journal.ts";
 import { SolanaChain } from "./transport.ts";
 import { Publisher } from "./worker.ts";
+import { createPublisherIdentityToken } from "./identity.ts";
+import { PublicationHistory } from "./history.ts";
 
 export const boundedFetch: typeof fetch = (input, init) => fetch(input, {
   ...init, signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
@@ -42,24 +45,21 @@ async function main(): Promise<void> {
   const connection = new Connection(config.rpcUrl, { commitment: "finalized", fetch: boundedFetch, disableRetryOnRateLimit: true });
   const idl = JSON.parse(await readFile(new URL("../../../packages/cox/idl/cox.json", import.meta.url), "utf8")) as Idl;
   const deployment = JSON.parse(await readFile(new URL("../../../packages/cox/deploy/deployed-devnet.json", import.meta.url), "utf8")) as { programId: string; deployedBuildSha256: string };
+  const required = JSON.parse(await readFile(new URL("../../../packages/cox/deploy/publisher-build.json", import.meta.url), "utf8")) as { programId: string; sbfBuildSha256: string };
   const program = new anchor.Program(idl, { connection });
-  if (program.programId.toBase58() !== COX_PROGRAM_ID || deployment.programId !== COX_PROGRAM_ID) throw new Error("ProgramIdentityMismatch");
-  const signer = createSigningClient({ baseUrl: config.signerUrl, fetch: boundedFetch, identityToken: async () => {
-    const url = new URL("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity");
-    url.searchParams.set("audience", config.signerAudience); url.searchParams.set("format", "full");
-    const response = await boundedFetch(url, { headers: { "Metadata-Flavor": "Google" } });
-    if (!response.ok) throw new Error("IdentityTokenUnavailable:" + response.status);
-    const token = await response.text();
-    if (!token || token.length > 16_384) throw new Error("InvalidIdentityToken");
-    return token;
-  } });
+  if (program.programId.toBase58() !== COX_PROGRAM_ID || deployment.programId !== COX_PROGRAM_ID || required.programId !== COX_PROGRAM_ID) throw new Error("ProgramIdentityMismatch");
+  if (deployment.deployedBuildSha256 !== required.sbfBuildSha256) throw new Error("RollingStorageUpgradeRequired");
+  const signer = createSigningClient({ baseUrl: config.signerUrl, fetch: boundedFetch,
+    identityToken: createPublisherIdentityToken(config.signerAudience, boundedFetch) });
   const poolId = BigInt(config.poolId);
-  const identity = { program: COX_PROGRAM_ID, pool: config.poolId, genesisHash: config.genesisHash };
+  const identity = { program: COX_PROGRAM_ID, pool: addresses(program.programId).pool(poolId).toBase58(), genesisHash: config.genesisHash };
   const store = new Journal(config.statePath, identity);
+  const history = new PublicationHistory(config.statePath + ".history", program, identity, poolId);
   const chain = new SolanaChain({ program, connection, poolId, policy, runtime: new PublicKey(config.runtimeAuthority),
     genesisHash: config.genesisHash, network: config.signerNetwork, keyVersion: config.keyVersion,
     programSha256: deployment.deployedBuildSha256, computeUnitLimit: config.computeUnitLimit,
-    computeUnitPriceMicroLamports: config.computeUnitPriceMicroLamports, signer, store, clock });
+    computeUnitPriceMicroLamports: config.computeUnitPriceMicroLamports, signer, store, clock,
+    preservePublication: (info, slot) => history.preserve(info, slot) });
   const publisher = new Publisher({ identity, policy, chain, archive: new HttpArchive(config.archiveUrl), store, clock });
   const stop = new AbortController();
   const shutdown = () => stop.abort();

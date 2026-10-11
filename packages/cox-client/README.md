@@ -22,6 +22,18 @@ RPC reads can cross a publication; an inconsistent newer position is rejected
 and the caller should retry the complete read. Readers do not authenticate
 venue truth, prove the feed report or replace the independent monitor.
 
+Each pool has one reusable batch PDA and one latest-publication PDA. Derive
+these with `addresses().batch(pool)` and `addresses().publication(pool)`;
+batch IDs and publication sequences remain account data and instruction
+arguments, rather than address seeds. Batch and publication accounts use
+schema version 2; all other account versions remain 1. `batch(poolId, batchId)`
+and `publication(poolId, sequence)` throw `CoxHistoryNotRetained` when that
+requested record has been overwritten. Historical records must come from the
+archive. `checkedPublication(programId, poolKey, decodedPublication)` checks
+the same state preimage, digest, identities and prices without an RPC read;
+the caller must separately authenticate the archived account's finalized
+on-chain origin. `finalize` no longer takes a sequence argument.
+
 `CoxInstructions` supplies every actual instruction, using the generated
 IDL's exact account order and signer/write flags. Callers supply the current
 request nonce and corresponding position/request addresses. Competing

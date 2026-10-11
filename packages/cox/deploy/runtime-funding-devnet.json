@@ -1,0 +1,12 @@
+{
+  "schema": "cox.runtime-funding/v1",
+  "network": "devnet",
+  "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "source": "4rCo36GY63kyZpCae2ccfhJEk3TLqKMybhT42YhCPp9N",
+  "runtime": "GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6",
+  "lamports": "1000000000",
+  "signature": "3AFU3dcs5rynpSxxEoB369bfBCnL8YAkd4WyVJBxYZCQM2zURCCvcTemb27a5cGaTnkv5EgDVJLE8vTxLspcx3og",
+  "verifiedRuntimeBalanceLamports": "1000000000",
+  "purpose": "short devnet smoke test; not sufficient for a 24-hour run",
+  "livePoolActive": false
+}

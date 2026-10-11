@@ -1,7 +1,7 @@
 import anchor, { type Program } from "@coral-xyz/anchor";
 import { createHash, createPublicKey, verify } from "node:crypto";
-import { ComputeBudgetProgram, Connection, PublicKey, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
-import { addresses, CoxInstructions, decodeAccount, type Accounts } from "@cox/client";
+import { ComputeBudgetProgram, Connection, PublicKey, TransactionMessage, VersionedTransaction, type AccountInfo } from "@solana/web3.js";
+import { addresses, checkedPublication, CoxInstructions, decodeAccount, type Accounts } from "@cox/client";
 import { PILOT_ASSETS } from "@cox/methodology";
 import { SIGNING_SCHEMA_VERSION, type RemoteSigner, type SignedResult } from "@eox/signing";
 import type { Chain, ChainView, Clock, MethodologyPolicy, Operation, PendingTransaction, StateStore } from "./types.ts";
@@ -14,6 +14,7 @@ export interface TransportOptions {
   runtime: PublicKey; genesisHash: string; network: string; keyVersion: string;
   programSha256: string; computeUnitLimit: number; computeUnitPriceMicroLamports: number;
   signer: RemoteSigner; store: StateStore; clock: Clock;
+  preservePublication: (info: AccountInfo<Buffer>, slot: number) => Promise<void>;
 }
 
 export function verifySigned(pending: PendingTransaction, result: SignedResult, runtime: PublicKey): { bytes: Buffer; signature: string } {
@@ -103,7 +104,7 @@ export class SolanaChain implements Chain {
       let stage = null;
       if (expectedStage) {
         const b = account("batch", 4);
-        if (!b.pool.equals(this.poolKey) || !this.pdas.batch(this.poolKey, BigInt(b.batchId.toString())).equals(expectedStage)
+        if (!b.pool.equals(this.poolKey) || !this.pdas.batch(this.poolKey).equals(expectedStage)
             || b.sequence.toString() !== (pool.initialized ? BigInt(pool.sequence.toString()) + 1n : 0n).toString()
             || b.predecessorSequence.toString() !== pool.sequence.toString()
             || !Buffer.from(b.predecessorDigest).equals(Buffer.from(pool.stateDigest))
@@ -120,6 +121,21 @@ export class SolanaChain implements Chain {
     throw new Error("InconsistentRead");
   }
   async view(): Promise<ChainView> { return (await this.read()).view; }
+  private async preserve(): Promise<void> {
+    const o = this.options;
+    const keys = [this.poolKey, this.pdas.publication(this.poolKey)];
+    const response = await o.connection.getMultipleAccountsInfoAndContext(keys, { commitment: "finalized" });
+    if (!response.value[0]) throw new Error("SetupNotReady:pool");
+    const pool = decodeAccount(o.program, "pool", response.value[0]);
+    if (pool.poolId.toString() !== o.poolId.toString()) throw new Error("PoolIdentityMismatch");
+    if (!pool.initialized) return;
+    const info = response.value[1];
+    if (!info) throw new Error("SetupNotReady:publication");
+    const publication = checkedPublication(o.program.programId, this.poolKey, decodeAccount(o.program, "publication", info));
+    if (publication.sequence.toString() !== pool.sequence.toString()
+        || !Buffer.from(publication.stateDigest).equals(Buffer.from(pool.stateDigest))) throw new Error("PublicationPoolMismatch");
+    await o.preservePublication(info, response.context.slot);
+  }
   private async clear(reason: string): Promise<void> {
     const state = await this.options.store.load();
     await this.options.store.save({ ...state, pending: null, lastOutcome: reason });
@@ -153,6 +169,7 @@ export class SolanaChain implements Chain {
     }
     if (hasStatus) return true;
     if ((await this.read()).view.paused) return true;
+    await this.preserve();
     if (!pending.signedBase64) {
       if (Number(o.clock.nowSeconds()) >= pending.expiresAt) return true;
       const result = await o.signer.signSolanaTransaction({
@@ -201,9 +218,9 @@ export class SolanaChain implements Chain {
         ? view.stage.phase === 0 ? "evaluate" : view.stage.phase === 3 ? "safety" : "execute"
         : view.stage.phase === 1 ? "finalize" : "sealEvaluation";
       if (operation.kind !== expected) return;
-      const batch = this.pdas.batch(this.poolKey, operation.batchId);
+      const batch = this.pdas.batch(this.poolKey);
       if (operation.kind === "sealEvaluation") instruction = this.instructions.sealEvaluation({ ...keys, batch });
-      else if (operation.kind === "finalize") instruction = this.instructions.finalize({ ...keys, batch, methodology: pool.methodology, payer: o.runtime }, operation.sequence);
+      else if (operation.kind === "finalize") instruction = this.instructions.finalize({ ...keys, batch, methodology: pool.methodology, payer: o.runtime });
       else {
         const requestKey = this.pdas.request(this.poolKey, view.stage.cursor);
         const info = await o.connection.getAccountInfo(requestKey, { commitment: "finalized", minContextSlot: slot });
