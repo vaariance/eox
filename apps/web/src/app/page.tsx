@@ -4,7 +4,7 @@ import { FirstPublication } from "@/components/first-publication";
 import { PriceSource } from "@/components/price-source";
 import { RowLink } from "@/components/row-link";
 import { Sparkline } from "@/components/sparkline";
-import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
+import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
 import { CRYPTO_CLASS, changeSince, decimalsOf, classViews, currentOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
 
@@ -34,7 +34,7 @@ function EmptyRow({ id, name, href }: { id: string; name: string; href: string }
 }
 
 export default async function MarketsPage() {
-  const [assets, crypto, deployment, publications, status] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications(), getStatus()]);
+  const [assets, deployment, publications, status] = await Promise.all([getAssets(), getDeployment(), getPublications(), getStatus()]);
   const current = currentOf(publications);
 
   const classes = classViews(current, assets, decimalsOf(deployment));
@@ -47,9 +47,6 @@ export default async function MarketsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-title font-semibold tracking-tight">Markets</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Each asset is measured against {crypto.label}. A reference above 100 means the asset has outperformed CRYPTO since the origin.
-          </p>
         </div>
         <dl className="flex gap-8 text-sm">
           <div>
@@ -121,9 +118,6 @@ export default async function MarketsPage() {
         </table>
       </div>
 
-      <p className="text-xs text-muted">
-        A rising reference is not a promise of the same gain on a position. What a position can redeem for is its class unit value, set by the pool at each publication. Each price is the exchange's one-minute closing price for the batch: Kraken first, then Coinbase, then Bybit when Kraken had no trade.
-      </p>
     </div>
   );
 }
