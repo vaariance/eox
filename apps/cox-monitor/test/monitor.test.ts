@@ -195,7 +195,7 @@ describe("verdict server", () => {
 
     const latest = (await (await fetch(`${base}/v1/verdicts/latest`)).json()) as { schema: string; verdict: { scope: string; cutoff: number; verdict: string } };
     expect(latest.schema).toBe(MONITOR_SCHEMA);
-    expect(latest.verdict).toMatchObject({ scope: "archive", cutoff: BASE + 120, verdict: "match" });
+    expect(latest.verdict).toMatchObject({ scope: "archive", cutoff: BASE + 120, verdict: "match", venues: "pending" });
 
     const one = (await (await fetch(`${base}/v1/verdicts/${BASE + 60}`)).json()) as { verdict: { verdict: string; findings: string[] } };
     expect(one.verdict.verdict).toBe("mismatch");
