@@ -28,5 +28,26 @@ Every page reads through `src/lib/data.ts`, which returns the types from
 "redeemable, about" figures are a holder's units multiplied by the latest
 published class state and are labelled as approximate.
 
-Not connected yet: the portfolio of the connected wallet, and sending buy
-(deposit), switch, redeem, cancel and withdraw requests. Both wait for the live app API.
+## Sending requests
+
+Buy, Switch and Redeem build a real transaction in the browser with Peter's
+`@cox/client` (`src/lib/chain.ts`): it reads the pool for the next request
+number, derives the position, request, vault and token accounts, builds the
+`deposit`, `switch` or `redeem` instruction and hands it to the connected
+wallet to sign and send. Amounts are parsed as exact integers
+(`src/lib/requests.ts`); nothing is rounded.
+
+The buttons stay disabled until the API reports a live pool (`origin: "live"`
+with a pool address and collateral decimals). No pool exists on devnet yet, so
+this path has never sent a transaction. What has been checked: the planning
+and instruction encoding (`pnpm --filter @eox/web test`), and that the browser
+bundle produces the same instruction bytes as Node.
+
+Two small shims in `next.config.ts` make `@cox/client` load in the browser: its
+`node:crypto` import is replaced (hashing is not needed to build a request),
+and its default import of `@coral-xyz/anchor` is given a default export.
+
+Not connected yet: Cancel and Withdraw, and the portfolio of the connected
+wallet. `product.md` gives transaction building to the app API (J5); this
+in-browser path exists so the forms work as soon as a pool does and can be
+replaced by the API's builders.
