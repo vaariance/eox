@@ -18,10 +18,10 @@
   "pool": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
   "originUtc": "2026-10-11T08:00:00Z",
   "originLagos": "2026-10-11T09:00:00+01:00",
-  "observedOutcome": "waiting",
-  "firstPublicationVerified": false,
+  "observedOutcome": "Pool 0 publisher retired after finalized sequence 118; service switched to scheduled Circle devnet USDC pool 1",
+  "firstPublicationVerified": true,
   "signerIdentityVerified": true,
-  "signerTransactionPolicyVerified": false,
+  "signerTransactionPolicyVerified": true,
   "publisherTestsPassed": 77,
   "typeCheckPassed": true,
   "restartAndProcessLockVerified": true,
@@ -37,9 +37,9 @@
   "restoreTestBytes": 68261,
   "backupLimitation": "Offsite uploads follow local archival asynchronously; VM loss can lose records not yet uploaded. Monitor backup failures.",
   "fullTradingBatchArchive": "deferred by Peter",
-  "rpcOrigin": "https://cox-rpc-proxy.variance.space",
+  "rpcOrigin": "https://api.devnet.solana.com",
   "rpcCredentialStorage": "/etc/cox-publisher/dev.json only; authenticated path omitted from this record",
-  "rpcVerifiedAt": "2026-10-11T07:29:12Z",
+  "rpcVerifiedAt": "2026-10-11T08:12:26Z",
   "rpcMethodsVerified": [
     "getGenesisHash",
     "getHealth",
@@ -50,5 +50,41 @@
     "getSignatureStatuses"
   ],
   "rpcRestartVerified": true,
-  "rpcFailoverVerified": false
+  "rpcFailoverVerified": false,
+  "liveVerification": {
+    "checkedAt": "2026-10-11T09:49:37Z",
+    "firstBatch": "0",
+    "firstPublicationSequence": "0",
+    "firstCommitUnixSeconds": "1791705777",
+    "verifiedFinalizedSequence": "105",
+    "verifiedFinalizedBatch": "109",
+    "verifiedFinalizedSlot": 509862299,
+    "priceCount": 30,
+    "vaultBaseUnits": "0",
+    "ledgerBaseUnits": "0",
+    "archiveChecksumsVerifiedThroughSequence": "104",
+    "latestObservedBackupSequence": "8",
+    "limitations": [
+      "Proxy returned absent batch/publication accounts at finalized slot 509837547 while direct devnet RPC returned them present",
+      "Direct public RPC returned transient HTTP 429 after restart; publisher retried and resumed",
+      "Monitor verdicts cover archive consistency, not on-chain publications",
+      "No live user trades or deposits verified",
+      "Proxy upstream 0 intermittently returns missing accounts; repeated at slots 509861708 and 509861709. Owning Cloudflare account authentication pending."
+    ],
+    "apiReaderVerification": {
+      "checkedAt": "2026-10-11T09:48:37Z",
+      "latestSequence": 104,
+      "latestBatch": 108,
+      "priceCount": 30,
+      "source": "VM live API",
+      "historicalArchiveRecoveryVerified": false
+    },
+    "collateralVerification": {
+      "poolMint": "5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X",
+      "circleDevnetUsdcMint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      "usesCircleDevnetUsdc": false,
+      "bothClassicSplSixDecimals": true
+    }
+  },
+  "supersededBy": "publisher-pool-1-devnet.json"
 }

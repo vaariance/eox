@@ -27,7 +27,24 @@ const pool = await reader.pool(0n);
 
 Here `program` is the configured Anchor instance and `feePayerPublicKey` identifies an existing account used by unsigned simulations. No private key is needed for a read simulation. Verify the RPC network, program release and pool before preparing transactions; constructing these helpers alone does not pin the network.
 
-This release imports Node APIs. Browser consumers need compatible bundling; it should not be treated as a browser-ready swap package.
+The `@cox/client/swap` entry point is tested with a browser bundle and provides the benchmark deposit and redemption flow below.
+
+## Benchmark swaps
+
+`CoxSwapSdk` prepares unsigned transactions for collateral → CRYPTO and CRYPTO → collateral. CRYPTO is the final class, after every asset class. In the 30-asset pool its index is **30**; index **0** is BTC. Read `market().cryptoClass` rather than hard-coding an index.
+
+```ts
+import { PublicKey } from "@solana/web3.js";
+import { CoxSwapSdk } from "@cox/client/swap";
+
+const swap = new CoxSwapSdk(program, {
+  poolId: 1n,
+  collateralMint: new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"),
+});
+const market = await swap.market();
+```
+
+This configuration selects pool 1 with Circle devnet USDC. The SDK validates the network, mint and sealed methodology. `prepareBuy` reserves collateral for benchmark units; `prepareSell` reserves benchmark units for redemption. Both execute through a future publication. After redemption finalizes, `prepareWithdraw` prepares the separate transfer of committed collateral to the wallet. Quotes are estimates, and the SDK never signs or broadcasts transactions. Moving between CRYPTO and individual asset positions uses the trading instructions separately.
 
 ## Integer values
 

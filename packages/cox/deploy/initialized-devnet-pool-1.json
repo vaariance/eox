@@ -1,0 +1,119 @@
+{
+  "schema": "cox.pool-setup/v1",
+  "program": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+  "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "registry": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+  "admin": "4rCo36GY63kyZpCae2ccfhJEk3TLqKMybhT42YhCPp9N",
+  "upgradeAuthority": "4yHCCpEmBvaCKAdfiY2kULM8qFJcDQR4uSrfAT3EWbw5",
+  "runtimeAuthority": "GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6",
+  "nextPoolId": "2",
+  "verifiedAt": "2026-10-11T09:57:54.421Z",
+  "status": "pool-created-awaiting-first-publication",
+  "registrySignature": "5hmG9fJVHJ4Kp4GxYKz9b3We75m1PgA4anZx7uwaGU8yXtXPKrMDW7VVUhZGxp6kmczCEiWdY7qXoYTWBZ2kmmV",
+  "testCollateral": {
+    "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "decimals": 6,
+    "kind": "Circle devnet USDC",
+    "source": "https://developers.circle.com/stablecoins/usdc-contract-addresses"
+  },
+  "methodology": "5h3fnfD9BFbJ1iRmRTy7fd6DPy1xEWNg4h2KGheRxFT6",
+  "pool": "F44g6A58N3cu9TGaDE1LiDB3r1BCxCrfFkMQV1DcEv37",
+  "vault": "6fMcr5FTx3ZmrZp5XpxjD3fpUqfdza27XccVHaaoRGEp",
+  "publisherEnabled": false,
+  "feedCheck": {
+    "status": "provisional-devnet-approved",
+    "reportSha256": "a6e00882f979d1b46c7d36504f8e82ed870935f878d5b86a8bce41a7aa281175",
+    "requestedDays": 7,
+    "onTimeSnapshots": 549,
+    "admissibleSnapshots": 548,
+    "lateSnapshots": 11,
+    "failingAssets": [
+      "ZEC",
+      "STRK",
+      "HYPE",
+      "TAO",
+      "WLD",
+      "ONDO",
+      "ENA",
+      "ZRO",
+      "FET",
+      "JUP",
+      "AERO",
+      "RENDER",
+      "TIA",
+      "W"
+    ],
+    "failureShare": "1/549",
+    "requiredMaximumFailureShare": "0.001",
+    "reportToUTC": "2026-10-11T05:53:00Z",
+    "policy": "Peter approved proceeding with incoming data on 2026-10-11; seven-day history and failure-threshold gates deferred for this devnet test; all 30 assets retained"
+  },
+  "methodologyDigest": "8dff8843ae85724738e37b9216257fb2407be42655d9fa25b6ba71375ee1c819",
+  "poolId": "1",
+  "origin": "1791714000",
+  "originUTC": "2026-10-11T10:20:00.000Z",
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP",
+    "BNB",
+    "TRX",
+    "AVAX",
+    "DOT",
+    "NEAR",
+    "SUI",
+    "APT",
+    "UNI",
+    "ARB",
+    "OP",
+    "INJ",
+    "AAVE",
+    "ZEC",
+    "STRK",
+    "HYPE",
+    "TAO",
+    "WLD",
+    "ONDO",
+    "ENA",
+    "ZRO",
+    "FET",
+    "JUP",
+    "AERO",
+    "RENDER",
+    "TIA",
+    "W"
+  ],
+  "bybit": true,
+  "poolInitialized": false,
+  "setupTransactions": [
+    {
+      "step": "register-methodology",
+      "signature": "3E2yRCQ3JhUd62WBh17SbGQJLjZiEnH7Bpv3aZLdkDbXtDcLM5L5MgpXNP2sx5LUL3aKy2qGcuHg7MdAnwzTrC3b"
+    },
+    {
+      "step": "upload-0",
+      "signature": "2Q35xX2vhsQDPzbJPNpzkG1fHWso8SSpT9cCpYV7eJHxKTHfx9SnLQ2MnmvV69o2TJW4wfDfwP3hGTQ9DtkwZ957"
+    },
+    {
+      "step": "upload-700",
+      "signature": "28F2Wp6HaRWsokq16KxEWwNbjwEf8ZeZpoCgoDoeR73K4jt6rQCiJpftjZf1arrwuMi4rzQmKkfnC6sVwLgyX3wv"
+    },
+    {
+      "step": "upload-1400",
+      "signature": "q2X8yVkxjQCz8GvVYqSL5bk9THAkWgzyFoUe1KChuS8AABiXdJhYi5jqfewgY2niPXWzEFA65bfbVQ6bWg8ZRot"
+    },
+    {
+      "step": "upload-2100",
+      "signature": "3Wi9goJgoTnL8FwGXhSetjPSmrqWyUqN5e9fvD6bVU4XdvBsMcPAnnNNVviu4BuyjrGXdy8TGbVM7MXyZ9W3zdDM"
+    },
+    {
+      "step": "seal-methodology",
+      "signature": "y8TgKn2p7GjacZZaLRf7etktYXXenPyv283pYj1vV1HnUv6qvhTJ6CXCbzVoFdrVGch1yyJ1kSnEZyWxZpuvoYT"
+    },
+    {
+      "step": "initialize-pool-1",
+      "signature": "Nvv94yGLikx3bp666Ddy7L76N5vNtjqxNYysWqgRsEvAP1jAi3AR8unDHu9FxTYJhjAhN5f5NcCGpPCkTnu2nEt"
+    }
+  ]
+}
