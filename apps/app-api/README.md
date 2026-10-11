@@ -20,7 +20,7 @@ APP_API_PORT=8791 \
 pnpm --filter @eox/app-api-server start
 ```
 
-The public demonstration endpoint is <https://cox-app-api-529206295845.us-central1.run.app>. It serves synthetic fixture data, not market data. Check `deployment.origin` on every integration rather than inferring the source from an endpoint's name.
+The public demonstration endpoint is <https://cox-app-api-529206295845.us-central1.run.app>. It serves synthetic fixture data, not market data. The public live endpoint is <https://cox-app-api-live-529206295845.europe-west1.run.app>: Solana devnet pool 0 with test collateral only, one always-on Cloud Run instance, history rebuilt from the publisher's archive bucket on start, and transaction requests limited per client. Check `deployment.origin` on every integration rather than inferring the source from an endpoint's name.
 
 ## Configuration
 
@@ -35,6 +35,10 @@ The public demonstration endpoint is <https://cox-app-api-529206295845.us-centra
 | `COX_POOL_ID` | Pool identifier | `0` |
 | `COX_IDL_PATH` | Program IDL | `packages/cox/idl/cox.json` |
 | `COX_POLL_MS` | Indexer interval, at least 1,000 ms | `5000` |
+| `COX_PUBLICATION_ARCHIVE` | Directory of the publisher's `<sequence>.json` archive records | Unset |
+| `COX_PUBLICATION_ARCHIVE_GCS` | `gs://bucket/prefix/` of content-addressed `<sequence>/<sha256>.json` records; use instead of the directory | Unset |
+| `APP_API_POST_LIMIT_PER_MINUTE` | Transaction requests per client per minute; 429 `RATE_LIMITED` with `Retry-After` beyond it | `30` |
+| `APP_API_TRUST_FORWARDED_FOR` | `true` behind Cloud Run: the client is the last `X-Forwarded-For` entry | Unset |
 
 Every RPC endpoint must pass the devnet genesis check at startup. Network failures, 15-second timeouts, HTTP 429 and HTTP 5xx trigger failover. Store authenticated URLs privately. A missing pool or unsealed methodology delays startup and is checked again every 30 seconds.
 
