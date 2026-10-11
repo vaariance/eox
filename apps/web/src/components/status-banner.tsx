@@ -35,9 +35,11 @@ export function StatusBanner({ status, origin }: { status: CoxStatus; origin: Co
         )}
         {status.executing && <span className="text-warn">Filling the accepted batch</span>}
         {status.currentBatch && <OpenBatchLabel known={status.currentBatch} />}
-        <span className={mismatch ? "text-down" : undefined}>
-          Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{status.monitor ? verdicts[status.monitor.verdict] : "no verdict yet"}</span>
-        </span>
+        {status.monitor && (
+          <span className={mismatch ? "text-down" : undefined}>
+            Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{verdicts[status.monitor.verdict]}</span>
+          </span>
+        )}
         {origin === "fixture" && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Fixture data: synthetic assets, not market prices</span>}
       </div>
     </div>
