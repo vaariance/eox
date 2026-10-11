@@ -13,7 +13,8 @@
     "@coral-xyz/anchor": "0.31.1",
     "@cox/client": "workspace:*",
     "@eox/app-api": "workspace:*",
-    "@solana/web3.js": "^1.98.0"
+    "@solana/web3.js": "^1.98.0",
+    "google-auth-library": "^9.15.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

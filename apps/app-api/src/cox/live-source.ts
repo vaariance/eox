@@ -130,7 +130,7 @@ export class LiveCoxSource implements CoxSource {
     while (this.log.nextSequence < last) {
       const archive = this.options.archive;
       if (!archive) throw new PublicationArchiveMissing(`publications ${this.log.nextSequence} to ${last - 1} are only in the publisher archive, which is not configured`);
-      const archived = archive.read(BigInt(this.log.nextSequence));
+      const archived = await archive.read(BigInt(this.log.nextSequence));
       this.append(archived.publication, null, archived.slot);
     }
     if (this.log.nextSequence === last) this.append(latest, batchOf(latest, view.batch), view.slot);

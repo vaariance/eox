@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { loadProgram } from "./cox/chain.js";
 import { CoxFixtureSource } from "./cox/fixture-source.js";
 import { LiveCoxSource } from "./cox/live-source.js";
-import { PublicationArchive } from "./cox/publication-archive.js";
+import { directorySource, gcsSource, PublicationArchive, type ArchiveSource } from "./cox/publication-archive.js";
+import { GoogleAuth } from "google-auth-library";
 import { checkGenesis, failoverConnection, parseRpcUrls } from "./cox/rpc.js";
 import { createCoxApiServer, type CoxApiServerOptions } from "./cox/server.js";
 import { CoxSubmissions } from "./cox/submissions.js";
@@ -49,7 +50,19 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
   const program = loadProgram(connection, process.env.COX_IDL_PATH ?? join(here, "..", "..", "..", "packages", "cox", "idl", "cox.json"));
   const poolId = BigInt(poolText);
   const archiveDir = process.env.COX_PUBLICATION_ARCHIVE;
-  const archive = archiveDir ? new PublicationArchive(resolve(archiveDir), program, addresses(program.programId).pool(poolId), genesis) : null;
+  const archiveGcs = process.env.COX_PUBLICATION_ARCHIVE_GCS;
+  if (archiveDir && archiveGcs) throw new Error("set only one of COX_PUBLICATION_ARCHIVE and COX_PUBLICATION_ARCHIVE_GCS");
+  let source: ArchiveSource | null = null;
+  if (archiveDir) source = directorySource(resolve(archiveDir));
+  if (archiveGcs) {
+    const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/devstorage.read_only"] });
+    source = gcsSource(archiveGcs, async () => {
+      const token = await auth.getAccessToken();
+      if (!token) throw new Error("no Google access token for the publication archive");
+      return token;
+    });
+  }
+  const archive = source ? new PublicationArchive(source, program, addresses(program.programId).pool(poolId), genesis) : null;
   const options = { connection, program, poolId, network, logPath: join(stateDir, `publications-${poolId}.jsonl`), pollMs, archive, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
   for (;;) {
     try {

@@ -11,7 +11,7 @@ import { createCoxApiClient, type Publication, type UnsignedTransaction } from "
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadProgram } from "../src/cox/chain.js";
 import { LiveCoxSource } from "../src/cox/live-source.js";
-import { PublicationArchive, PublicationArchiveMissing } from "../src/cox/publication-archive.js";
+import { directorySource, gcsSource, PublicationArchive, PublicationArchiveMissing } from "../src/cox/publication-archive.js";
 import { PublicationLog } from "../src/cox/publication-log.js";
 import { createCoxApiServer } from "../src/cox/server.js";
 import { CoxSubmissions } from "../src/cox/submissions.js";
@@ -241,7 +241,7 @@ describe("reusable publication account and the publisher archive", () => {
     const directory = join(dir, "history");
     mkdirSync(directory, { recursive: true });
     for (const [sequence, record] of Object.entries(records)) writeFileSync(join(directory, `${sequence}.json`), JSON.stringify(record));
-    return new PublicationArchive(directory, loadProgram(connection as unknown as Connection, idlPath), new PublicKey(POOL), "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
+    return new PublicationArchive(directorySource(directory), loadProgram(connection as unknown as Connection, idlPath), new PublicKey(POOL), "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
   }
 
   it("refuses to skip publications that are only in an unconfigured archive", async () => {
@@ -250,15 +250,38 @@ describe("reusable publication account and the publisher archive", () => {
     expect(await source.publications()).toHaveLength(0);
   });
 
-  it("reads and checks archived publication bytes, and refuses tampered or foreign records", () => {
+  it("reads and checks archived publication bytes, and refuses tampered or foreign records", async () => {
     const store = archive({ 1: archiveRecord(), 2: archiveRecord({ sequence: "2" }), 3: archiveRecord({ sequence: "3", accountSha256: "00".repeat(32) }), 4: archiveRecord({ identity: { program: fixture.programAddress, pool: VAULT, genesisHash: "x" } }) });
-    const { publication, slot } = store.read(1n);
+    const { publication, slot } = await store.read(1n);
     expect(Buffer.from(publication.stateDigest).toString("hex")).toBe(STATE_DIGEST);
     expect(slot).toBe(77);
-    expect(() => store.read(2n)).toThrow("does not match its record");
-    expect(() => store.read(3n)).toThrow("fails its account hash");
-    expect(() => store.read(4n)).toThrow("another program, pool or network");
-    expect(() => store.read(9n)).toThrow(PublicationArchiveMissing);
+    await expect(store.read(2n)).rejects.toThrow("does not match its record");
+    await expect(store.read(3n)).rejects.toThrow("fails its account hash");
+    await expect(store.read(4n)).rejects.toThrow("another program, pool or network");
+    await expect(store.read(9n)).rejects.toThrow(PublicationArchiveMissing);
+  });
+
+  it("reads one content-addressed record per sequence from Cloud Storage", async () => {
+    const text = JSON.stringify(archiveRecord());
+    const digest = createHash("sha256").update(text).digest("hex");
+    const objects: Record<string, string> = { [`pool-0/history/1/${digest}.json`]: text, [`pool-0/history/2/${"0".repeat(64)}.json`]: text, [`pool-0/history/3/${digest}.json`]: text, [`pool-0/history/3/${"1".repeat(64)}.json`]: text };
+    const requests: string[] = [];
+    const storage = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input));
+      requests.push(`${(init?.headers as Record<string, string>).authorization} ${url.pathname}`);
+      const prefix = url.searchParams.get("prefix");
+      if (prefix !== null) return Response.json({ items: Object.keys(objects).filter((name) => name.startsWith(prefix)).map((name) => ({ name })) });
+      const name = decodeURIComponent(url.pathname.split("/o/")[1]!);
+      return objects[name] === undefined ? new Response("", { status: 404 }) : new Response(objects[name]);
+    }) as typeof fetch;
+    const source = gcsSource("gs://cox-archive/pool-0/history/", async () => "token", storage);
+    const store = new PublicationArchive(source, loadProgram(connection as unknown as Connection, idlPath), new PublicKey(POOL), "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
+    expect((await store.read(1n)).slot).toBe(77);
+    expect(requests.every((r) => r.startsWith("Bearer token /storage/v1/b/cox-archive/o"))).toBe(true);
+    await expect(store.read(2n)).rejects.toThrow("does not match its name");
+    await expect(store.read(3n)).rejects.toThrow("holds 2 records");
+    await expect(store.read(5n)).rejects.toThrow(PublicationArchiveMissing);
+    expect(() => gcsSource("gs://cox-archive/pool-0/history", async () => "token")).toThrow("ending in a slash");
   });
 
   it("indexes a publication whose batch was already reused, leaving the fixed valuation unknown", async () => {
