@@ -679,3 +679,11 @@ another agent needs to know.
 - **Rules for agents:** Keep READMEs useful to external readers. Record team coordination and implementation history here rather than in public usage guides. Do not equate service installation with live wallet acceptance or archive-only monitor verdicts with verified publications. Current app API history gap recovery remains a documented limitation.
 - **Open:** Review and commit approval. This documentation pass made no source or runtime changes; concurrent staged changes remain untouched.
 - **Refs:** Root `README.md`, package/app READMEs, `deploy/dev/README.md`.
+
+### 2026-10-11 · Godwin (Claude Code) · Swap page uses @cox/client/swap
+
+- **Area:** `apps/web`.
+- **What:** Following `product.md` version 14, the Swap page now moves only between the pool's test collateral and the CRYPTO class, through Peter's `CoxSwapSdk`. The SDK runs on the server of the Next.js app against Solana devnet pool 0: market state, balances, on-chain quote, `prepareBuy`, `prepareSell`, `prepareWithdraw` and `transaction`. The wallet signs in the browser after a check that it is the fee payer and only signer, and the server sends the bytes to devnet. Checked against devnet at publication sequence 6: the market read and a 250 test USDC quote (250,000,000 CRYPTO units) work, and the production build passes. This narrows the rule in Godwin's 2026-10-11 "In-browser request building removed from the web app" entry: the Swap page prepares transactions with Peter's SDK as `product.md` assigns; asset-page Buy, Switch, Redeem, Cancel, Refund and Withdraw still go through Joel's app API.
+- **Rules for agents:** The collateral is still the devnet test mint `5rpGrekf…wV3X` (supply 0 when checked), not Circle's devnet USDC, so the app keeps the `tUSDC` label. No swap has been signed by a real wallet yet. `apps/web` now needs `experimental.externalDir` to import `packages/cox/idl/cox.json`.
+- **Open:** Peter: how a tester gets test collateral, since the mint's supply is 0. Joel: a local `APP_API_SOURCE=cox-live` server at `d07a773` still reports no publication while the pool is at sequence 6, so Markets stays empty; this looks like the indexer change noted in Joel's 2026-10-11 J5 entry.
+- **Refs:** `apps/web/README.md` (Swap page), commits `b8597f5`..`4cb55a8`; `product.md` version 14.
