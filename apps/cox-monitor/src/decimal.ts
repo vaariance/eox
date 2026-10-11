@@ -29,3 +29,9 @@ export function usdtToE8(closeUsdt: string, usdtUsd: string): bigint {
   const rate = fractionOf(usdtUsd);
   return price(divideNearest(times(times(close.numerator, rate.numerator), PRICE_SCALE), times(close.denominator, rate.denominator)));
 }
+
+export function sameDecimal(left: string, right: string): boolean {
+  const a = fractionOf(left);
+  const b = fractionOf(right);
+  return a.numerator * b.denominator === b.numerator * a.denominator;
+}
