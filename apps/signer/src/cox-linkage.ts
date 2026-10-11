@@ -15,7 +15,7 @@ const discriminator = (prefix: string, name: string) => createHash("sha256").upd
 const INSTRUCTION = Object.fromEntries(
   ["publish", "evaluate", "safety", "seal_evaluation", "execute", "finalize"].map((name) => [discriminator("global", name), name]),
 ) as Record<string, string>;
-const ACCOUNT = { Batch: discriminator("account", "Batch"), Request: discriminator("account", "Request") };
+const REQUEST = discriminator("account", "Request");
 
 const deny = (message: string): never => {
   throw new PolicyRejection("TARGET_NOT_BOUND", message);
@@ -32,14 +32,16 @@ export async function checkCoxLinkage(binding: SolanaProgramBinding, linkage: Co
   const pool = new PublicKey(linkage.pool);
   const pda = (...seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, program)[0];
   if (!pda(Buffer.from("pool"), u64(BigInt(linkage.poolId))).equals(pool)) deny(`pool ${linkage.pool} is not pool ${linkage.poolId} of ${binding.programId}`);
+  const batchAccount = pda(Buffer.from("batch"), pool.toBuffer());
+  const publicationAccount = pda(Buffer.from("publication"), pool.toBuffer());
   const message = transaction.message;
 
-  async function stored(key: PublicKey, kind: keyof typeof ACCOUNT): Promise<Buffer> {
+  async function request(key: PublicKey): Promise<Buffer> {
     const [account] = await fetch([key]);
-    if (!account) return deny(`${kind} account ${key.toBase58()} does not exist`);
-    if (!account.owner.equals(program)) deny(`${kind} account ${key.toBase58()} is not owned by the COX program`);
-    if (account.data.subarray(0, 8).toString("hex") !== ACCOUNT[kind]) deny(`${key.toBase58()} is not a ${kind} account`);
-    if (!new PublicKey(account.data.subarray(HEADER, HEADER + 32)).equals(pool)) deny(`${kind} ${key.toBase58()} belongs to another pool`);
+    if (!account) return deny(`request account ${key.toBase58()} does not exist`);
+    if (!account.owner.equals(program)) deny(`request account ${key.toBase58()} is not owned by the COX program`);
+    if (account.data.subarray(0, 8).toString("hex") !== REQUEST) deny(`${key.toBase58()} is not a request account`);
+    if (!new PublicKey(account.data.subarray(HEADER, HEADER + 32)).equals(pool)) deny(`request ${key.toBase58()} belongs to another pool`);
     return account.data;
   }
 
@@ -48,11 +50,8 @@ export async function checkCoxLinkage(binding: SolanaProgramBinding, linkage: Co
     if (!account.equals(new PublicKey(linkage.methodology!))) deny(`methodology ${account.toBase58()} is not the bound methodology`);
   }
 
-  async function batch(account: PublicKey): Promise<{ sequence: bigint }> {
-    const data = await stored(account, "Batch");
-    const batchId = data.readBigUInt64LE(HEADER + 32);
-    if (!pda(Buffer.from("batch"), pool.toBuffer(), u64(batchId)).equals(account)) deny(`batch ${account.toBase58()} is not the PDA of batch ${batchId}`);
-    return { sequence: data.readBigUInt64LE(HEADER + 40) };
+  function batch(account: PublicKey): void {
+    if (!account.equals(batchAccount)) deny(`batch ${account.toBase58()} is not the pool's batch account ${batchAccount.toBase58()}`);
   }
 
   for (const instruction of message.compiledInstructions) {
@@ -65,21 +64,20 @@ export async function checkCoxLinkage(binding: SolanaProgramBinding, linkage: Co
       return key ?? deny(`${name} is missing account ${index}`);
     };
     if (name === "publish") {
-      if (data.length < 16) deny("publish data is too short");
       methodology(account(4));
-      if (!pda(Buffer.from("batch"), pool.toBuffer(), data.subarray(8, 16)).equals(account(5))) deny("publish batch is not the PDA of its batch id");
+      batch(account(5));
     } else if (name === "seal_evaluation") {
-      await batch(account(2));
+      batch(account(2));
     } else if (name === "finalize") {
-      const { sequence } = await batch(account(3));
+      batch(account(3));
       methodology(account(4));
-      if (!pda(Buffer.from("publication"), pool.toBuffer(), u64(sequence)).equals(account(5))) deny("finalize publication is not the PDA of the batch sequence");
+      if (!account(5).equals(publicationAccount)) deny(`finalize publication is not the pool's publication account ${publicationAccount.toBase58()}`);
     } else {
-      await batch(account(2));
-      const request = await stored(account(3), "Request");
-      const nonce = request.readBigUInt64LE(HEADER + 64);
+      batch(account(2));
+      const stored = await request(account(3));
+      const nonce = stored.readBigUInt64LE(HEADER + 64);
       if (!pda(Buffer.from("request"), pool.toBuffer(), u64(nonce)).equals(account(3))) deny(`request ${account(3).toBase58()} is not the PDA of nonce ${nonce}`);
-      const owner = request.subarray(HEADER + 32, HEADER + 64);
+      const owner = stored.subarray(HEADER + 32, HEADER + 64);
       if (!pda(Buffer.from("position"), pool.toBuffer(), owner).equals(account(4))) deny(`position ${account(4).toBase58()} is not the request owner's position`);
     }
   }

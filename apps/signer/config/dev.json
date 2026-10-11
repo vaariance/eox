@@ -89,7 +89,7 @@
         "programs": [
           {
             "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
-            "enabled": false,
+            "enabled": true,
             "discriminators": [
               "81b1b6a0b8e0db05",
               "b3d38eb76c6814d6",
@@ -106,6 +106,7 @@
                   "1": "$signer",
                   "2": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
                   "3": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "5": "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb",
                   "6": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8",
                   "7": "11111111111111111111111111111111"
                 }
@@ -115,6 +116,7 @@
                 "accounts": {
                   "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
                   "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "2": "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb",
                   "5": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
                 }
               },
@@ -123,6 +125,7 @@
                 "accounts": {
                   "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
                   "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "2": "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb",
                   "5": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
                 }
               },
@@ -131,6 +134,7 @@
                 "accounts": {
                   "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
                   "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "2": "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb",
                   "3": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
                 }
               },
@@ -139,6 +143,7 @@
                 "accounts": {
                   "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
                   "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "2": "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb",
                   "5": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
                 }
               },
@@ -148,16 +153,18 @@
                   "0": "$signer",
                   "1": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
                   "2": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "3": "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb",
+                  "5": "J5Jyo9xBvaEeG5g6n5CE85SS9sy9zBriHHx3giUAEnZC",
                   "6": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8",
                   "7": "11111111111111111111111111111111"
                 }
               }
             ],
             "linkage": {
-              "kind": "cox-v1",
+              "kind": "cox-v2",
               "poolId": "0",
               "pool": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
-              "methodology": null
+              "methodology": "Hk37dxaRjEzcngRoXRCc9N4bkqKRMCDofqTFEQ7CWyMw"
             }
           }
         ]

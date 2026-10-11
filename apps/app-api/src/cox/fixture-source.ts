@@ -109,6 +109,7 @@ export class CoxFixtureSource implements CoxSource {
       state: systemState(missedCutoffs, false, false),
       executing: false,
       monitor: null,
+      reconciliation: { sequence: latest.identity.sequence, vault: latest.ledger.vault, ledger: latest.ledger.vault, covered: true },
       currentBatch: current,
     };
   }

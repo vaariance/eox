@@ -85,6 +85,8 @@ if [ -f /etc/systemd/system/eox-app-api-live.service ]; then
   rm -rf /opt/eox/state/app-api-live
   systemctl daemon-reload
 fi
+install -d -o eox -g eox -m 0750 /opt/eox/state/cox-app-api-live
+start_service cox-app-api-live 8791
 
 install -m 0644 /opt/eox/app/deploy/dev/cox-archiver.service /etc/systemd/system/cox-archiver.service
 systemctl daemon-reload

@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { COX_APP_API_SCHEMA_VERSION, type CoxErrorCode, type CoxPublicationEvent, type CoxPublicationPage, type Publication } from "@eox/app-api";
 import type { CoxSource } from "./source.js";
+import type { CoxSubmissions } from "./submissions.js";
+import { TransactionInputError, TransactionRejectedError, type CoxTransactions } from "./transactions.js";
 
 const DEFAULT_PAGE = 100;
 const MAX_PAGE = 500;
@@ -8,6 +10,8 @@ const HEARTBEAT_MS = 15_000;
 const SEQUENCE_PATTERN = /^(0|[1-9][0-9]{0,15})$/;
 const ASSET_PATTERN = /^[A-Z0-9]{2,12}$/;
 const OWNER_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const MAX_BODY_BYTES = 8192;
+const BUILDERS = ["deposit", "switch", "redeem", "cancel", "refund", "withdraw"] as const;
 
 class ApiError extends Error {
   constructor(
@@ -24,6 +28,8 @@ export interface CoxApiServerOptions {
   now?: () => number;
   onError?: (error: unknown) => void;
   corsOrigin?: string | null;
+  transactions?: CoxTransactions | null;
+  submissions?: CoxSubmissions | null;
 }
 
 function cors(res: ServerResponse, origin: string | null): void {
@@ -59,6 +65,40 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
   const now = options.now ?? (() => Math.floor(Date.now() / 1000));
   const { source } = options;
   const corsOrigin = options.corsOrigin ?? null;
+  const transactions = options.transactions ?? null;
+  const submissions = options.submissions ?? null;
+
+  async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
+    const type = req.headers["content-type"] ?? "";
+    if (!/^application\/json(;|$)/i.test(type)) throw new ApiError(415, "INVALID_REQUEST", "content-type must be application/json");
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of req) {
+      size += (chunk as Buffer).length;
+      if (size > MAX_BODY_BYTES) throw new ApiError(413, "INVALID_REQUEST", "request body is too large");
+      chunks.push(chunk as Buffer);
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    } catch {
+      throw new ApiError(400, "INVALID_REQUEST", "request body is not JSON");
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new ApiError(400, "INVALID_REQUEST", "request body must be a JSON object");
+    return parsed as Record<string, unknown>;
+  }
+
+  async function post(req: IncomingMessage, res: ServerResponse, path: string[]): Promise<void> {
+    const [, a, b] = path;
+    if (path.length !== 3 || a !== "transactions") throw new ApiError(404, "NOT_FOUND", "not found");
+    if (!transactions || !submissions) throw new ApiError(409, "NOT_LIVE", "transactions are built only by a live deployment");
+    const input = await body(req);
+    if (b === "submit") return send(res, await submissions.submit(input.transaction));
+    const builder = BUILDERS.find((name) => name === b);
+    if (!builder) throw new ApiError(404, "NOT_FOUND", "not found");
+    const built = await (transactions[builder] as (value: unknown) => ReturnType<CoxTransactions["deposit"]>).call(transactions, input);
+    return send(res, built);
+  }
 
   async function send(res: ServerResponse, data: unknown, at = now()): Promise<void> {
     const [deployment, status] = await Promise.all([source.deployment(), source.status(at)]);
@@ -112,20 +152,21 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
     cors(res, corsOrigin);
     if (req.method === "OPTIONS" && corsOrigin) {
       res.writeHead(204, {
-        "access-control-allow-methods": "GET",
-        "access-control-allow-headers": "accept, last-event-id, cache-control",
+        "access-control-allow-methods": "GET, POST",
+        "access-control-allow-headers": "accept, content-type, last-event-id, cache-control",
         "access-control-max-age": "600",
       });
       res.end();
       return;
     }
+    const url = new URL(req.url ?? "/", "http://localhost");
+    const path = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    if (req.method === "POST" && path[0] === "v1" && path[1] === "transactions") return post(req, res, path);
     if (req.method !== "GET") {
-      res.setHeader("allow", "GET");
+      res.setHeader("allow", path[1] === "transactions" ? "POST" : "GET");
       throw new ApiError(405, "METHOD_NOT_ALLOWED", "method not allowed");
     }
-    const url = new URL(req.url ?? "/", "http://localhost");
     if (url.pathname === "/health") return write(res, 200, { status: "ok" });
-    const path = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
     if (path[0] !== "v1") throw new ApiError(404, "NOT_FOUND", "not found");
     const [, a, b, c] = path;
     if (path.length === 2 && a === "deployment") return send(res, await source.deployment());
@@ -141,6 +182,16 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
     if (path.length === 2 && a === "publications") return page(url, res);
     if (path.length === 3 && a === "publications" && b === "stream") return stream(req, url, res);
     if (path.length === 3 && a === "publications") return publication(res, b!);
+    if (path.length === 3 && a === "transactions") {
+      if (b === "submit" || BUILDERS.some((name) => name === b)) {
+        res.setHeader("allow", "POST");
+        throw new ApiError(405, "METHOD_NOT_ALLOWED", "method not allowed");
+      }
+      if (!submissions) throw new ApiError(409, "NOT_LIVE", "transactions are tracked only by a live deployment");
+      const submission = await submissions.get(b!);
+      if (!submission) throw new ApiError(404, "TRANSACTION_NOT_FOUND", "this API did not submit that transaction");
+      return send(res, submission);
+    }
     if (path.length === 4 && a === "wallets" && c === "portfolio") {
       if (!OWNER_PATTERN.test(b!)) throw new ApiError(400, "INVALID_REQUEST", "invalid owner");
       const portfolio = await source.portfolio(b!);
@@ -152,11 +203,13 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
 
   return createServer((req, res) => {
     route(req, res).catch((error: unknown) => {
-      const body = (code: CoxErrorCode, message: string) => ({ schemaVersion: COX_APP_API_SCHEMA_VERSION, error: { code, message } });
-      if (error instanceof ApiError) return write(res, error.status, body(error.code, error.message));
-      if (error instanceof URIError) return write(res, 400, body("INVALID_REQUEST", "invalid path encoding"));
+      const errorBody = (code: CoxErrorCode, message: string) => ({ schemaVersion: COX_APP_API_SCHEMA_VERSION, error: { code, message } });
+      if (error instanceof ApiError) return write(res, error.status, errorBody(error.code, error.message));
+      if (error instanceof TransactionInputError) return write(res, 400, errorBody("INVALID_REQUEST", error.message));
+      if (error instanceof TransactionRejectedError) return write(res, 422, errorBody("TRANSACTION_REJECTED", error.message));
+      if (error instanceof URIError) return write(res, 400, errorBody("INVALID_REQUEST", "invalid path encoding"));
       options.onError?.(error);
-      if (!res.headersSent) write(res, 500, body("INTERNAL_ERROR", "internal error"));
+      if (!res.headersSent) write(res, 500, errorBody("INTERNAL_ERROR", "internal error"));
     });
   });
 }

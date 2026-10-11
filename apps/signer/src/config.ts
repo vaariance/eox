@@ -8,7 +8,7 @@ export interface SolanaInstructionRule {
 }
 
 export interface CoxLinkage {
-  kind: "cox-v1";
+  kind: "cox-v2";
   poolId: string;
   pool: string;
   methodology: string | null;
@@ -86,7 +86,7 @@ export function loadSignerConfig(path: string): SignerConfig {
         if (program.enabled !== undefined && typeof program.enabled !== "boolean") fail(`${role} program enabled flag`);
         if (program.linkage) {
           const l = program.linkage;
-          if (l.kind !== "cox-v1" || !INTEGER_PATTERN.test(l.poolId) || !BASE58_PATTERN.test(l.pool)) fail(`${role} COX linkage`);
+          if (l.kind !== "cox-v2" || !INTEGER_PATTERN.test(l.poolId) || !BASE58_PATTERN.test(l.pool)) fail(`${role} COX linkage`);
           if (l.methodology !== null && !BASE58_PATTERN.test(l.methodology)) fail(`${role} COX methodology`);
         }
         for (const discriminator of program.discriminators) if (!HEX_PATTERN.test(discriminator)) fail(`${role} discriminator`);

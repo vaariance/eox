@@ -58,21 +58,30 @@ request pass.
 
 `config/dev.json` binds `oracle-operator` to the devnet COX program
 `G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF` for `publish`, `evaluate`, `safety`,
-`seal_evaluation`, `execute` and `finalize` only. The binding is **prepared but
-disabled** (`enabled: false`): every request is refused with `TARGET_NOT_BOUND`
-until Peter supplies the initialized pool, vault, mint and sealed methodology and
-the binding is switched on with `linkage.methodology` set.
+`seal_evaluation`, `execute` and `finalize` only, for pool 0
+(`Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb`) and its sealed methodology
+(`Hk37dxaRjEzcngRoXRCc9N4bkqKRMCDofqTFEQ7CWyMw`). It was enabled on 2026-10-11
+after Peter activated the pool; `enabled: false` refuses every request with
+`TARGET_NOT_BOUND`.
 
 Checks per transaction, on top of the general rules above:
 
-- the registry, pool 0 and its vault PDAs at their IDL positions; `publish` and
-  `finalize` must be paid by the operator key, which is also `publish`'s runtime
-  authority; the system program where the IDL has it;
-- `cox-v1` linkage, read over `SIGNER_SOLANA_RPC_URL` (devnet, genesis checked at
-  start-up): the batch PDA of `publish`'s batch id; for the cranks the batch,
-  request and the request owner's position PDAs, read from the stored batch and
-  request accounts; for `finalize` the publication PDA of the batch's sequence; the
-  bound sealed methodology for `publish` and `finalize`;
+- the registry, pool 0, its vault and its reusable batch
+  (`CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb`, seeds `batch`, pool) and
+  publication (`J5Jyo9xBvaEeG5g6n5CE85SS9sy9zBriHHx3giUAEnZC`, seeds
+  `publication`, pool) at their IDL positions; `publish` and `finalize` must be
+  paid by the operator key, which is also `publish`'s runtime authority; the
+  system program where the IDL has it. Batch and publication may not exist
+  before their first creation and are not read;
+- `cox-v2` linkage: the bound sealed methodology for `publish` and `finalize`;
+  for the cranks, the request account is read and must be the request PDA of its
+  nonce in pool 0, and the position must be its owner's position PDA;
+- the linkage reads go over `SIGNER_SOLANA_RPC_URLS`, an ordered,
+  whitespace-separated list of https URLs. Every URL must answer with the devnet
+  genesis at start-up; a request moves to the next URL on a network error,
+  timeout (15 s), HTTP 429 or 5xx and stays there while it works. The list holds
+  an API key, so it lives in Secret Manager (`solana-devnet-rpc-urls`, read by
+  `eox-signer` only) and is never committed or logged; logs name hosts only;
 - compute unit limit at most 1,400,000 and price at most 1,000 micro-lamports;
   no lookup tables, no heap frame, no other program.
 

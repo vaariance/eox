@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "0.31.1",
+    "@cox/client": "workspace:*",
     "@eox/app-api": "workspace:*",
     "@solana/web3.js": "^1.98.0"
   },

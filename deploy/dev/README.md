@@ -11,6 +11,7 @@ were removed on 2026-10-10; their data stays in the database as a read-only arch
 | Postgres | `127.0.0.1:5433` on the VM only, never exposed publicly |
 | Evidence API | systemd `eox-evidence-api`, `127.0.0.1:8787` on the VM only, logs via `journalctl -u eox-evidence-api` |
 | App API (COX fixture) | systemd `cox-app-api`, `127.0.0.1:8790` on the VM only; `cox.app-api/v1` from `apps/app-api/fixtures/cox-fixture.json` (P1 oracle, synthetic); logs via `journalctl -u cox-app-api`. Replaced the EOX fixture service `eox-app-api` on 2026-10-10 |
+| App API (COX live) | systemd `cox-app-api-live`, `127.0.0.1:8791` on the VM only; `cox.app-api/v1` from the devnet `cox` program pool 0: finalized publications, portfolios, simulated unsigned transactions and submission tracking. State in `/opt/eox/state/cox-app-api-live`; `COX_RPC_URLS` (ordered, whitespace-separated, failover on error, 429 or 5xx) is set in `/opt/eox/cox-app-api-live.env` (root, mode 600, never committed; holds the Helius key with public devnet as fallback); logs via `journalctl -u cox-app-api-live` |
 | Backups | daily 05:30 UTC to `gs://colosseum-eox-db-backups`, kept 30 days, log in `/opt/eox/logs/backup.log` |
 | Service account | `eox-dev-vm`, which can only create objects in the backup bucket |
 

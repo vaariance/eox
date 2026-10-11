@@ -1,4 +1,4 @@
-import { Connection, type PublicKey } from "@solana/web3.js";
+import type { PublicKey } from "@solana/web3.js";
 import { GoogleAuth } from "google-auth-library";
 import { googleIdTokenVerifier } from "./auth.js";
 import { loadSignerConfig } from "./config.js";
@@ -7,6 +7,7 @@ import { createSignerServer } from "./server.js";
 import { createSigningService } from "./service.js";
 import { signSolanaTransaction } from "./solana.js";
 import { FirestoreDecisionStore } from "./store.js";
+import { checkGenesis, failoverConnection, parseRpcUrls } from "./rpc.js";
 
 const configPath = process.env.SIGNER_CONFIG;
 const project = process.env.GOOGLE_CLOUD_PROJECT;
@@ -26,12 +27,9 @@ const now = () => Math.floor(Date.now() / 1000);
 const needsSolanaReads = Object.values(config.bindings).some((b) => b?.solana?.programs.some((p) => p.linkage));
 let solanaAccounts;
 if (needsSolanaReads) {
-  const rpc = process.env.SIGNER_SOLANA_RPC_URL;
-  if (!rpc || !/^https:\/\//.test(rpc)) throw new Error("SIGNER_SOLANA_RPC_URL must be an https URL when a COX linkage is bound");
-  const connection = new Connection(rpc, "confirmed");
-  const genesis = await connection.getGenesisHash();
-  const network = config.keys["oracle-operator"].network.slice("solana:".length);
-  if (!genesis.startsWith(network)) throw new Error(`Solana RPC genesis ${genesis} is not the configured network ${network}`);
+  const urls = parseRpcUrls(process.env.SIGNER_SOLANA_RPC_URLS, "SIGNER_SOLANA_RPC_URLS");
+  await checkGenesis(urls, config.keys["oracle-operator"].network.slice("solana:".length));
+  const connection = failoverConnection(urls, "confirmed", (from, to, reason) => console.warn(`solana rpc failover from ${from} to ${to}: ${reason}`));
   solanaAccounts = async (keys: PublicKey[]) =>
     (await connection.getMultipleAccountsInfo(keys, "confirmed")).map((a) => (a ? { owner: a.owner, data: Buffer.from(a.data) } : null));
 }
