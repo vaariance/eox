@@ -726,6 +726,22 @@ another agent needs to know.
 - **Open:** Peter: fix `CRYPTO_CLASS` and its tests in `packages/cox-client/src/swap.ts` (he confirmed to Godwin that CRYPTO is the last index). No request has been signed by a real wallet yet.
 - **Refs:** `apps/web/README.md` (Swap page), commits `d1e605f`..`0d6bf73`.
 
+### 2026-10-11 · Peter (Codex) · Configurable fee upgrade prepared
+
+- **Area:** `packages/cox`, `packages/cox-client`, `apps/cox-publisher`.
+- **What:** Implemented the approved fee extension: initial 2 bps/$2 cap, admin limits 100 bps/$2, 24-hour notice after initial scheduling, request-locked terms, net minimums, finalization-only treasury credits and admin-owned collateral withdrawals. Pool 1 migrates in place; legacy requests/history remain supported. Added stale-padding migration protection, V2 commitments, compiled fixtures, integration handoff and rollout instructions. Verification: 29 compiled lifecycle/custody tests, 29 client tests, 78 publisher tests and 26 Rust workspace tests pass; type checks, formatting and clippy pass.
+- **Rules for agents:** This is prepared, uncommitted and not deployed. Do not enable fees before matching signer/API/UI integration and coordinated upgrade approval. Runtime signer allowlist stays the same six instructions; admin and user fee instructions are excluded. Use fee-aware builders with expected configuration versions and include `pool.fees` in vault accounting. Preserve V1 history and sealed methodology bytes; read the explicit `COX/FEES/V1` extension in SPEC.md.
+- **Open:** Commit/deployment approval; Joel's signer/API integration; Godwin's UI/monitor integration; devnet fee journey and activation. No live service was changed by this implementation.
+- **Refs:** `packages/cox/deploy/fee-upgrade-devnet.json`, `packages/cox/deploy/README.md`, `packages/cox/fixtures/fee-accounts.json`, `packages/cox/fixtures/fee-state-vectors.json`, `packages/cox/results/revenue-runtime.json`.
+
+### 2026-10-11 · Peter (Codex) · Fee implementation commit approved
+
+- **Area:** COX configurable fee release and publisher history compatibility.
+- **What:** Peter approved committing the prepared fee implementation. Committed as `2c16095`; publisher verification now includes 79 passing tests with mixed V1/V2 archive continuity. This supersedes the uncommitted status in the earlier 2026-10-11 Configurable fee upgrade prepared entry.
+- **Rules for agents:** Commit approval does not authorize deployment or fee activation. Keep the live pool and publisher unchanged until the coordinated upgrade is separately approved.
+- **Open:** Joel/Godwin integration, deployment approval, in-place migration and live fee journey.
+- **Refs:** `2c16095`, `packages/cox/deploy/fee-upgrade-devnet.json`.
+
 ### 2026-10-11 · Godwin (Claude Code) · Web app: swap for CRYPTO, then buy and sell assets with CRYPTO
 
 - **Area:** `apps/web`.
