@@ -778,3 +778,12 @@ another agent needs to know.
 - **Rules for agents:** Do not deploy these to the signer or either live API before Peter's approval and the program upgrade sequence. Never compute a fee in the API or UI; show the quote's and receipt's values. Pass a quote's `feeTerms.version` as `expectedFeeVersion` and requote on `FEE_CHANGED`.
 - **Open:** Godwin: fee display from `quote`, `UnsignedTransaction.feeTerms` and `receipt.fee`, and the monitor's `COX/STATE/V2` and `COX/RECEIPTS/V2` support. Peter: merge approval for `feat/cox-fees` and the deployment window.
 - **Refs:** `apps/app-api/README.md` (Trading fees), commits `7e68c67`..`0716a0a`.
+
+### 2026-10-11 · Joel (Claude Code) · Fee-ready signer and live APIs deployed (fees not active)
+
+- **Area:** `main` at `a1ba138`; Cloud Run `eox-signer`, `cox-app-api-live`, `cox-app-api`; dev VM.
+- **What:** With Peter's approval, `feat/cox-fees` was fast-forwarded into `main` and deployed. This supersedes the "not deployed" status in Joel's earlier 2026-10-11 entry "Signer and live API prepared for the fee upgrade".
+  - **Deployed:** signer `eox-signer-00010-z8g` (image `signer:a1ba138`; `00009-lmr` is the same image), public live API `cox-app-api-live-00004-9sf`, public fixture API `cox-app-api-00002-nkj` (image `cox-app-api:a1ba138`), and both VM app APIs at `a1ba138`.
+  - **Verified:** the publisher's traffic is signed with HTTP 200 and nothing refused. Pool 1 publications 0 to 272 are served with no gaps, status is fresh and the vault is covered. A live deposit quote returns fee 0 at version 0. Pool 1 is still unmigrated (`status.fees.migrated: false`).
+- **Rules for agents:** The program upgrade, pool 1 migration and fee scheduling are Peter's steps and have not happened. After the migration, check that `status.fees.migrated` turns `true`, the reconciliation covers the vault, and publishing continues.
+- **Refs:** commits `7e68c67`..`a1ba138`.
