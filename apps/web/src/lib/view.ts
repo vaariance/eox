@@ -1,4 +1,4 @@
-import type { ClassValuation, CoxDeployment, CoxStatus, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
+import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, Portfolio, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
 
 export const PRICE_DIGITS = 8;
 export const SCALE_DIGITS = 12;
@@ -32,10 +32,8 @@ export function toNumber(value: string, digits: number): number {
   return Number(BigInt(value)) / 10 ** digits;
 }
 
-export function latestOf(publications: readonly Publication[]): Publication {
-  const publication = publications[publications.length - 1];
-  if (!publication) throw new Error("no publication");
-  return publication;
+export function currentOf(publications: readonly Publication[]): Publication | null {
+  return publications[publications.length - 1] ?? null;
 }
 
 export function priceOf(publication: Publication, assetId: string): PublishedPrice {
@@ -76,8 +74,9 @@ function classView(valuation: ClassValuation, decimals: number): ClassView {
   return { id: valuation.classId, backing, units, unitValue: units > 0 ? backing / units : null };
 }
 
-export function classViews(publication: Publication, decimals: number): ClassView[] {
-  return publication.classes.map((valuation) => classView(valuation, decimals));
+export function classViews(publication: Publication | null, assets: readonly CoxAsset[], decimals: number): ClassView[] {
+  if (publication) return publication.classes.map((valuation) => classView(valuation, decimals));
+  return [...assets.map((asset) => asset.assetId), CRYPTO_CLASS].map((id) => ({ id, backing: 0, units: 0, unitValue: null }));
 }
 
 export function findClass(views: readonly ClassView[], id: string): ClassView {
@@ -101,6 +100,11 @@ export interface Holding {
   classId: string;
   units: number;
   locked: number;
+}
+
+export function holdingsOf(portfolio: Portfolio | null): Holding[] | null {
+  if (!portfolio) return null;
+  return portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS), locked: toNumber(position.locked, SCALE_DIGITS) }));
 }
 
 export function unlockedProblem(holdings: readonly Holding[] | null, classId: string, wanted: number): string | null {

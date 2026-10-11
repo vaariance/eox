@@ -1,18 +1,41 @@
 import Link from "next/link";
 import { Change } from "@/components/change";
+import { FirstPublication } from "@/components/first-publication";
 import { PriceSource } from "@/components/price-source";
 import { Sparkline } from "@/components/sparkline";
-import { getAssets, getCrypto, getDeployment, getPublications } from "@/lib/data";
+import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
-import { CRYPTO_CLASS, changeSince, decimalsOf, classViews, findClass, latest, latestOf, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
+import { CRYPTO_CLASS, changeSince, decimalsOf, classViews, currentOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 const WINDOW = 4 * HOUR;
+const EMPTY = "—";
+
+function EmptyRow({ id, name, href }: { id: string; name: string; href: string }) {
+  return (
+    <tr className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
+      <th scope="row" className="px-4 py-3 text-left font-normal">
+        <Link href={href} className="flex items-baseline gap-2">
+          <span className="font-medium text-ink">{id}</span>
+          {name !== id && <span className="text-xs text-muted">{name}</span>}
+        </Link>
+      </th>
+      <td className="num px-4 py-3 text-right text-muted">{EMPTY}</td>
+      <td className="px-4 py-3 text-xs text-muted">{EMPTY}</td>
+      <td className="num px-4 py-3 text-right text-base text-muted">{EMPTY}</td>
+      <td className="px-4 py-3 text-right text-muted">{EMPTY}</td>
+      <td className="px-4 py-3 text-muted">{EMPTY}</td>
+      <td className="num px-4 py-3 text-right">{formatAmount(0)}</td>
+      <td className="num px-4 py-3 text-right text-muted">n/a</td>
+    </tr>
+  );
+}
 
 export default async function MarketsPage() {
-  const [assets, crypto, deployment, publications] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications()]);
-  const current = latestOf(publications);
-  const classes = classViews(current, decimalsOf(deployment));
+  const [assets, crypto, deployment, publications, status] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications(), getStatus()]);
+  const current = currentOf(publications);
+
+  const classes = classViews(current, assets, decimalsOf(deployment));
   const active = classes.reduce((sum, item) => sum + item.backing, 0);
   const level = levelSeries(publications);
   const cryptoClass = findClass(classes, CRYPTO_CLASS);
@@ -33,10 +56,12 @@ export default async function MarketsPage() {
           </div>
           <div>
             <dt className="text-xs text-muted">CRYPTO level</dt>
-            <dd className="num mt-0.5 text-lg">{formatAmount(latest(level), 4)}</dd>
+            <dd className="num mt-0.5 text-lg">{current ? formatAmount(latest(level), 4) : EMPTY}</dd>
           </div>
         </dl>
       </div>
+
+      {!current && <FirstPublication status={status} />}
 
       <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
         <table className="w-full min-w-[860px] text-sm">
@@ -56,6 +81,7 @@ export default async function MarketsPage() {
             {assets.map((asset) => {
               const reference = referenceSeries(publications, asset.assetId);
               const claim = findClass(classes, asset.assetId);
+              if (!current) return <EmptyRow key={asset.assetId} id={asset.assetId} name={asset.name} href={`/assets/${asset.assetId}`} />;
               return (
                 <tr key={asset.assetId} className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
                   <th scope="row" className="px-4 py-3 text-left font-normal">
@@ -84,8 +110,8 @@ export default async function MarketsPage() {
               <td className="num px-4 py-3 text-right text-muted">n/a</td>
               <td className="px-4 py-3 text-xs text-muted">All {assets.length} assets</td>
               <td className="num px-4 py-3 text-right text-base">{formatAmount(100, 4)}</td>
-              <td className="px-4 py-3 text-right"><Change ratio={0} /></td>
-              <td className="px-4 py-3"><Sparkline points={level} tone={direction(changeSince(level, WINDOW))} /></td>
+              <td className="px-4 py-3 text-right">{current ? <Change ratio={0} /> : <span className="text-muted">{EMPTY}</span>}</td>
+              <td className="px-4 py-3">{current ? <Sparkline points={level} tone={direction(changeSince(level, WINDOW))} /> : <span className="text-muted">{EMPTY}</span>}</td>
               <td className="num px-4 py-3 text-right">{formatAmount(cryptoClass.backing)}</td>
               <td className="num px-4 py-3 text-right">{cryptoClass.unitValue === null ? "n/a" : formatAmount(cryptoClass.unitValue, 6)}</td>
             </tr>

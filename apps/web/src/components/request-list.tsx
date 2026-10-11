@@ -1,8 +1,12 @@
+"use client";
+
 import type { CoxRequest, CoxStatus, RequestState } from "@eox/app-api";
 import { CircleCheck, CircleX, Clock, Undo2 } from "lucide-react";
 import { COLLATERAL } from "@/lib/config";
 import { formatAmount, formatUtcTime, formatWhole } from "@/lib/format";
 import { SCALE_DIGITS, batchCutoff, toNumber } from "@/lib/view";
+import { useAccount } from "./account";
+import { SendButton } from "./send-button";
 
 const states: Record<RequestState, { label: string; tone: string; Icon: typeof Clock; note: string | null }> = {
   queued: { label: "Queued", tone: "text-warn", Icon: Clock, note: null },
@@ -49,11 +53,18 @@ function when(request: CoxRequest, status: CoxStatus): string {
   return `Batch #${formatWhole(request.targetBatch)}${cutoff === null ? "" : ` · closes ${formatUtcTime(cutoff)}`}`;
 }
 
-export function RequestList({ requests, status, decimals }: { requests: CoxRequest[]; status: CoxStatus; decimals: number }) {
+const action = "h-9 rounded-pill border border-line px-3 text-xs";
+const REFUNDABLE: RequestState[] = ["condition-failed", "expired", "zero-value-class", "safety-rejected", "cancelled"];
+
+export function RequestList({ classId = null, status, decimals }: { classId?: string | null; status: CoxStatus; decimals: number }) {
+  const { portfolio, owner, live, loading } = useAccount();
+  const all = portfolio?.requests ?? [];
+  const requests = classId === null ? all : all.filter((request) => request.fromClass === classId || request.toClass === classId);
+  const empty = loading ? "Loading your requests." : live && !owner ? "Connect a wallet to see your requests." : "No requests yet.";
   return (
     <section className="rounded-card border border-line bg-surface shadow-card">
       <h2 className="border-b border-line px-4 py-3 text-sm font-medium">Your requests</h2>
-      {requests.length === 0 && <p className="px-4 py-6 text-sm text-muted">No requests yet.</p>}
+      {requests.length === 0 && <p className="px-4 py-6 text-sm text-muted">{empty}</p>}
       <ul>
         {requests.map((request) => {
           const state = states[request.state];
@@ -70,9 +81,14 @@ export function RequestList({ requests, status, decimals }: { requests: CoxReque
               <span className="num w-60 text-muted">{when(request, status)}</span>
               <span className="min-w-64 flex-1 text-xs text-muted">{detail(request, decimals)}</span>
               {request.state === "queued" && (
-                <button type="button" disabled title="Available when the live API is connected" className="h-9 rounded-pill border border-line px-3 text-xs opacity-50">
-                  Cancel
-                </button>
+                <span className="flex flex-col items-end gap-1">
+                  <SendButton intent={{ operation: "cancel", requestId: request.requestId }} label="Cancel" connectLabel="Cancel" className={action} quiet />
+                </span>
+              )}
+              {request.operation === "deposit" && REFUNDABLE.includes(request.state) && (
+                <span className="flex flex-col items-end gap-1">
+                  <SendButton intent={{ operation: "refund", requestId: request.requestId }} label="Refund" connectLabel="Refund" className={action} quiet />
+                </span>
               )}
             </li>
           );
