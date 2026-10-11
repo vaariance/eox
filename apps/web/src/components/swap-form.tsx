@@ -88,8 +88,8 @@ export function SwapForm() {
 
   useEffect(() => {
     const read = async () => {
-      const result = await swapMarket();
-      if (!alive.current) return;
+      const result = await swapMarket().catch(() => null);
+      if (!alive.current || !result) return;
       if (result.ok) setMarket(result.value);
       setMarketProblem(result.ok ? null : result.message);
     };
