@@ -18,6 +18,7 @@ operator access.
 | `eox-evidence-api` | Evidence API, `127.0.0.1:8787` |
 | `cox-app-api` | Synthetic fixture API, `127.0.0.1:8790` |
 | `cox-app-api-live` | Devnet-backed app API, `127.0.0.1:8791` |
+| `cox-publication-archive-copy.timer` | Every 30 s, copies new publisher archive records for the live API (read-only on the publisher side, never overwrites) |
 | `cox-archiver` | One-minute venue snapshot archive |
 | `cox-publisher` | Snapshot publication and batch execution; installed separately |
 | `cox-monitor` | Archive verdicts, `127.0.0.1:8792`; installed separately |
@@ -57,6 +58,8 @@ components' runtime requirements.
 | `/opt/eox/.env` | Database credentials, mode 0600 |
 | `/opt/eox/cox-app-api-live.env` | Live API configuration and RPC URLs |
 | `/opt/eox/state/cox-app-api-live` | Persisted live API state |
+| `/opt/eox/state/cox-publication-archive` | Copied publication archive, read by the live API |
+| `/opt/eox/runtime/node-v24.21.0-linux-x64` | Checksum-pinned Node 24 for both app APIs (`@cox/client` needs Node 24) |
 | `/opt/eox/logs/backup.log` | Database backup log |
 | `/etc/cox-publisher/dev.json` | Private publisher configuration, when installed |
 | `/var/lib/cox-publisher` | Publisher journal and recovery state |
