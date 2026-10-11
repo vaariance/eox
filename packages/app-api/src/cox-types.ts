@@ -110,7 +110,7 @@ export interface ClassValuation {
   classIndex: number;
   transferFactor: Scaled | null;
   preRevaluation: ClassState;
-  fixed: ClassState;
+  fixed: ClassState | null;
   final: ClassState;
 }
 
@@ -124,10 +124,10 @@ export interface LedgerTotals {
 }
 
 export interface BatchFlows {
-  acceptedDeposits: BaseUnits;
-  newPayable: BaseUnits;
-  transferResidual: BaseUnits;
-  flowResidual: BaseUnits;
+  acceptedDeposits: BaseUnits | null;
+  newPayable: BaseUnits | null;
+  transferResidual: BaseUnits | null;
+  flowResidual: BaseUnits | null;
   executed: number;
   rejected: number;
 }
