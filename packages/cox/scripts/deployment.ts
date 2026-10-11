@@ -24,6 +24,11 @@ interface ReviewedBuild {
   sbfBuildSha256: string;
 }
 
+interface DeploymentResponse {
+  programId: string;
+  signature: string;
+}
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const cox = join(root, "packages/cox");
 const local = join(root, ".cox");
@@ -163,16 +168,21 @@ function main(): void {
   if (!deployed.subarray(0, bytes.length).equals(bytes) || deployed.subarray(bytes.length).some(byte => byte !== 0)) {
     throw new Error("Deployed program differs from the reviewed binary");
   }
-  const info = JSON.parse(run(solana, ["--url", settings.rpc, "--output", "json", "program", "show", settings.programId])) as { authority?: string };
+  const info = JSON.parse(run(solana, ["--url", settings.rpc,
+    "--keypair", join(local, "keys/cox-admin-keypair.json"),
+    "--output", "json", "program", "show", settings.programId])) as { authority?: string };
   if (info.authority !== settings.upgradeAuthority) throw new Error("Unexpected upgrade authority");
+  const deploymentResponse = readJson<DeploymentResponse>(join(local, "deployment-response.json"));
   writeJson(join(cox, "deploy/deployed-devnet.json"), {
     ...settings,
     status: "deployed-program-live-pool-inactive",
     deployedCommit: built.commit,
     deployedBuildSha256: sha(bytes),
     deployedDumpSha256: sha(deployed),
+    deploymentSignature: deploymentResponse.signature,
+    verifiedAt: new Date().toISOString(),
     programAccount: info,
-    deploymentResponse: readJson<unknown>(join(local, "deployment-response.json")),
+    deploymentResponse,
   });
   console.log("Verified deployed binary and separate upgrade authority; live pool remains inactive");
 }

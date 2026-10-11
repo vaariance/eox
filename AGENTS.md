@@ -415,3 +415,18 @@ another agent needs to know.
 - **Rules for agents:** Preserve Joel's legacy reference reader/IDL and economic fixture generator dependencies, methodology facts/readiness and the complete worker journal/retry/transport closure until P4 replaces it. Preserve papers, ignored sealed research and `eox-archive`. Do not modify another owner's callers to force deletion. The old deployed program is abandoned in place.
 - **Open:** Recheck legacy callers after integration with `origin/main`; retire remaining carry-over only when replacements land.
 - **Refs:** `packages/cox/research/deletion-audit.md`, `packages/cox/INTEGRATION.md`; supersedes the P2 deletion inventory's retired caller descriptions.
+
+### 2026-10-11 · Peter (Codex) · COX deployment tooling and branch policy
+
+- **Area:** `packages/cox/scripts`, deployment instructions.
+- **What:** Peter explicitly allowed deployment from any branch and requested TypeScript/shell/Rust tooling. `deployment.ts` runs directly with Node.js 24 built-ins; there is no Python deployment helper or remote-main ancestry gate. The helper verifies the exact approved commit/build, network and authority identities.
+- **Rules for agents:** Do not impose a main-branch deployment restriction or introduce Python for this COX workflow. This supersedes the deployment restriction in the 2026-10-06 Data layer state and repo conventions entry and the main-integration prerequisite in the 2026-10-10 P3 entry. Shared-push fetch/rebase rules remain separate.
+- **Refs:** `packages/cox/scripts/deployment.ts`, `packages/cox/deploy/README.md`.
+
+### 2026-10-11 · Peter (Codex) · COX program deployed and verified on devnet
+
+- **Area:** COX program, deployment record and integration handoff.
+- **What:** Following Peter's commit approval and 10 devnet SOL funding, rebuilt commit `70700b74c81c373591e3150ff1573ad61cce1dbf`; all 15 compiled lifecycle/custody and nine client tests passed again. Deployed program `G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF` at finalized slot 509739184. Downloaded executable exactly matches SHA-256 `16a778aa7dd2f3cae0d16577626a1393f02323ea8fb622963b29d63ea851be07`; separate upgrade authority verified. CLI verification now uses the dedicated wallet explicitly instead of requiring a default wallet.
+- **Rules for agents:** Use the verified record and actual IDL/readers/builders/vectors for integration. No registry, methodology, collateral mint or live pool was initialized. Live activation, signer binding and P4 publisher remain separate. Never create a local KMS runtime key. This supersedes the pending-deployment status in the 2026-10-10 P3 entry. Peter's commit `34662df` included implementation and EOX cleanup together, superseding the uncommitted cleanup status in that day's cleanup entry.
+- **Open:** P4 publisher; Joel's authoritative archive-byte correction, feed check and signer binding; Godwin's monitor/UI integration. Legacy readers/math and P4 transport closure remain retained.
+- **Refs:** `packages/cox/deploy/deployed-devnet.json`, `packages/cox/INTEGRATION.md`, `packages/cox/results/p3-verification.md`.

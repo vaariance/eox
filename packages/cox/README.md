@@ -2,7 +2,7 @@
 
 Devnet test mechanism `COX/TRANSFER/MVP-0`. The P2 engine now powers the P3
 Anchor program in `programs/cox`. The compiled program passes local custody
-and lifecycle tests; devnet deployment is pending. No live pool is active.
+and lifecycle tests and is deployed on devnet. No live pool is active.
 The continuous publisher belongs to P4.
 
 See [P3 verification](results/p3-verification.md), the

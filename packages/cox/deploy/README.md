@@ -1,6 +1,7 @@
 # COX devnet deployment
 
-`devnet.json` reserves the new COX identity. It does not claim a deployment.
+`devnet.json` is the deployment configuration template. The program is now
+deployed; `deployed-devnet.json` records the verified chain state and build.
 The former EOX program is never upgraded. Runtime publication uses the
 existing `oracle-operator` KMS key. The deployment wallet, program identity
 and upgrade authority are separate local devnet keys under ignored `.cox/keys`.
@@ -49,9 +50,10 @@ prepare a dedicated SDK tree with this alignment before invoking it. The
 wrapper's banner still mentions its original default; the reviewed build
 records the actual compiler version and SHA-256 separately.
 
-The local deployment wallet currently has zero devnet SOL. Faucet requests
-were rate limited. Reserve 10 test SOL for deployment: current RPC rent quotes
+Peter funded the dedicated deployment wallet with 10 devnet SOL. Following
+deployment it holds 5.2677364 SOL. Initial faucet requests were rate limited.
+The pre-deployment RPC rent quotes were
 are 4.72125548 SOL for the 929,253-byte program-data account and 4.72121484 SOL
-for the 929,245-byte temporary buffer, plus the small program account and
-transaction fees. These are devnet test tokens, not user collateral. Recheck
-rent and balance before deploying; unused buffer funds are recoverable.
+for the 929,245-byte temporary buffer. Actual net deployment cost, including
+fees, was 4.7322636 SOL. These are devnet test tokens, not user collateral.
+Recheck rent and balance before any future deployment.

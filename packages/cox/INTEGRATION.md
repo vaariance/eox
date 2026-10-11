@@ -4,6 +4,14 @@ P3 targets Solana devnet and classic SPL six-decimal test collateral. Program
 deployment and live-pool activation are separate. A deployed program does not
 mean a sealed live methodology, active pool or running publisher exists.
 
+The program is deployed on devnet at
+`G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF`; see
+`deploy/deployed-devnet.json` for the verified build, transaction and authorities.
+The generated IDL, client, fixture accounts, hash vectors and allowlist are
+ready for service/UI/monitor integration. Signer binding is still separate;
+no registry, methodology, collateral mint or live pool was initialized by
+deployment.
+
 ## Price archive encoding correction for Joel
 
 `packages/cox/SPEC.md` section 3 and `fixtures/vectors.json` are authoritative.
@@ -86,8 +94,8 @@ proposal lifecycle, command/demo/preview entry points and their obsolete
 exports/scripts were removed. The oracle Cargo workspace now builds only the
 retained economic math and CLI. Retained EOX Rust tests (24), worker tests
 (14) and worker type checking pass. The old deployed program is abandoned in
-place. These deletions are prepared separately from the COX implementation
-commit; see `research/deletion-audit.md`.
+place. Peter included these deletions with the COX implementation in commit
+`34662df`; see `research/deletion-audit.md`.
 
 Papers and ignored sealed research remain preserved. The `eox-archive` Git
 tag does not include ignored files. The surviving worker transport closure is
