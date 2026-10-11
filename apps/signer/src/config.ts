@@ -8,14 +8,22 @@ export interface EvmContractBinding {
   maxValueWei: string;
 }
 
+export interface SolanaInstructionRule {
+  discriminator: string;
+  accounts: Record<string, string>;
+}
+
 export interface SolanaProgramBinding {
   programId: string;
   discriminators: string[];
+  instructions?: SolanaInstructionRule[];
 }
+
+export const SIGNER_ACCOUNT = "$signer";
 
 export interface RoleBindings {
   evm?: { maxFeePerGasWei: string; maxGas: string; contracts: EvmContractBinding[] };
-  solana?: { maxComputeUnitPriceMicroLamports: string; programs: SolanaProgramBinding[] };
+  solana?: { maxComputeUnitPriceMicroLamports: string; maxComputeUnitLimit?: string; programs: SolanaProgramBinding[] };
 }
 
 export interface RoleKey {
@@ -73,9 +81,23 @@ export function loadSignerConfig(path: string): SignerConfig {
     }
     if (bindings?.solana) {
       if (!INTEGER_PATTERN.test(bindings.solana.maxComputeUnitPriceMicroLamports)) fail(`${role} compute price limit`);
+      const unitLimit = bindings.solana.maxComputeUnitLimit;
+      if (unitLimit !== undefined && (!INTEGER_PATTERN.test(unitLimit) || Number(unitLimit) > 1_400_000)) fail(`${role} compute unit limit`);
       for (const program of bindings.solana.programs) {
         if (!BASE58_PATTERN.test(program.programId)) fail(`${role} program ${program.programId}`);
         for (const discriminator of program.discriminators) if (!HEX_PATTERN.test(discriminator)) fail(`${role} discriminator`);
+        if (program.instructions) {
+          for (const discriminator of program.discriminators) {
+            if (!program.instructions.some((rule) => rule.discriminator === discriminator)) fail(`${role} discriminator ${discriminator} has no account rule`);
+          }
+          for (const rule of program.instructions) {
+            if (!program.discriminators.includes(rule.discriminator)) fail(`${role} account rule for unlisted discriminator ${rule.discriminator}`);
+            for (const [index, account] of Object.entries(rule.accounts)) {
+              if (!/^(0|[1-9][0-9]?)$/.test(index)) fail(`${role} account index ${index}`);
+              if (account !== SIGNER_ACCOUNT && !BASE58_PATTERN.test(account)) fail(`${role} account ${account}`);
+            }
+          }
+        }
       }
     }
   }

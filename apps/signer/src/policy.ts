@@ -1,7 +1,7 @@
 import { ComputeBudgetProgram, PublicKey, type VersionedTransaction } from "@solana/web3.js";
 import type { TransactionSerializable } from "viem";
 import type { RejectionCode, SigningRole } from "@eox/signing";
-import type { RoleBindings } from "./config.js";
+import { SIGNER_ACCOUNT, type RoleBindings } from "./config.js";
 
 export class PolicyRejection extends Error {
   constructor(
@@ -61,7 +61,12 @@ export function checkSolanaPolicy(
     if (!programId) deny("INVALID_REQUEST", "instruction references a missing program account");
     const data = Buffer.from(instruction.data);
     if (programId!.equals(COMPUTE_BUDGET)) {
-      if (data[0] === SET_COMPUTE_UNIT_LIMIT && data.length === 5) continue;
+      if (data[0] === SET_COMPUTE_UNIT_LIMIT && data.length === 5) {
+        if (policy!.maxComputeUnitLimit !== undefined && data.readUInt32LE(1) > Number(policy!.maxComputeUnitLimit)) {
+          deny("LIMIT_EXCEEDED", "compute unit limit exceeds the permitted maximum");
+        }
+        continue;
+      }
       if (data[0] === SET_COMPUTE_UNIT_PRICE && data.length === 9) {
         if (data.readBigUInt64LE(1) > BigInt(policy!.maxComputeUnitPriceMicroLamports)) {
           deny("LIMIT_EXCEEDED", "compute unit price exceeds the permitted maximum");
@@ -75,6 +80,15 @@ export function checkSolanaPolicy(
     const discriminator = data.subarray(0, 8).toString("hex");
     if (!program!.discriminators.includes(discriminator)) {
       deny("OPERATION_NOT_PERMITTED", `instruction ${discriminator} is not permitted on ${programId!.toBase58()}`);
+    }
+    const rule = program!.instructions?.find((r) => r.discriminator === discriminator);
+    if (program!.instructions && !rule) deny("OPERATION_NOT_PERMITTED", `instruction ${discriminator} has no account rule`);
+    for (const [index, expected] of Object.entries(rule?.accounts ?? {})) {
+      const key = message.staticAccountKeys[instruction.accountKeyIndexes[Number(index)]!];
+      const want = expected === SIGNER_ACCOUNT ? signer : new PublicKey(expected);
+      if (!key || !key.equals(want)) {
+        deny("TARGET_NOT_BOUND", `instruction ${discriminator} account ${index} is ${key?.toBase58() ?? "missing"}, not ${want.toBase58()}`);
+      }
     }
   }
 }

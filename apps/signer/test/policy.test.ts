@@ -151,3 +151,33 @@ test("rejects Solana transactions that use address lookup tables", () => {
   });
   rejects(() => checkSolanaPolicy("oracle-operator", solanaBindings, solanaTransaction(signer, [instruction], [table]), signer), "OPERATION_NOT_PERMITTED");
 });
+
+test("enforces the compute unit limit and the bound accounts of each instruction", () => {
+  const signer = Keypair.generate().publicKey;
+  const registry = Keypair.generate().publicKey;
+  const pool = Keypair.generate().publicKey;
+  const bound: RoleBindings = {
+    solana: {
+      maxComputeUnitPriceMicroLamports: "1000",
+      maxComputeUnitLimit: "1400000",
+      programs: [
+        {
+          programId: program.toBase58(),
+          discriminators: [discriminator.toString("hex")],
+          instructions: [{ discriminator: discriminator.toString("hex"), accounts: { "0": "$signer", "1": registry.toBase58(), "2": pool.toBase58() } }],
+        },
+      ],
+    },
+  };
+  const crank = (accounts: PublicKey[]) =>
+    new TransactionInstruction({ programId: program, keys: accounts.map((pubkey, i) => ({ pubkey, isSigner: i === 0, isWritable: i !== 1 })), data: discriminator });
+  checkSolanaPolicy("oracle-operator", bound, solanaTransaction(signer, [ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), crank([signer, registry, pool])]), signer);
+  rejects(
+    () => checkSolanaPolicy("oracle-operator", bound, solanaTransaction(signer, [ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_001 }), crank([signer, registry, pool])]), signer),
+    "LIMIT_EXCEEDED",
+  );
+  rejects(() => checkSolanaPolicy("oracle-operator", bound, solanaTransaction(signer, [crank([signer, registry, Keypair.generate().publicKey])]), signer), "TARGET_NOT_BOUND");
+  rejects(() => checkSolanaPolicy("oracle-operator", bound, solanaTransaction(signer, [crank([signer, registry])]), signer), "TARGET_NOT_BOUND");
+  const other = Keypair.generate().publicKey;
+  rejects(() => checkSolanaPolicy("oracle-operator", bound, solanaTransaction(signer, [crank([other, registry, pool])]), signer), "TARGET_NOT_BOUND");
+});
