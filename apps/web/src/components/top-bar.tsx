@@ -8,10 +8,10 @@ import { WalletButton } from "./wallet-button";
 
 const links = [
   { href: "/", label: "Markets" },
-  { href: "/swap", label: "Swap" },
   { href: "/crypto", label: "CRYPTO" },
   { href: "/portfolio", label: "Portfolio" },
-  { href: "/publications", label: "Publications" },
+  { href: "/swap", label: "Swap" },
+  { href: "/faucet", label: "Faucet" },
 ];
 
 function isCurrent(pathname: string, href: string): boolean {
