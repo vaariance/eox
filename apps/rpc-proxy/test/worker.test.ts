@@ -42,6 +42,15 @@ describe("RPC proxy worker", () => {
     expect(await failed.text()).not.toContain("primary.example");
   });
 
+  it("fails over when an upstream refuses the proxy itself", async () => {
+    for (const status of [401, 403, 408]) {
+      const refused = upstream({ "https://primary.example/?api-key=k": status });
+      const response = await handle(request(`/${TOKEN}`), env, refused.fetcher);
+      expect(response.status, String(status)).toBe(200);
+      expect(response.headers.get("x-rpc-upstream")).toBe("1");
+    }
+  });
+
   it("passes client errors through instead of failing over", async () => {
     const { seen, fetcher } = upstream({ "https://primary.example/?api-key=k": 400 });
     expect((await handle(request(`/${TOKEN}`), env, fetcher)).status).toBe(400);

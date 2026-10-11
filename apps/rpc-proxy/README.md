@@ -22,7 +22,7 @@ The source of truth is `ALLOWED_METHODS` in [src/worker.ts](src/worker.ts).
 
 ## Failover behavior
 
-`UPSTREAM_URLS` sets the HTTPS upstream order. Network failures, a 15-second timeout, HTTP 429 or HTTP 5xx advance to the next upstream. Other HTTP responses, including JSON-RPC errors returned with HTTP 200, are passed through. If every upstream fails, the proxy returns HTTP 502.
+`UPSTREAM_URLS` sets the HTTPS upstream order. Network failures, a 15-second timeout, HTTP 401, 403, 408, 429 or HTTP 5xx advance to the next upstream; 401 and 403 mean the upstream refused the proxy (for example a blocked address or a rejected key), not that the request was invalid. Other HTTP responses, including JSON-RPC errors returned with HTTP 200, are passed through. If every upstream fails, the proxy returns HTTP 502.
 
 Responses use `Cache-Control: no-store` and `x-rpc-upstream`, which contains the selected upstream's zero-based index. Logs identify an upstream by index rather than its URL. Clients can additionally configure a direct backup RPC if they need to tolerate a Worker outage.
 

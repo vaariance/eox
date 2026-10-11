@@ -31,6 +31,9 @@ const MAX_BODY_BYTES = 65_536;
 const MAX_BATCH = 20;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+const UPSTREAM_REFUSED = new Set([401, 403, 408, 429]);
+
+export const failsOver = (status: number): boolean => UPSTREAM_REFUSED.has(status) || status >= 500;
 
 function rpcError(status: number, code: number, message: string): Response {
   return new Response(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code, message } }), {
@@ -94,7 +97,7 @@ export async function handle(request: Request, env: Env, upstreamFetch: typeof f
         body: bytes,
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       });
-      if (response.status === 429 || response.status >= 500) {
+      if (failsOver(response.status)) {
         console.warn(JSON.stringify({ event: "upstream-failed", upstream: index, status: response.status }));
         continue;
       }
