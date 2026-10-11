@@ -521,3 +521,11 @@ another agent needs to know.
   - **Funding:** the runtime key `GNmM11ZM…` has 0 devnet SOL, and the faucet refused (429). Every publication creates a batch and a publication account of 8 KiB each, about 0.085 SOL of rent. That is about 5 SOL an hour or 122 SOL a day unless those accounts are closed. Peter: fund the key, and decide on reclaiming rent before the 24-hour run.
   - **Remaining J4:** retire the EVM roles and publish key directory v2.
 - **Refs:** commits `498ad38`..`822040d`, `apps/signer/README.md` (COX publisher binding).
+
+### 2026-10-11 · Joel (Claude Code) · J4: EOX signing roles retired, key directory v2
+
+- **Area:** `apps/signer`, `packages/signing`, `deploy/signing/dev-keys.json`, GCP KMS `eox-signing-dev`.
+- **What:** Completes J4 (`product.md` §6.1). `oracle-operator` (Solana) is the only signing role. `uma-asserter`, `uma-challenger`, `oracle-checker`, `evm-relayer` and `solana-relayer` are retired: their KMS key versions are disabled (not destroyed), and the EVM signing path, `/v1/sign/evm` and `viem` are removed. Key directory **version 2** lists them as `retired` with `validUntil` 1791688452 and unchanged public keys. It is served at `/v1/keys` and published in `deploy/signing/dev-keys.json`. Deployed as revision `eox-signer-00003-rsf` (image `signer:b80c831`). Verified from the VM: directory v2 served, `/v1/sign/evm` returns 404, and a retired role is refused as `unknown role`. The COX binding stays disabled, as in the previous entry.
+- **Rules for agents:** Never re-enable a retired KMS version to sign; a new role needs a new key, a config entry and a new directory version. Verify historical EVM or relayer signatures against the retired entries in directory v2.
+- **Open:** Still waiting on Peter for the activated pool, vault, mint and methodology addresses and for funding of `GNmM11ZM…`, before switching the COX binding on.
+- **Refs:** commits `6a6415a`..`fce70fe`, `apps/signer/README.md` (Keys).
