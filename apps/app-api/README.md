@@ -58,6 +58,7 @@ All fixed-point quantities are decimal integer strings. Prices use USD × 10⁸;
 | `GET /v1/publications/:sequence` | Publication by sequence |
 | `GET /v1/publications?after=&limit=` | Publications strictly after the cursor; default limit 100, maximum 500 |
 | `GET /v1/publications/stream` | Server-sent events; resume with `Last-Event-ID` |
+| `GET /v1/stream?wallet=` | Real-time server-sent events: publications, status changes and, with `wallet`, that wallet's portfolio |
 | `GET /v1/wallets/:owner/portfolio` | Committed positions, locked units, payables, refunds and requests |
 | `POST /v1/quotes/deposit` | Estimate with `{ owner, toClass, amount }` |
 | `POST /v1/quotes/switch` | Estimate with `{ owner, fromClass, toClass, units }` |
@@ -73,6 +74,27 @@ All fixed-point quantities are decimal integer strings. Prices use USD × 10⁸;
 Omitting the publication cursor starts from sequence 0. An empty page preserves the cursor. SSE events contain the publication and its sequence; the server sends a heartbeat every 15 seconds. Transaction request bodies are limited to 8 KiB.
 
 Errors include `NO_PUBLICATION`, `PUBLICATION_NOT_FOUND`, `UNKNOWN_ASSET`, `UNKNOWN_CLASS`, `UNKNOWN_WALLET`, `INVALID_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `INTERNAL_ERROR`, `NOT_LIVE`, `TRANSACTION_REJECTED`, `TRANSACTION_NOT_FOUND`, `RATE_LIMITED` and `FEE_CHANGED`. Builders and quotes on the fixture return HTTP 409 `NOT_LIVE`; a rejected simulation returns HTTP 422 `TRANSACTION_REJECTED`; a fee version that no longer matches the pool returns HTTP 409 `FEE_CHANGED`.
+
+## Real-time stream
+
+`GET /v1/stream` keeps one connection open and pushes three event types:
+
+| Event | Sent | Data |
+|---|---|---|
+| `publication` | each new publication, after any missed since the cursor | `{ sequence, publication }`; the event id is the sequence |
+| `status` | on connect, then whenever anything except the clock changes: new publication, missed cutoffs, paused or halted, execution, reconciliation or fee terms | the same object as `status` in every response |
+| `portfolio` | with `?wallet=`, on connect and whenever that wallet's positions, requests or receipts change | `{ owner, portfolio }`; `portfolio` is `null` for a wallet with nothing on chain |
+
+Browsers reconnect by themselves, three seconds after a drop, sending the last publication id. The server then resumes publications from there and repeats the current status and portfolio. Status is checked every 5 seconds and right after each publication. A wallet's portfolio is read after each publication and every 15 seconds, once per wallet however many connections watch it. Each client may hold 8 streams, an instance 500 and 200 distinct wallets. Over those limits the response is HTTP 429 `RATE_LIMITED` with `Retry-After`.
+
+```ts
+const stream = new EventSource(`${baseUrl}/v1/stream?wallet=${owner}`);
+stream.addEventListener("publication", (e) => onPublication(JSON.parse(e.data)));
+stream.addEventListener("status", (e) => onStatus(JSON.parse(e.data)));
+stream.addEventListener("portfolio", (e) => onPortfolio(JSON.parse(e.data)));
+```
+
+Server-side code can use `createCoxApiClient(...).subscribe({ after, wallet }, onEvent)`, which delivers typed `CoxStreamEvent`s and does not reconnect. `GET /v1/publications/stream` remains for publication-only consumers.
 
 ## Wallet transaction flow
 
