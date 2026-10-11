@@ -23,6 +23,14 @@ export interface CoxApiServerOptions {
   source: CoxSource;
   now?: () => number;
   onError?: (error: unknown) => void;
+  corsOrigin?: string | null;
+}
+
+function cors(res: ServerResponse, origin: string | null): void {
+  if (!origin) return;
+  res.setHeader("access-control-allow-origin", origin);
+  res.setHeader("access-control-expose-headers", "content-type");
+  if (origin !== "*") res.setHeader("vary", "origin");
 }
 
 function write(res: ServerResponse, status: number, body: unknown): void {
@@ -50,6 +58,7 @@ const event = (publication: Publication): CoxPublicationEvent => ({ sequence: pu
 export function createCoxApiServer(options: CoxApiServerOptions): Server {
   const now = options.now ?? (() => Math.floor(Date.now() / 1000));
   const { source } = options;
+  const corsOrigin = options.corsOrigin ?? null;
 
   async function send(res: ServerResponse, data: unknown, at = now()): Promise<void> {
     const [deployment, status] = await Promise.all([source.deployment(), source.status(at)]);
@@ -100,6 +109,16 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
   }
 
   async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    cors(res, corsOrigin);
+    if (req.method === "OPTIONS" && corsOrigin) {
+      res.writeHead(204, {
+        "access-control-allow-methods": "GET",
+        "access-control-allow-headers": "accept, last-event-id, cache-control",
+        "access-control-max-age": "600",
+      });
+      res.end();
+      return;
+    }
     if (req.method !== "GET") {
       res.setHeader("allow", "GET");
       throw new ApiError(405, "METHOD_NOT_ALLOWED", "method not allowed");

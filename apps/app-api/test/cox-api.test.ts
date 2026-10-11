@@ -103,3 +103,25 @@ describe("cox.app-api/v1 on the fixture", () => {
     await expect(client.portfolio("11111111111111111111111111111111")).rejects.toMatchObject({ code: "UNKNOWN_WALLET" });
   });
 });
+
+describe("CORS for the public deployment", () => {
+  it("allows browser reads from the configured origin and answers preflight, and sends nothing when unset", async () => {
+    const open = createCoxApiServer({ source: new CoxFixtureSource(fixturePath), now: () => NOW, corsOrigin: "*" });
+    await new Promise<void>((resolve) => open.listen(0, "127.0.0.1", resolve));
+    const url = `http://127.0.0.1:${(open.address() as AddressInfo).port}`;
+    try {
+      const res = await fetch(`${url}/v1/status`);
+      expect(res.headers.get("access-control-allow-origin")).toBe("*");
+      const preflight = await fetch(`${url}/v1/publications/stream`, { method: "OPTIONS", headers: { origin: "https://app.example", "access-control-request-headers": "last-event-id" } });
+      expect(preflight.status).toBe(204);
+      expect(preflight.headers.get("access-control-allow-headers")).toContain("last-event-id");
+      expect(preflight.headers.get("access-control-allow-methods")).toBe("GET");
+      expect((await fetch(`${url}/v1/status`, { method: "POST" })).status).toBe(405);
+    } finally {
+      open.closeAllConnections();
+      open.close();
+    }
+    expect((await fetch(`${baseUrl}/v1/status`)).headers.get("access-control-allow-origin")).toBeNull();
+    expect((await fetch(`${baseUrl}/v1/status`, { method: "OPTIONS" })).status).toBe(405);
+  });
+});

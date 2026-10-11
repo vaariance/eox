@@ -9,8 +9,13 @@ const host = process.env.APP_API_HOST ?? "127.0.0.1";
 const port = Number(process.env.APP_API_PORT ?? "8790");
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`invalid APP_API_PORT: ${port}`);
 
+const corsOrigin = process.env.APP_API_CORS_ORIGIN ?? null;
+if (corsOrigin !== null && corsOrigin !== "*" && !/^https?:\/\/[A-Za-z0-9.-]+(:[0-9]{1,5})?$/.test(corsOrigin)) {
+  throw new Error(`invalid APP_API_CORS_ORIGIN: ${corsOrigin}`);
+}
+
 const fixture = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "cox-fixture.json");
-const server = createCoxApiServer({ source: new CoxFixtureSource(fixture), onError: (error) => console.error("app-api request failed", error) });
+const server = createCoxApiServer({ source: new CoxFixtureSource(fixture), corsOrigin, onError: (error) => console.error("app-api request failed", error) });
 server.listen(port, host, () => console.log(`app-api (${mode}) listening on http://${host}:${port}`));
 
 function shutdown(): void {
