@@ -77,6 +77,7 @@ export function checkSolanaPolicy(
     }
     const program = policy!.programs.find((p) => p.programId === programId!.toBase58());
     if (!program) deny("TARGET_NOT_BOUND", `program ${programId!.toBase58()} is not bound for ${role}`);
+    if (program!.enabled === false) deny("TARGET_NOT_BOUND", `program ${programId!.toBase58()} is prepared for ${role} but not enabled`);
     const discriminator = data.subarray(0, 8).toString("hex");
     if (!program!.discriminators.includes(discriminator)) {
       deny("OPERATION_NOT_PERMITTED", `instruction ${discriminator} is not permitted on ${programId!.toBase58()}`);

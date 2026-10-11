@@ -13,10 +13,19 @@ export interface SolanaInstructionRule {
   accounts: Record<string, string>;
 }
 
+export interface CoxLinkage {
+  kind: "cox-v1";
+  poolId: string;
+  pool: string;
+  methodology: string | null;
+}
+
 export interface SolanaProgramBinding {
   programId: string;
+  enabled?: boolean;
   discriminators: string[];
   instructions?: SolanaInstructionRule[];
+  linkage?: CoxLinkage;
 }
 
 export const SIGNER_ACCOUNT = "$signer";
@@ -85,6 +94,12 @@ export function loadSignerConfig(path: string): SignerConfig {
       if (unitLimit !== undefined && (!INTEGER_PATTERN.test(unitLimit) || Number(unitLimit) > 1_400_000)) fail(`${role} compute unit limit`);
       for (const program of bindings.solana.programs) {
         if (!BASE58_PATTERN.test(program.programId)) fail(`${role} program ${program.programId}`);
+        if (program.enabled !== undefined && typeof program.enabled !== "boolean") fail(`${role} program enabled flag`);
+        if (program.linkage) {
+          const l = program.linkage;
+          if (l.kind !== "cox-v1" || !INTEGER_PATTERN.test(l.poolId) || !BASE58_PATTERN.test(l.pool)) fail(`${role} COX linkage`);
+          if (l.methodology !== null && !BASE58_PATTERN.test(l.methodology)) fail(`${role} COX methodology`);
+        }
         for (const discriminator of program.discriminators) if (!HEX_PATTERN.test(discriminator)) fail(`${role} discriminator`);
         if (program.instructions) {
           for (const discriminator of program.discriminators) {

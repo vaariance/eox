@@ -12,6 +12,7 @@ import {
 import type { SignerConfig } from "./config.js";
 import type { ResolvedKey } from "./directory.js";
 import { parseUnsignedTransaction } from "./evm.js";
+import { checkCoxLinkage, type AccountFetcher } from "./cox-linkage.js";
 import { checkEvmPolicy, checkSolanaPolicy, PolicyRejection } from "./policy.js";
 import { parseSolanaTransaction, requiredSignerIndex } from "./solana.js";
 import type { DecisionStore } from "./store.js";
@@ -32,6 +33,7 @@ export interface SigningServiceDeps {
   signers: ChainSigners;
   now: () => number;
   log: (entry: Record<string, unknown>) => void;
+  solanaAccounts?: AccountFetcher;
 }
 
 function canonical(value: unknown): string {
@@ -93,6 +95,11 @@ export function createSigningService(deps: SigningServiceDeps) {
         const signer = new PublicKey(key.derived.rawPublicKey);
         requiredSignerIndex(transaction, signer);
         checkSolanaPolicy(request.role, bindings, transaction, signer);
+        for (const program of bindings?.solana?.programs ?? []) {
+          if (!program.linkage) continue;
+          if (!deps.solanaAccounts) throw new PolicyRejection("TARGET_NOT_BOUND", "COX linkage needs a Solana RPC to verify accounts");
+          await checkCoxLinkage(program, program.linkage, transaction, deps.solanaAccounts);
+        }
       }
     } catch (error) {
       if (error instanceof PolicyRejection) return rejection(request.requestId, payloadSha256, error.code, error.message);
