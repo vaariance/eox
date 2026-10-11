@@ -1,0 +1,12 @@
+[Unit]
+Description=Copy the COX publisher's publication archive for the live app API (read-only)
+
+[Service]
+Type=oneshot
+ExecStart=/opt/eox/copy-publication-archive.sh
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/var/lib/cox-publisher
+ReadWritePaths=/opt/eox/state
+PrivateTmp=true
