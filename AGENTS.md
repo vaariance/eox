@@ -458,3 +458,10 @@ another agent needs to know.
 - **Rules for agents:** Never re-enable a retired KMS version to sign; a new role needs a new key, a config entry and a new directory version. Verify historical EVM or relayer signatures against the retired entries in directory v2.
 - **Open:** Still waiting on Peter for the activated pool, vault, mint and methodology addresses and for funding of `GNmM11ZM…`, before switching the COX binding on.
 - **Refs:** commits `6a6415a`..`fce70fe`, `apps/signer/README.md` (Keys).
+
+### 2026-10-11 · Joel (Claude Code) · Public COX fixture API for the web app
+
+- **Area:** `apps/app-api` (CORS, `Dockerfile`), GCP Cloud Run `cox-app-api`.
+- **What:** At Joel's request, `cox.app-api/v1` with the P1-oracle fixture is public at `https://cox-app-api-529206295845.us-central1.run.app` (revision `cox-app-api-00001-z7w`, image `cox-app-api:adbda5f`, us-central1, at most 2 instances). It is open to anyone, read-only and fixture data only. It sends CORS `*` (`APP_API_CORS_ORIGIN`) and answers the stream's `Last-Event-ID` preflight. It runs as service account `cox-app-api`, which holds no permissions. Verified from outside: all routes, CORS and the SSE stream work. Fixture wallet addresses are in `apps/app-api/README.md`.
+- **Rules for agents:** Godwin: use this URL as `baseUrl` for `createCoxApiClient` in `apps/web`. It serves synthetic data (`SYNA`, `SYNB`), never market data. The VM's `cox-app-api` on `127.0.0.1:8790` is the same fixture for local tunnels. The live COX source (J5) will get its own deployment once the pool is active.
+- **Refs:** commits `91a22ba`..`adbda5f`, `apps/app-api/README.md`.
