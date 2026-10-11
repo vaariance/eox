@@ -3,12 +3,9 @@ import { generateKeyPairSync, sign as edSign } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import { Keypair, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
-import { keccak256, recoverTransactionAddress, serializeTransaction, type Hex } from "viem";
-import { privateKeyToAccount, sign as signHash } from "viem/accounts";
-import { SIGNING_SCHEMA_VERSION, type SignRequest, type SigningRole } from "@eox/signing";
+import { SIGNING_SCHEMA_VERSION } from "@eox/signing";
 import type { SignerConfig } from "../src/config.js";
 import type { ResolvedKey } from "../src/directory.js";
-import { parseUnsignedTransaction } from "../src/evm.js";
 import { createSignerServer } from "../src/server.js";
 import { createSigningService, SignerUnavailable, type ChainSigners } from "../src/service.js";
 import { verifyEd25519 } from "../src/solana.js";
@@ -16,40 +13,45 @@ import type { DecisionStore, StoredDecision } from "../src/store.js";
 
 const NOW = 1_900_000_000;
 const SOLANA_NETWORK = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
-const EVM_NETWORK = "eip155:11155111";
-const caller = "eox-worker@colosseum-eox.iam.gserviceaccount.com";
+const caller = "cox-publisher@colosseum-eox.iam.gserviceaccount.com";
 const relay = "eox-relay@colosseum-eox.iam.gserviceaccount.com";
-const contract = "0x1111111111111111111111111111111111111111";
 const program = Keypair.generate().publicKey;
 const discriminator = "0102030405060708";
 
-const evmPrivateKey = "0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318" as const;
-const evmAccount = privateKeyToAccount(evmPrivateKey);
 const ed = generateKeyPairSync("ed25519");
 const edRaw = new Uint8Array(ed.publicKey.export({ format: "der", type: "spki" }).subarray(-32));
 const solanaSigner = new PublicKey(edRaw);
 
-function resolved(role: SigningRole, chain: "solana" | "evm", keyVersion: string, network: string, address: string, raw: Uint8Array): ResolvedKey {
-  return {
-    derived: { chain, publicKey: address, address, rawPublicKey: raw },
-    entry: { role, environment: "dev", chain, network, algorithm: chain === "solana" ? "ed25519" : "secp256k1", publicKey: address, address, keyVersion, state: "active", validFrom: 0, validUntil: null },
-  };
-}
-
 const keys = new Map<string, ResolvedKey>([
-  ["oracle-operator", resolved("oracle-operator", "solana", "kv/oracle-operator/1", SOLANA_NETWORK, solanaSigner.toBase58(), edRaw)],
-  ["uma-asserter", resolved("uma-asserter", "evm", "kv/uma-asserter/1", EVM_NETWORK, evmAccount.address, new Uint8Array())],
+  [
+    "oracle-operator",
+    {
+      derived: { chain: "solana", publicKey: solanaSigner.toBase58(), address: solanaSigner.toBase58(), rawPublicKey: edRaw },
+      entry: {
+        role: "oracle-operator",
+        environment: "dev",
+        chain: "solana",
+        network: SOLANA_NETWORK,
+        algorithm: "ed25519",
+        publicKey: solanaSigner.toBase58(),
+        address: solanaSigner.toBase58(),
+        keyVersion: "kv/oracle-operator/1",
+        state: "active",
+        validFrom: 0,
+        validUntil: null,
+      },
+    },
+  ],
 ]);
 
 const config = {
   environment: "dev",
   audience: "https://signer.test",
   keys: {},
-  callers: { [caller]: ["oracle-operator", "uma-asserter"], [relay]: ["uma-asserter"] },
-  bindings: {
-    "uma-asserter": { evm: { maxFeePerGasWei: "100000000000", maxGas: "500000", contracts: [{ address: contract, selectors: ["0xa9059cbb"], maxValueWei: "0" }] } },
-    "oracle-operator": { solana: { maxComputeUnitPriceMicroLamports: "1000", programs: [{ programId: program.toBase58(), discriminators: [discriminator] }] } },
-  },
+  callers: { [caller]: ["oracle-operator"], [relay]: [] },
+  bindings: { "oracle-operator": { solana: { maxComputeUnitPriceMicroLamports: "1000", programs: [{ programId: program.toBase58(), discriminators: [discriminator] }] } } },
+  directoryVersion: 2,
+  retired: [],
 } as unknown as SignerConfig;
 
 class MemoryStore implements DecisionStore {
@@ -66,7 +68,7 @@ class MemoryStore implements DecisionStore {
 
 function harness(options: { failSigning?: boolean } = {}) {
   const store = new MemoryStore();
-  const calls = { solana: 0, evm: 0 };
+  const calls = { solana: 0 };
   const signers: ChainSigners = {
     async solana(_keyVersion, _raw, transactionBase64) {
       calls.solana++;
@@ -76,40 +78,16 @@ function harness(options: { failSigning?: boolean } = {}) {
       transaction.addSignature(solanaSigner, signature);
       return { signature, signedTransaction: Buffer.from(transaction.serialize()).toString("base64") };
     },
-    async evm(_keyVersion, _address, unsignedTransactionHex) {
-      calls.evm++;
-      if (options.failSigning) throw new Error("KMS unavailable");
-      const signature = await signHash({ hash: keccak256(unsignedTransactionHex), privateKey: evmPrivateKey });
-      const yParity = signature.yParity as 0 | 1;
-      const normalized = { r: signature.r, s: signature.s, yParity };
-      return { signature: normalized, signedTransaction: serializeTransaction(parseUnsignedTransaction(unsignedTransactionHex), normalized) };
-    },
   };
   const sign = createSigningService({ config, keys, store, signers, now: () => NOW, log: () => {} });
   return { sign, store, calls };
 }
 
-const unsignedEvm = (data: Hex = "0xa9059cbb0000") =>
-  serializeTransaction({ type: "eip1559", chainId: 11155111, nonce: 0, to: contract, data, value: 0n, gas: 100_000n, maxFeePerGas: 2_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n });
-
-const evmRequest = (overrides: Partial<SignRequest> = {}) => ({
-  schemaVersion: SIGNING_SCHEMA_VERSION,
-  chain: "evm",
-  requestId: "req-evm-0001",
-  role: "uma-asserter",
-  keyVersion: "kv/uma-asserter/1",
-  network: EVM_NETWORK,
-  operation: { operationId: "proposal-1/assert-0", kind: "assert_evidence" },
-  expiresAt: NOW + 60,
-  unsignedTransactionHex: unsignedEvm(),
-  ...overrides,
-});
-
-function solanaRequest(overrides: Record<string, unknown> = {}) {
+function solanaRequest(overrides: Record<string, unknown> = {}, data = discriminator) {
   const message = new TransactionMessage({
     payerKey: solanaSigner,
     recentBlockhash: "11111111111111111111111111111111",
-    instructions: [new TransactionInstruction({ programId: program, keys: [{ pubkey: solanaSigner, isSigner: true, isWritable: true }], data: Buffer.from(discriminator, "hex") })],
+    instructions: [new TransactionInstruction({ programId: program, keys: [{ pubkey: solanaSigner, isSigner: true, isWritable: true }], data: Buffer.from(data, "hex") })],
   }).compileToV0Message();
   return {
     schemaVersion: SIGNING_SCHEMA_VERSION,
@@ -118,49 +96,40 @@ function solanaRequest(overrides: Record<string, unknown> = {}) {
     role: "oracle-operator",
     keyVersion: "kv/oracle-operator/1",
     network: SOLANA_NETWORK,
-    operation: { operationId: "proposal-1/upload-0", kind: "upload_evidence_page" },
+    operation: { operationId: "batch-1/publish", kind: "cox-publish" },
     expiresAt: NOW + 60,
     transactionBase64: Buffer.from(new VersionedTransaction(message).serialize()).toString("base64"),
     ...overrides,
   };
 }
 
-test("signs a bound EVM call and returns the recorded result on retry without signing again", async () => {
+test("signs a bound Solana instruction verifiably and returns the recorded result on retry", async () => {
   const { sign, calls } = harness();
-  const first = await sign(caller, evmRequest());
+  const first = await sign(caller, solanaRequest());
   assert.equal(first.decision, "signed");
-  assert.equal(first.decision === "signed" && (await recoverTransactionAddress({ serializedTransaction: first.signedTransaction as `0x02${string}` })), evmAccount.address);
-  const second = await sign(caller, evmRequest());
-  assert.deepEqual(second, first);
-  assert.equal(calls.evm, 1);
-});
-
-test("signs a bound Solana instruction with a verifiable signature", async () => {
-  const { sign } = harness();
-  const result = await sign(caller, solanaRequest());
-  assert.equal(result.decision, "signed");
-  const transaction = VersionedTransaction.deserialize(Buffer.from(result.decision === "signed" ? result.signedTransaction : "", "base64"));
+  const transaction = VersionedTransaction.deserialize(Buffer.from(first.decision === "signed" ? first.signedTransaction : "", "base64"));
   assert.equal(verifyEd25519(edRaw, transaction.message.serialize(), transaction.signatures[0]!), true);
+  assert.deepEqual(await sign(caller, solanaRequest()), first);
+  assert.equal(calls.solana, 1);
 });
 
 test("rejects a request id reused with different bytes or by another caller", async () => {
   const { sign } = harness();
-  await sign(caller, evmRequest());
-  const changed = await sign(caller, evmRequest({ unsignedTransactionHex: unsignedEvm("0xa9059cbb0001") } as Partial<SignRequest>));
+  await sign(caller, solanaRequest());
+  const changed = await sign(caller, solanaRequest({}, "0102030405060709"));
   assert.equal(changed.decision === "rejected" && changed.code, "REQUEST_ID_CONFLICT");
-  const otherCaller = await sign(relay, evmRequest());
+  const otherCaller = await sign(relay, solanaRequest());
   assert.equal(otherCaller.decision === "rejected" && otherCaller.code, "REQUEST_ID_CONFLICT");
 });
 
 test("records rejections and replays them for identical retries", async () => {
   const { sign, store, calls } = harness();
   const cases: [Record<string, unknown>, string, string][] = [
-    [evmRequest({ requestId: "req-role-0001", role: "oracle-checker" } as Partial<SignRequest>), caller, "ROLE_NOT_PERMITTED"],
-    [evmRequest({ requestId: "req-key-00001", keyVersion: "kv/uma-asserter/2" }), caller, "KEY_NOT_ACTIVE"],
-    [evmRequest({ requestId: "req-net-00001", network: "eip155:1" }), caller, "NETWORK_NOT_PERMITTED"],
-    [evmRequest({ requestId: "req-exp-00001", expiresAt: NOW + 601 }), caller, "INVALID_REQUEST"],
-    [evmRequest({ requestId: "req-sel-00001", unsignedTransactionHex: unsignedEvm("0x095ea7b30000") } as Partial<SignRequest>), caller, "OPERATION_NOT_PERMITTED"],
-    [solanaRequest({ requestId: "req-sol-role1" }), relay, "ROLE_NOT_PERMITTED"],
+    [solanaRequest({ requestId: "req-role-0001" }), relay, "ROLE_NOT_PERMITTED"],
+    [solanaRequest({ requestId: "req-key-00001", keyVersion: "kv/oracle-operator/2" }), caller, "KEY_NOT_ACTIVE"],
+    [solanaRequest({ requestId: "req-net-00001", network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" }), caller, "NETWORK_NOT_PERMITTED"],
+    [solanaRequest({ requestId: "req-exp-00001", expiresAt: NOW + 601 }), caller, "INVALID_REQUEST"],
+    [solanaRequest({ requestId: "req-ins-00001" }, "ffffffffffffffff"), caller, "OPERATION_NOT_PERMITTED"],
   ];
   for (const [request, who, code] of cases) {
     const result = await sign(who, request);
@@ -168,37 +137,41 @@ test("records rejections and replays them for identical retries", async () => {
     assert.deepEqual(await sign(who, request), result);
     assert.ok(store.records.has(String(request.requestId)));
   }
-  assert.equal(calls.evm + calls.solana, 0);
+  assert.equal(calls.solana, 0);
 });
 
-test("rejects malformed and expired requests without recording them", async () => {
+test("rejects malformed, EVM, retired-role and expired requests without recording them", async () => {
   const { sign, store } = harness();
-  const expired = await sign(caller, evmRequest({ requestId: "req-old-00001", expiresAt: NOW }));
+  const expired = await sign(caller, solanaRequest({ requestId: "req-old-00001", expiresAt: NOW }));
   assert.equal(expired.decision === "rejected" && expired.code, "REQUEST_EXPIRED");
-  const wrongSchema = await sign(caller, { ...evmRequest(), schemaVersion: "eox.signing/v0" });
+  const wrongSchema = await sign(caller, { ...solanaRequest(), schemaVersion: "eox.signing/v0" });
   assert.equal(wrongSchema.decision === "rejected" && wrongSchema.code, "INVALID_REQUEST");
+  const evm = await sign(caller, { ...solanaRequest({ requestId: "req-evm-00001" }), chain: "evm" });
+  assert.equal(evm.decision === "rejected" && evm.code, "INVALID_REQUEST");
+  const retired = await sign(caller, solanaRequest({ requestId: "req-ret-00001", role: "uma-asserter" }));
+  assert.equal(retired.decision === "rejected" && retired.code, "INVALID_REQUEST");
   assert.equal(store.records.size, 0);
 });
 
 test("does not record a decision when KMS signing fails", async () => {
   const { sign, store } = harness({ failSigning: true });
-  await assert.rejects(sign(caller, evmRequest()), SignerUnavailable);
+  await assert.rejects(sign(caller, solanaRequest()), SignerUnavailable);
   assert.equal(store.records.size, 0);
 });
 
 test("concurrent identical requests return one recorded result", async () => {
   const { sign } = harness();
-  const [a, b] = await Promise.all([sign(caller, evmRequest()), sign(caller, evmRequest())]);
+  const [a, b] = await Promise.all([sign(caller, solanaRequest()), sign(caller, solanaRequest())]);
   assert.equal(a.decision, "signed");
   assert.deepEqual(b.decision, "signed");
 });
 
-test("the HTTP layer authenticates callers and checks routes", async () => {
+test("the HTTP layer authenticates callers, serves only the Solana route and checks methods", async () => {
   const { sign } = harness();
   const server = createSignerServer({
     verifyCaller: async (authorization) => (authorization === "Bearer good" ? caller : null),
     sign,
-    directory: () => ({ schemaVersion: SIGNING_SCHEMA_VERSION, environment: "dev", version: 1, generatedAt: NOW, entries: [] }),
+    directory: () => ({ schemaVersion: SIGNING_SCHEMA_VERSION, environment: "dev", version: 2, generatedAt: NOW, entries: [] }),
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -208,12 +181,13 @@ test("the HTTP layer authenticates callers and checks routes", async () => {
     assert.equal((await fetch(`${base}/health`)).status, 200);
     assert.equal((await fetch(`${base}/v1/keys`)).status, 401);
     assert.equal((await fetch(`${base}/v1/keys`, { headers: { authorization: "Bearer good" } })).status, 200);
-    assert.equal((await post("/v1/sign/evm", evmRequest(), "Bearer bad")).status, 401);
-    assert.equal((await post("/v1/sign/solana", evmRequest())).status, 400);
-    assert.equal((await post("/v1/sign/evm", evmRequest())).status, 200);
-    assert.equal((await post("/v1/sign/evm", evmRequest({ requestId: "req-http-role", role: "oracle-checker" } as Partial<SignRequest>))).status, 403);
-    assert.equal((await post("/v1/sign/evm", { pad: "x".repeat(200_000) })).status, 413);
-    assert.equal((await fetch(`${base}/v1/sign/evm`, { headers: { authorization: "Bearer good" } })).status, 405);
+    assert.equal((await post("/v1/sign/solana", solanaRequest(), "Bearer bad")).status, 401);
+    assert.equal((await post("/v1/sign/solana", solanaRequest())).status, 200);
+    assert.equal((await post("/v1/sign/evm", solanaRequest())).status, 404);
+    assert.equal((await post("/v1/sign/solana", { ...solanaRequest(), chain: "evm" })).status, 400);
+    assert.equal((await post("/v1/sign/solana", solanaRequest({ requestId: "req-http-role", role: "uma-asserter" }))).status, 403);
+    assert.equal((await post("/v1/sign/solana", { pad: "x".repeat(200_000) })).status, 413);
+    assert.equal((await fetch(`${base}/v1/sign/solana`, { headers: { authorization: "Bearer good" } })).status, 405);
   } finally {
     server.close();
   }

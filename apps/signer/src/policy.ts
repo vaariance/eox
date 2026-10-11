@@ -1,5 +1,4 @@
 import { ComputeBudgetProgram, PublicKey, type VersionedTransaction } from "@solana/web3.js";
-import type { TransactionSerializable } from "viem";
 import type { RejectionCode, SigningRole } from "@eox/signing";
 import { SIGNER_ACCOUNT, type RoleBindings } from "./config.js";
 
@@ -15,30 +14,6 @@ export class PolicyRejection extends Error {
 const deny = (code: RejectionCode, message: string): never => {
   throw new PolicyRejection(code, message);
 };
-
-export function checkEvmPolicy(
-  role: SigningRole,
-  bindings: RoleBindings | undefined,
-  network: string,
-  transaction: TransactionSerializable,
-): void {
-  const chainId = Number(network.slice("eip155:".length));
-  if (transaction.chainId !== chainId) deny("NETWORK_NOT_PERMITTED", `transaction chain ${transaction.chainId} is not ${network}`);
-  if (transaction.type !== "eip1559") deny("OPERATION_NOT_PERMITTED", `transaction type ${transaction.type} is not permitted`);
-  const policy = bindings?.evm;
-  if (!policy || policy.contracts.length === 0) deny("TARGET_NOT_BOUND", `${role} has no bound EVM contracts`);
-  if (!transaction.to) deny("OPERATION_NOT_PERMITTED", "contract creation is not permitted");
-  const contract = policy!.contracts.find((c) => c.address === transaction.to!.toLowerCase());
-  if (!contract) deny("TARGET_NOT_BOUND", `${transaction.to} is not bound for ${role}`);
-  const data = (transaction.data ?? "0x").toLowerCase();
-  if (data.length < 10) deny("OPERATION_NOT_PERMITTED", "a contract call with a function selector is required");
-  const selector = data.slice(0, 10);
-  if (!contract!.selectors.includes(selector)) deny("OPERATION_NOT_PERMITTED", `selector ${selector} is not permitted on ${transaction.to}`);
-  if ((transaction.value ?? 0n) > BigInt(contract!.maxValueWei)) deny("LIMIT_EXCEEDED", "value exceeds the permitted maximum");
-  if ((transaction.maxFeePerGas ?? 0n) > BigInt(policy!.maxFeePerGasWei)) deny("LIMIT_EXCEEDED", "max fee per gas exceeds the permitted maximum");
-  if ((transaction.gas ?? 0n) > BigInt(policy!.maxGas)) deny("LIMIT_EXCEEDED", "gas exceeds the permitted maximum");
-  if ((transaction.accessList ?? []).length > 0) deny("OPERATION_NOT_PERMITTED", "access lists are not permitted");
-}
 
 const COMPUTE_BUDGET = ComputeBudgetProgram.programId;
 const SET_COMPUTE_UNIT_LIMIT = 2;

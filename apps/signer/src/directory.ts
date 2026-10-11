@@ -8,10 +8,10 @@ import {
   type SigningRole,
 } from "@eox/signing";
 import type { SignerConfig } from "./config.js";
-import { deriveEvmKey, deriveSolanaKey, type DerivedKey } from "./keys.js";
+import { deriveSolanaKey, type DerivedKey } from "./keys.js";
 import { getPublicKey, type AccessToken } from "./kms.js";
 
-const EXPECTED_ALGORITHMS = { solana: "EC_SIGN_ED25519", evm: "EC_SIGN_SECP256K1_SHA256" } as const;
+const EXPECTED_ALGORITHMS = { solana: "EC_SIGN_ED25519" } as const;
 
 export interface ResolvedKey {
   entry: KeyDirectoryEntry;
@@ -27,7 +27,7 @@ export async function resolveKeys(config: SignerConfig, token: AccessToken): Pro
     if (kms.algorithm !== EXPECTED_ALGORITHMS[chain]) {
       throw new Error(`${role} key uses ${kms.algorithm}, expected ${EXPECTED_ALGORITHMS[chain]}`);
     }
-    const derived = chain === "solana" ? deriveSolanaKey(kms.pem) : deriveEvmKey(kms.pem);
+    const derived = deriveSolanaKey(kms.pem);
     resolved.set(role, {
       derived,
       entry: {
@@ -48,12 +48,12 @@ export async function resolveKeys(config: SignerConfig, token: AccessToken): Pro
   return resolved;
 }
 
-export function keyDirectory(config: SignerConfig, keys: Map<SigningRole, ResolvedKey>, version: number, generatedAt: number): KeyDirectory {
+export function keyDirectory(config: SignerConfig, keys: Map<SigningRole, ResolvedKey>, generatedAt: number): KeyDirectory {
   return {
     schemaVersion: SIGNING_SCHEMA_VERSION,
     environment: config.environment,
-    version,
+    version: config.directoryVersion,
     generatedAt,
-    entries: SIGNING_ROLES.map((role) => keys.get(role)!.entry),
+    entries: [...SIGNING_ROLES.map((role) => keys.get(role)!.entry), ...config.retired],
   };
 }

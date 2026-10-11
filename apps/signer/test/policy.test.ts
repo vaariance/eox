@@ -10,67 +10,12 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import type { TransactionSerializable } from "viem";
 import type { RoleBindings } from "../src/config.js";
-import { checkEvmPolicy, checkSolanaPolicy, PolicyRejection } from "../src/policy.js";
-
-const contract = "0x1111111111111111111111111111111111111111";
-const evmBindings: RoleBindings = {
-  evm: {
-    maxFeePerGasWei: "100000000000",
-    maxGas: "500000",
-    contracts: [{ address: contract, selectors: ["0xa9059cbb"], maxValueWei: "0" }],
-  },
-};
-
-const evmCall = (overrides: Partial<TransactionSerializable> = {}): TransactionSerializable =>
-  ({
-    type: "eip1559",
-    chainId: 11155111,
-    nonce: 0,
-    to: contract,
-    data: "0xa9059cbb0000",
-    value: 0n,
-    gas: 100_000n,
-    maxFeePerGas: 2_000_000_000n,
-    maxPriorityFeePerGas: 1_000_000_000n,
-    ...overrides,
-  }) as TransactionSerializable;
+import { checkSolanaPolicy, PolicyRejection } from "../src/policy.js";
 
 function rejects(fn: () => void, code: string): void {
   assert.throws(fn, (error: unknown) => error instanceof PolicyRejection && error.code === code);
 }
-
-test("permits a bound EVM call within limits", () => {
-  checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall());
-});
-
-test("rejects EVM requests outside the bound policy", () => {
-  rejects(() => checkEvmPolicy("uma-asserter", undefined, "eip155:11155111", evmCall()), "TARGET_NOT_BOUND");
-  rejects(() => checkEvmPolicy("uma-asserter", evmBindings, "eip155:1", evmCall()), "NETWORK_NOT_PERMITTED");
-  rejects(() => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ to: undefined })), "OPERATION_NOT_PERMITTED");
-  rejects(
-    () => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ to: "0x2222222222222222222222222222222222222222" })),
-    "TARGET_NOT_BOUND",
-  );
-  rejects(() => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ data: "0x095ea7b3" })), "OPERATION_NOT_PERMITTED");
-  rejects(() => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ data: "0x" })), "OPERATION_NOT_PERMITTED");
-  rejects(() => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ value: 1n })), "LIMIT_EXCEEDED");
-  rejects(() => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ gas: 500_001n })), "LIMIT_EXCEEDED");
-  rejects(
-    () => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ maxFeePerGas: 100_000_000_001n })),
-    "LIMIT_EXCEEDED",
-  );
-  rejects(
-    () =>
-      checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", evmCall({ accessList: [{ address: contract, storageKeys: [] }] })),
-    "OPERATION_NOT_PERMITTED",
-  );
-  rejects(
-    () => checkEvmPolicy("uma-asserter", evmBindings, "eip155:11155111", { ...evmCall(), type: "eip7702" } as TransactionSerializable),
-    "OPERATION_NOT_PERMITTED",
-  );
-});
 
 const program = Keypair.generate().publicKey;
 const discriminator = Buffer.from("0102030405060708", "hex");

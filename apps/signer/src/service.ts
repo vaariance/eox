@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
-import { serializeSignature, type Hex } from "viem";
 import {
   SIGNING_SCHEMA_VERSION,
   SigningClientError,
@@ -11,9 +10,8 @@ import {
 } from "@eox/signing";
 import type { SignerConfig } from "./config.js";
 import type { ResolvedKey } from "./directory.js";
-import { parseUnsignedTransaction } from "./evm.js";
 import { checkCoxLinkage, type AccountFetcher } from "./cox-linkage.js";
-import { checkEvmPolicy, checkSolanaPolicy, PolicyRejection } from "./policy.js";
+import { checkSolanaPolicy, PolicyRejection } from "./policy.js";
 import { parseSolanaTransaction, requiredSignerIndex } from "./solana.js";
 import type { DecisionStore } from "./store.js";
 
@@ -21,7 +19,6 @@ export const MAX_EXPIRY_SECONDS = 600;
 
 export interface ChainSigners {
   solana(keyVersion: string, rawPublicKey: Uint8Array, transactionBase64: string): Promise<{ signature: Uint8Array; signedTransaction: string }>;
-  evm(keyVersion: string, address: string, unsignedTransactionHex: Hex): Promise<{ signature: { r: Hex; s: Hex; yParity: 0 | 1 }; signedTransaction: Hex }>;
 }
 
 export class SignerUnavailable extends Error {}
@@ -49,18 +46,14 @@ function canonical(value: unknown): string {
 
 export function requestDigest(request: SignRequest): string {
   const { requestId, role, keyVersion, network, operation, expiresAt, chain } = request;
-  const bytes = chain === "solana" ? request.transactionBase64 : request.unsignedTransactionHex;
+  const bytes = request.transactionBase64;
   return createHash("sha256")
     .update(canonical({ requestId, role, keyVersion, network, operation, expiresAt, chain, bytes }))
     .digest("hex");
 }
 
 function payloadDigest(request: SignRequest): string {
-  const bytes =
-    request.chain === "solana"
-      ? Buffer.from(request.transactionBase64, "base64")
-      : Buffer.from(request.unsignedTransactionHex.slice(2), "hex");
-  return createHash("sha256").update(bytes).digest("hex");
+  return createHash("sha256").update(Buffer.from(request.transactionBase64, "base64")).digest("hex");
 }
 
 export function createSigningService(deps: SigningServiceDeps) {
@@ -87,36 +80,23 @@ export function createSigningService(deps: SigningServiceDeps) {
     }
     const bindings = config.bindings[request.role];
     try {
-      if (request.chain === "evm") {
-        const transaction = parseUnsignedTransaction(request.unsignedTransactionHex as Hex);
-        checkEvmPolicy(request.role, bindings, request.network, transaction);
-      } else {
-        const transaction = parseSolanaTransaction(request.transactionBase64);
-        const signer = new PublicKey(key.derived.rawPublicKey);
-        requiredSignerIndex(transaction, signer);
-        checkSolanaPolicy(request.role, bindings, transaction, signer);
-        for (const program of bindings?.solana?.programs ?? []) {
-          if (!program.linkage) continue;
-          if (!deps.solanaAccounts) throw new PolicyRejection("TARGET_NOT_BOUND", "COX linkage needs a Solana RPC to verify accounts");
-          await checkCoxLinkage(program, program.linkage, transaction, deps.solanaAccounts);
-        }
+      const transaction = parseSolanaTransaction(request.transactionBase64);
+      const signer = new PublicKey(key.derived.rawPublicKey);
+      requiredSignerIndex(transaction, signer);
+      checkSolanaPolicy(request.role, bindings, transaction, signer);
+      for (const program of bindings?.solana?.programs ?? []) {
+        if (!program.linkage) continue;
+        if (!deps.solanaAccounts) throw new PolicyRejection("TARGET_NOT_BOUND", "COX linkage needs a Solana RPC to verify accounts");
+        await checkCoxLinkage(program, program.linkage, transaction, deps.solanaAccounts);
       }
     } catch (error) {
       if (error instanceof PolicyRejection) return rejection(request.requestId, payloadSha256, error.code, error.message);
       return rejection(request.requestId, payloadSha256, "INVALID_REQUEST", error instanceof Error ? error.message : "invalid transaction");
     }
     try {
-      let signature: string;
-      let signedTransaction: string;
-      if (request.chain === "evm") {
-        const signed = await signers.evm(key.entry.keyVersion, key.entry.address, request.unsignedTransactionHex as Hex);
-        signature = serializeSignature(signed.signature);
-        signedTransaction = signed.signedTransaction;
-      } else {
-        const signed = await signers.solana(key.entry.keyVersion, key.derived.rawPublicKey, request.transactionBase64);
-        signature = Buffer.from(signed.signature).toString("base64");
-        signedTransaction = signed.signedTransaction;
-      }
+      const signed = await signers.solana(key.entry.keyVersion, key.derived.rawPublicKey, request.transactionBase64);
+      const signature = Buffer.from(signed.signature).toString("base64");
+      const signedTransaction = signed.signedTransaction;
       return {
         schemaVersion: SIGNING_SCHEMA_VERSION,
         requestId: request.requestId,

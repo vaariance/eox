@@ -3,7 +3,6 @@ import { GoogleAuth } from "google-auth-library";
 import { googleIdTokenVerifier } from "./auth.js";
 import { loadSignerConfig } from "./config.js";
 import { keyDirectory, resolveKeys } from "./directory.js";
-import { signEvmTransaction } from "./evm.js";
 import { createSignerServer } from "./server.js";
 import { createSigningService } from "./service.js";
 import { signSolanaTransaction } from "./solana.js";
@@ -38,14 +37,13 @@ if (needsSolanaReads) {
 }
 
 const keys = await resolveKeys(config, token);
-const directory = keyDirectory(config, keys, 1, now());
+const directory = keyDirectory(config, keys, now());
 const sign = createSigningService({
   config,
   keys,
   store: new FirestoreDecisionStore(project, token),
   signers: {
     solana: (keyVersion, rawPublicKey, transactionBase64) => signSolanaTransaction(token, keyVersion, rawPublicKey, transactionBase64),
-    evm: (keyVersion, address, unsignedTransactionHex) => signEvmTransaction(token, keyVersion, address, unsignedTransactionHex),
   },
   now,
   log: (entry) => console.log(JSON.stringify({ severity: "INFO", message: "signing decision", ...entry })),
