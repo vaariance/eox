@@ -10,14 +10,20 @@ const ASSOCIATED_TOKEN_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25
 export const connection = new Connection(process.env.COX_RPC_URL ?? "https://api.devnet.solana.com", "finalized");
 export const sdk = new CoxSwapSdk(new Program(idl as Idl, { connection }), { poolId: POOL_ID, collateralMint: DEVNET_TEST_COLLATERAL });
 
-export function tokenAccountOf(owner: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync([owner.toBuffer(), TOKEN_PROGRAM.toBuffer(), DEVNET_TEST_COLLATERAL.toBuffer()], ASSOCIATED_TOKEN_PROGRAM)[0];
+export const POOL_COLLATERAL = DEVNET_TEST_COLLATERAL.toBase58();
+
+export function tokenAccountOf(owner: PublicKey, mint: PublicKey = DEVNET_TEST_COLLATERAL): PublicKey {
+  return PublicKey.findProgramAddressSync([owner.toBuffer(), TOKEN_PROGRAM.toBuffer(), mint.toBuffer()], ASSOCIATED_TOKEN_PROGRAM)[0];
+}
+
+export async function tokenBalance(owner: PublicKey, mint: PublicKey): Promise<bigint> {
+  const info = await connection.getAccountInfo(tokenAccountOf(owner, mint), "confirmed");
+  if (!info || !info.owner.equals(TOKEN_PROGRAM) || info.data.length !== 165) return 0n;
+  return info.data.readBigUInt64LE(64);
 }
 
 export async function collateralBalance(owner: PublicKey): Promise<bigint> {
-  const info = await connection.getAccountInfo(tokenAccountOf(owner), "finalized");
-  if (!info || !info.owner.equals(TOKEN_PROGRAM) || info.data.length !== 165) return 0n;
-  return info.data.readBigUInt64LE(64);
+  return tokenBalance(owner, DEVNET_TEST_COLLATERAL);
 }
 
 const reasons: Record<string, string> = {

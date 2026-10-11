@@ -2,7 +2,8 @@
 
 import { PublicKey, VersionedTransaction } from "@solana/web3.js";
 import type { Outcome } from "@/lib/requests";
-import { collateralBalance, connection, explain, sdk, tokenAccountOf } from "@/lib/swap-chain";
+import { CIRCLE_DEVNET_USDC } from "@/lib/config";
+import { collateralBalance, connection, explain, sdk, tokenAccountOf, tokenBalance } from "@/lib/swap-chain";
 
 export type SwapDirection = "buy" | "sell";
 
@@ -35,6 +36,12 @@ export interface SwapSent {
   signature: string;
   state: "submitted" | "finalized" | "failed";
   error: string | null;
+}
+
+export interface FaucetBalances {
+  lamports: string;
+  circleUsdc: string;
+  poolCollateral: string;
 }
 
 async function attempt<T>(call: () => Promise<T>): Promise<Outcome<T>> {
@@ -126,5 +133,13 @@ export async function swapState(signature: string): Promise<Outcome<SwapSent>> {
     if (!status) return { signature, state: "submitted", error: null };
     if (status.err) return { signature, state: "failed", error: JSON.stringify(status.err) };
     return { signature, state: status.confirmationStatus === "finalized" ? "finalized" : "submitted", error: null };
+  });
+}
+
+export async function faucetBalances(owner: string): Promise<Outcome<FaucetBalances>> {
+  return attempt(async () => {
+    const key = new PublicKey(owner);
+    const [lamports, circleUsdc, poolCollateral] = await Promise.all([connection.getBalance(key, "confirmed"), tokenBalance(key, new PublicKey(CIRCLE_DEVNET_USDC)), collateralBalance(key)]);
+    return { lamports: lamports.toString(), circleUsdc: circleUsdc.toString(), poolCollateral: poolCollateral.toString() };
   });
 }
