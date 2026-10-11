@@ -58,11 +58,10 @@ test("binds activated pool 0, its sealed methodology and its reusable batch and 
 test("refuses every request while the binding is disabled", () => {
   const disabled = { solana: { ...binding.solana!, programs: [{ ...cox, enabled: false }] } };
   assert.throws(() => checkSolanaPolicy("oracle-operator", disabled, publish(pool), operator), (e) => e instanceof PolicyRejection && /not enabled/.test(e.message));
-  assert.throws(() => checkSolanaPolicy("oracle-operator", binding, publish(pool), operator), (e) => e instanceof PolicyRejection && /not enabled/.test(e.message));
 });
 
-test("once enabled, accepts a well-formed publish and refuses one aimed at another pool", () => {
-  const enabled = { solana: { ...binding.solana!, programs: [{ ...cox, enabled: true }] } };
-  checkSolanaPolicy("oracle-operator", enabled, publish(pool), operator);
-  assert.throws(() => checkSolanaPolicy("oracle-operator", enabled, publish(Keypair.generate().publicKey), operator), (e) => e instanceof PolicyRejection && e.code === "TARGET_NOT_BOUND");
+test("is enabled, accepts a well-formed publish and refuses one aimed at another pool", () => {
+  assert.equal(cox.enabled, true);
+  checkSolanaPolicy("oracle-operator", binding, publish(pool), operator);
+  assert.throws(() => checkSolanaPolicy("oracle-operator", binding, publish(Keypair.generate().publicKey), operator), (e) => e instanceof PolicyRejection && e.code === "TARGET_NOT_BOUND");
 });
