@@ -2,6 +2,10 @@ import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, Portfolio, Pri
 
 export const PRICE_DIGITS = 8;
 export const SCALE_DIGITS = 12;
+
+export function unitDigits(decimals: number): number {
+  return SCALE_DIGITS + decimals;
+}
 export const CRYPTO_CLASS = "CRYPTO";
 const DEFAULT_DECIMALS = 0;
 const BATCH_SECONDS = 60;
@@ -70,7 +74,7 @@ export function changeSince(points: readonly Point[], seconds: number): number {
 
 function classView(valuation: ClassValuation, decimals: number): ClassView {
   const backing = toNumber(valuation.final.backing, decimals);
-  const units = toNumber(valuation.final.units, SCALE_DIGITS);
+  const units = toNumber(valuation.final.units, unitDigits(decimals));
   return { id: valuation.classId, backing, units, unitValue: units > 0 ? backing / units : null };
 }
 
@@ -102,9 +106,9 @@ export interface Holding {
   locked: number;
 }
 
-export function holdingsOf(portfolio: Portfolio | null): Holding[] | null {
+export function holdingsOf(portfolio: Portfolio | null, decimals: number): Holding[] | null {
   if (!portfolio) return null;
-  return portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, SCALE_DIGITS), locked: toNumber(position.locked, SCALE_DIGITS) }));
+  return portfolio.positions.map((position) => ({ classId: position.classId, units: toNumber(position.units, unitDigits(decimals)), locked: toNumber(position.locked, unitDigits(decimals)) }));
 }
 
 export function unlockedProblem(holdings: readonly Holding[] | null, classId: string, wanted: number): string | null {
@@ -115,4 +119,17 @@ export function unlockedProblem(holdings: readonly Holding[] | null, classId: st
   if (wanted <= free) return null;
   if (holding.locked > 0) return `Only ${free.toFixed(2)} of your ${classId} units are free. ${holding.locked.toFixed(2)} are locked in another request.`;
   return `You hold ${free.toFixed(2)} ${classId} units.`;
+}
+
+export interface ValuePoint extends Point {
+  sequence: number;
+}
+
+export function unitValueSeries(publications: readonly Publication[], classId: string, decimals: number): ValuePoint[] {
+  return publications.flatMap((publication) => {
+    const valuation = publication.classes.find((item) => item.classId === classId);
+    if (!valuation) return [];
+    const view = classView(valuation, decimals);
+    return view.unitValue === null ? [] : [{ sequence: publication.identity.sequence, cutoff: publication.identity.cutoff, value: view.unitValue }];
+  });
 }

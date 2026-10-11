@@ -204,6 +204,17 @@ test("surplus tokens are allowed and collateral shortfall rejects", async () => 
   await assert.rejects(s.chain.view(), /VaultShortfall/);
 });
 
+test("committed treasury fees remain reserved in publisher custody checks", async () => {
+  const s = await setup();
+  s.pool.schemaVersion = 2;
+  s.pool.fees = new anchor.BN(1000);
+  await s.saveAccount("pool", s.pool);
+  s.vault.writeBigUInt64LE(s.required + 999n, 64);
+  await assert.rejects(s.chain.view(), /VaultShortfall/);
+  s.vault.writeBigUInt64LE(s.required + 1000n, 64);
+  await s.chain.view();
+});
+
 test("paused recovery retains unsigned pending without requesting a signature", async () => {
   const s = await setup(); s.loseSigner();
   await assert.rejects(s.chain.submit(s.publish()), /SignerResponseLost/);

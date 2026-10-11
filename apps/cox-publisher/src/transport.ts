@@ -92,7 +92,7 @@ export class SolanaChain implements Chain {
           || methodology.bybit !== o.policy.bybit || methodology.roster.length !== o.policy.assets.length
           || methodology.roster.some((index, i) => PILOT_ASSETS[index]?.id !== o.policy.assets[i])) throw new Error("MethodologyMismatch");
       const active = pool.classes.reduce((sum, c) => sum + BigInt(c.backing.toString()), 0n);
-      const required = active + BigInt(pool.pending.toString()) + BigInt(pool.payable.toString()) + BigInt(pool.residual.toString());
+      const required = active + BigInt(pool.pending.toString()) + BigInt(pool.payable.toString()) + BigInt(pool.residual.toString()) + BigInt(pool.fees.toString());
       if (active !== BigInt(pool.active.toString()) || pool.classes.length !== o.policy.assets.length + 1
           || pool.references.length !== pool.classes.length) throw new Error("PoolLedgerMismatch");
       if (!vault || !vault.owner.equals(TOKEN) || vault.data.length !== 165 || vault.data[108] !== 1

@@ -1,6 +1,6 @@
 # COX P1 mechanism and protocol specification
 
-Version 0.4 · 11 October 2026 · **Rolling storage ABI; devnet test collateral only**
+Version 0.5 · 11 October 2026 · **Configurable fee extension; devnet test collateral only**
 
 Authority: SYSTEM.md v2.4, product.md v13 and COX Paper 3 v0.1. This document
 records P1 rules and the P3 implementation ABI; it does not change SYSTEM.md or claim
@@ -9,7 +9,8 @@ reference returns. P2's Rust crate supplies the calculations; compiled-program
 verification and deployment evidence are separate P3 deliverables. Version 0.4
 records Peter's approved bounded-storage change: one reusable batch and one
 latest publication per pool. This revision is not evidence that the upgrade is
-deployed, and does not amend SYSTEM.md or claim its sign-off.
+deployed, and does not amend SYSTEM.md or claim its sign-off. Version 0.5 adds
+Peter's approved fee policy below; it does not rewrite any sealed methodology.
 
 ## 1. Deliverables and activation boundary
 
@@ -585,3 +586,69 @@ archive/restart tests, archive backup and restore verification, Joel's signer
 validation updated for fixed seeds/schema 2, and Godwin's latest/history reader
 integration. A program upgrade and its actual build hash must be recorded
 separately before these changes are described as deployed.
+
+## Configurable trading fees — `COX/FEES/V1`
+
+This explicit extension supersedes the zero-fee rule for migrated pools only.
+The sealed methodology and its digest remain unchanged. Its fee-policy digest
+is SHA-256 of the Borsh string `COX/FEES/V1`, methodology digest (32 bytes),
+maximum rate `100` (`u16`), maximum cap `2000000` (`u64`) and notice period
+`86400` (`u64`), in that order. Integers are little-endian.
+
+The initial configuration is 2 basis points, capped at 2,000,000 collateral
+base units ($2 in six-decimal USDC). Admin may select 0–100 basis points and
+0–2,000,000 base units. Either zero disables fees. For gross collateral value
+`g`, `fee = min(floor(g * bps / 10000), cap)`. There is no minimum fee.
+Deposits use their submitted gross collateral; switches and redemptions use
+floor-rounded source proceeds at the accepted batch's fixed valuation.
+Deposits and switches mint from `gross - fee`; redemptions credit that net
+amount. Minimum outputs apply after fees. A rejected, expired or cancelled
+request pays zero. Refund and withdrawal instructions charge no fee.
+
+Each request stores the configuration version, rate and cap at submission.
+The fee-aware trade ABI includes an expected version and refuses a mismatch
+before token transfer or reservation. Legacy trade instructions are available
+only while the active version is zero. Legacy queued requests retain zero fees
+regardless of later configuration changes. Quote simulations return sequence,
+minted units, net proceeds, gross collateral value, fee and fee version; they
+estimate current values rather than promising the execution result.
+
+Admin schedules one pending configuration with a monotonically increasing
+version. The first schedule may target any future minute-aligned cutoff.
+Every subsequent schedule, including replacements after cancellation, requires
+at least 86,400 seconds' notice. Activation occurs only when a publication
+whose accepted cutoff reaches that time finalizes. Requests submitted during
+processing keep the previously committed configuration. Cancellation cannot
+remove a configuration whose activation publication is already accepted.
+Rate, cap, activation and cancellation events are public.
+
+Fees are staged with execution and committed only at finalization. The vault
+identity becomes `active + pending + payable + residual + committed fees`.
+Fees never participate in reference revaluation or unit backing, and rounding
+residual remains non-distributable. Safety rejection clears provisional fees.
+Only admin can withdraw committed fees, to an account of the pool's collateral
+mint owned by that admin. The publisher cannot administer or withdraw fees.
+Committed treasury withdrawals may occur during another batch's processing;
+its staged fees remain unavailable. Vault shortfalls fail closed.
+
+`migrate_pool` requires a paused registry and no accepted unfinished batch.
+It verifies the legacy pool discriminator, owner, PDA, registry, vault and
+collateral mint, decodes the legacy prefix independently of trailing padding,
+then writes schema 2 with all fee fields zero. No positions or queued requests
+are reset. Existing 4 KB pool, 320-byte request and 8 KB batch/publication
+allocations are retained. Pool schema 1 is legacy; new initialized pools remain
+legacy until explicitly migrated. Migrated requests use schema 2; their fee
+fields append to the legacy layout. Migrated batches/publications use schema 3.
+Old requests and historical publication schema 2 remain readable.
+
+The V2 receipt root starts at SHA-256(Borsh string `COX/RECEIPTS/V2`). Each
+ordered receipt extends the V1 receipt bytes with gross (`u64`), charged fee
+(`u64`), fee version (`u64`), rate (`u16`) and cap (`u64`). V1 receipt status
+numbers are unchanged. State domain becomes `COX/STATE/V2`; the V1 payload
+layout is followed by committed fees, batch fees, active version, active rate,
+active cap, next version, pending flag, pending version, pending rate, pending
+cap, pending cutoff, initial-scheduled flag and fee-policy digest. Amounts,
+versions and cutoffs are `u64`, rates `u16`, flags Borsh `bool`. V1 histories
+keep their original domains and bytes. V2 links the actual previous digest,
+including a V1 predecessor at migration. The client publishes both encoding
+versions and shared vectors in `fixtures/fee-state-vectors.json`.

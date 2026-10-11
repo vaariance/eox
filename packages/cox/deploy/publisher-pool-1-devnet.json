@@ -1,0 +1,62 @@
+{
+  "schema": "cox.publisher-pool-cutover/v1",
+  "checkedAt": "2026-10-11T10:11:22.776Z",
+  "service": "cox-publisher",
+  "host": "eox-dev",
+  "poolId": "1",
+  "pool": "F44g6A58N3cu9TGaDE1LiDB3r1BCxCrfFkMQV1DcEv37",
+  "collateralMint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "methodology": "5h3fnfD9BFbJ1iRmRTy7fd6DPy1xEWNg4h2KGheRxFT6",
+  "methodologyDigest": "8dff8843ae85724738e37b9216257fb2407be42655d9fa25b6ba71375ee1c819",
+  "originUtc": "2026-10-11T10:20:00.000Z",
+  "originLagos": "2026-10-11T11:20:00+01:00",
+  "status": "publisher-started-awaiting-origin-and-Joel-signer-binding",
+  "configuration": "/etc/cox-publisher/dev.json",
+  "statePath": "/var/lib/cox-publisher/pool-1/state.json",
+  "publicationHistory": "/var/lib/cox-publisher/pool-1/state.json.history",
+  "backupTimer": "cox-publisher-backup-pool-1.timer",
+  "backupScript": "/opt/cox-publisher/cox-publication-backup-pool-1.ts",
+  "backupScriptConfiguration": "Existing backup implementation rendered with pool-1 root and object prefix; separate marker directory",
+  "backupPrefix": "pool-1/",
+  "previousPool": {
+    "id": "0",
+    "finalSequence": "118",
+    "history": "/var/lib/cox-publisher/state.json.history",
+    "configuration": "/etc/cox-publisher/pool-0-preserved.json",
+    "finalArchiveBackedUp": true
+  },
+  "rpc": {
+    "origin": "https://cox-rpc-proxy.variance.space",
+    "primary": "https://rpc.ankr.com",
+    "fallback": "https://api.devnet.solana.com",
+    "removed": "Tatum removed at Peter request; Helius excluded after incorrect missing-account responses reproduced",
+    "repeatedAccountReadsPassed": true,
+    "liveFailoverForced": false,
+    "limitations": [
+      "Short-run checks establish current correctness and responsiveness, not sustained throughput.",
+      "Public devnet fallback previously returned access errors from Cloudflare; successful live failover is not yet verified."
+    ],
+    "ankrVerification": {
+      "localAccountReadsPassed": 12,
+      "vmAccountReadsPassed": 20,
+      "vmProxyAccountReadsPassed": 20,
+      "accountBytesMatched": true,
+      "vmMedianMs": 112,
+      "vmMaxMs": 197,
+      "publisherMethodsPassed": [
+        "getGenesisHash",
+        "getLatestBlockhash",
+        "getBlockHeight",
+        "getSignatureStatuses",
+        "getMinimumBalanceForRentExemption"
+      ],
+      "credentials": "Worker secret only; endpoint credential omitted"
+    }
+  },
+  "signerBindingVerified": false,
+  "liveApiReconfigured": false,
+  "firstPublicationVerified": false,
+  "integrationArtifact": "pool-1-handoff.json",
+  "publisherWaitingVerified": true,
+  "publisherMainPid": 60383
+}

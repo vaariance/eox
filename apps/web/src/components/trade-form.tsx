@@ -1,76 +1,62 @@
 "use client";
 
+import type { Batch } from "@eox/app-api";
 import { Info } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { COLLATERAL } from "@/lib/config";
-import type { Batch } from "@eox/app-api";
 import { formatAmount } from "@/lib/format";
-import { type Operation, planRequest } from "@/lib/requests";
-import { type ClassView, holdingsOf, unlockedProblem } from "@/lib/view";
+import { planRequest } from "@/lib/requests";
+import { CRYPTO_CLASS, type ClassView, holdingsOf, unlockedProblem } from "@/lib/view";
 import { useAccount } from "./account";
 import { TargetBatch, useOpenBatch } from "./open-batch";
 import { SendButton } from "./send-button";
 
-const operations: { id: Operation; label: string }[] = [
-  { id: "deposit", label: "Buy" },
-  { id: "switch", label: "Switch" },
-  { id: "redeem", label: "Redeem" },
+type Side = "buy" | "sell" | "cash";
+
+const sides: { id: Side; label: string }[] = [
+  { id: "buy", label: "Buy" },
+  { id: "sell", label: "Sell" },
+  { id: "cash", label: "Cash out" },
 ];
 
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
-const labels: Record<Operation, string> = { deposit: "Queue buy", switch: "Queue switch", redeem: "Queue redeem" };
-
-export function TradeForm({ claim, others, nextBatch, decimals }: { claim: ClassView; others: ClassView[]; nextBatch: Batch | null; decimals: number }) {
-  const { portfolio } = useAccount();
-  const holdings = holdingsOf(portfolio);
+export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: ClassView; crypto: ClassView; nextBatch: Batch | null; decimals: number }) {
+  const { portfolio, owner, live } = useAccount();
+  const holdings = holdingsOf(portfolio, decimals);
   const open = useOpenBatch(nextBatch);
-  const [operation, setOperation] = useState<Operation>("deposit");
-  const [amount, setAmount] = useState("250");
+  const [side, setSide] = useState<Side>("buy");
+  const [amount, setAmount] = useState("10");
   const [minimum, setMinimum] = useState("");
   const [validFor, setValidFor] = useState(3);
-  const [target, setTarget] = useState(others[0].id);
+
+  const buying = side === "buy";
+  const cashing = side === "cash";
+  const from = buying ? CRYPTO_CLASS : claim.id;
+  const to = buying ? claim.id : CRYPTO_CLASS;
   const parsed = Number(amount);
   const valid = Number.isFinite(parsed) && parsed > 0;
-  const destination = others.find((item) => item.id === target) ?? others[0];
-  const sameClass = operation === "switch" && destination.id === claim.id;
-  const unitsProblem = valid && operation !== "deposit" ? unlockedProblem(holdings, claim.id, parsed) : null;
-  const planned = planRequest({
-    operation,
-    fromClass: operation === "deposit" ? null : claim.id,
-    toClass: operation === "deposit" ? claim.id : operation === "switch" ? destination.id : null,
-    amount,
-    minimum,
-    validForBatches: validFor,
-    targetBatch: open.batch?.batch ?? null,
-    collateralDecimals: decimals,
-  });
-
-  const sourceValue = claim.unitValue ?? 1;
-  const destinationValue = destination.unitValue ?? 1;
-  const estimate = !valid
-    ? null
-    : operation === "deposit"
-      ? { value: parsed / sourceValue, unit: `${claim.id} units` }
-      : operation === "redeem"
-        ? { value: parsed * sourceValue, unit: "tUSDC" }
-        : { value: (parsed * sourceValue) / destinationValue, unit: `${destination.id} units` };
-
-  const amountLabel = operation === "deposit" ? "Amount (tUSDC)" : `${claim.id} units`;
-  const conditionLabel = operation === "deposit" ? "Minimum units" : operation === "redeem" ? "Minimum proceeds (tUSDC)" : "Minimum units out";
+  const held = holdings?.find((item) => item.classId === from);
+  const available = held ? held.units - held.locked : holdings === null ? null : 0;
+  const unitsProblem = valid ? unlockedProblem(holdings, from, parsed) : null;
+  const planned = planRequest({ operation: cashing ? "redeem" : "switch", fromClass: from, toClass: cashing ? null : to, amount, minimum, validForBatches: validFor, targetBatch: open.batch?.batch ?? null, collateralDecimals: decimals });
+  const fromValue = (buying ? crypto : claim).unitValue ?? 1;
+  const toValue = cashing ? 1 : ((buying ? claim : crypto).unitValue ?? 1);
+  const estimate = valid ? (parsed * fromValue) / toValue : null;
+  const receives = buying ? `${claim.id} units` : cashing ? COLLATERAL.symbol : "CRYPTO";
+  const needsCrypto = buying && live && owner !== null && available === 0;
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 shadow-card">
-      <div role="group" aria-label="Operation" className="mb-4 grid grid-cols-3 gap-1 rounded-control bg-surface-2 p-1">
-        {operations.map((item) => (
+      <div role="group" aria-label="Buy, sell or cash out" className="mb-4 grid grid-cols-3 gap-1 rounded-control bg-surface-2 p-1">
+        {sides.map((item) => (
           <button
             key={item.id}
             type="button"
-            aria-pressed={operation === item.id}
-            onClick={() => setOperation(item.id)}
-            className={`h-10 cursor-pointer rounded-control text-sm transition-colors duration-150 ${
-              operation === item.id ? "bg-accent font-medium text-accent-ink" : "text-muted hover:text-ink"
-            }`}
+            aria-pressed={side === item.id}
+            onClick={() => setSide(item.id)}
+            className={`h-10 cursor-pointer rounded-control text-sm transition-colors duration-150 ${side === item.id ? "bg-accent font-medium text-accent-ink" : "text-muted hover:text-ink"}`}
           >
             {item.label}
           </button>
@@ -78,30 +64,30 @@ export function TradeForm({ claim, others, nextBatch, decimals }: { claim: Class
       </div>
 
       <p className="mb-3 text-xs text-muted">
-        Buying puts {COLLATERAL.name} into the {claim.id} class and gives you units, a share of that class. You do not receive {claim.id === "CRYPTO" ? "the coins" : `${claim.id} coins`}.
+        {buying
+          ? `You pay with CRYPTO and get ${claim.id} units, a share of the ${claim.id} class.`
+          : cashing
+            ? `You give ${claim.id} units and get ${COLLATERAL.symbol}, ready to withdraw on the Portfolio page.`
+            : `You give ${claim.id} units and get CRYPTO back.`}
       </p>
 
       <form className="flex flex-col gap-3" onSubmit={(event) => event.preventDefault()}>
-        {operation === "switch" && (
-          <div>
-            <label htmlFor="trade-target" className="mb-1 block text-xs text-muted">Switch into</label>
-            <select id="trade-target" value={target} onChange={(event) => setTarget(event.target.value)} className={`${field} cursor-pointer`}>
-              {others.map((item) => (
-                <option key={item.id} value={item.id}>{item.id}</option>
-              ))}
-            </select>
-          </div>
-        )}
         <div>
-          <label htmlFor="trade-amount" className="mb-1 block text-xs text-muted">{amountLabel}</label>
+          <div className="mb-1 flex items-center justify-between text-xs text-muted">
+            <label htmlFor="trade-amount">{buying ? "You pay (CRYPTO)" : `You give (${claim.id} units)`}</label>
+            {available !== null && <span className="num">Available {formatAmount(available)}</span>}
+          </div>
           <input id="trade-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
           {!valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
-          {unitsProblem && <p role="alert" className="mt-1 text-xs text-down">{unitsProblem}</p>}
-          {sameClass && <p role="alert" className="mt-1 text-xs text-down">Choose a different class to switch into.</p>}
+          {needsCrypto && (
+            <p className="mt-1 text-xs text-muted">
+              You have no CRYPTO yet. <Link href="/swap" className="text-accent underline">Swap USDC for CRYPTO</Link> first.
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="trade-condition" className="mb-1 block text-xs text-muted">{conditionLabel}</label>
+            <label htmlFor="trade-condition" className="mb-1 block text-xs text-muted">Minimum to receive</label>
             <input id="trade-condition" inputMode="decimal" placeholder="Optional" value={minimum} onChange={(event) => setMinimum(event.target.value)} className={field} />
           </div>
           <div>
@@ -120,12 +106,8 @@ export function TradeForm({ claim, others, nextBatch, decimals }: { claim: Class
             <dd className="num"><TargetBatch batch={open.batch} seconds={open.seconds} /></dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-muted">Last unit value</dt>
-            <dd className="num">{claim.unitValue === null ? "1.000000 (empty class)" : formatAmount(claim.unitValue, 6)}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-muted">Estimate</dt>
-            <dd className="num">{estimate ? `≈ ${formatAmount(estimate.value)} ${estimate.unit}` : "n/a"}</dd>
+            <dt className="text-muted">You receive</dt>
+            <dd className="num">{estimate === null ? "—" : `≈ ${formatAmount(estimate, 4)} ${receives}`}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Fee</dt>
@@ -135,10 +117,10 @@ export function TradeForm({ claim, others, nextBatch, decimals }: { claim: Class
 
         <p className="flex gap-2 rounded-control bg-surface-2 p-3 text-xs text-muted">
           <Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-          This is an estimate, not a quote. Your request is queued and executes at the unit value fixed by the next publication. You can cancel until the batch closes.
+          Your request is queued and fills at the unit values fixed by the next publication, so the amount you receive is an estimate. You can cancel until the batch closes.
         </p>
 
-        <SendButton intent={planned.intent} label={labels[operation]} connectLabel="Connect wallet to continue" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} CRYPTO` : cashing ? `Cash out ${amount} ${claim.id} units to ${COLLATERAL.symbol}` : `Sell ${amount} ${claim.id} units for CRYPTO`} intent={planned.intent} label={buying ? `Buy ${claim.id}` : cashing ? `Cash out ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? null : unitsProblem)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

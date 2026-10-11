@@ -1,0 +1,784 @@
+{
+  "assets": 30,
+  "elapsedMicros": "2791654",
+  "environment": "LiteSVM 0.6.1; compiled SBF; classic SPL token",
+  "maxComputeUnits": 524958,
+  "maxTransactionBytes": 1122,
+  "programAddress": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+  "programSha256": "865dcb315e2b9359294df8640c9d6aa04b3f9c308e2f1b74ff5a8db0e36a9b3c",
+  "requests": 31,
+  "schema": "cox.compiled-runtime-measurements/v1",
+  "timingScope": "Local simulation including setup and token transactions; not network throughput or confirmation latency",
+  "transactions": [
+    {
+      "computeUnits": 3229,
+      "instruction": "create_mint",
+      "transactionBytes": 442
+    },
+    {
+      "computeUnits": 9152,
+      "instruction": "create_token_account",
+      "transactionBytes": 488
+    },
+    {
+      "computeUnits": 9152,
+      "instruction": "create_token_account",
+      "transactionBytes": 488
+    },
+    {
+      "computeUnits": 13318,
+      "instruction": "initialize_registry",
+      "transactionBytes": 459
+    },
+    {
+      "computeUnits": 13478,
+      "instruction": "register_methodology",
+      "transactionBytes": 373
+    },
+    {
+      "computeUnits": 6769,
+      "instruction": "upload_methodology",
+      "transactionBytes": 905
+    },
+    {
+      "computeUnits": 6914,
+      "instruction": "upload_methodology",
+      "transactionBytes": 905
+    },
+    {
+      "computeUnits": 6913,
+      "instruction": "upload_methodology",
+      "transactionBytes": 905
+    },
+    {
+      "computeUnits": 6913,
+      "instruction": "upload_methodology",
+      "transactionBytes": 905
+    },
+    {
+      "computeUnits": 6913,
+      "instruction": "upload_methodology",
+      "transactionBytes": 365
+    },
+    {
+      "computeUnits": 426368,
+      "instruction": "seal_methodology",
+      "transactionBytes": 390
+    },
+    {
+      "computeUnits": 34633,
+      "instruction": "initialize_pool",
+      "transactionBytes": 469
+    },
+    {
+      "computeUnits": 434611,
+      "instruction": "publish",
+      "transactionBytes": 1122
+    },
+    {
+      "computeUnits": 46957,
+      "instruction": "seal_evaluation",
+      "transactionBytes": 361
+    },
+    {
+      "computeUnits": 49177,
+      "instruction": "seal_evaluation",
+      "transactionBytes": 361
+    },
+    {
+      "computeUnits": 363341,
+      "instruction": "finalize",
+      "transactionBytes": 461
+    },
+    {
+      "computeUnits": 4360,
+      "instruction": "pause_change",
+      "transactionBytes": 263
+    },
+    {
+      "computeUnits": 24680,
+      "instruction": "migrate_pool",
+      "transactionBytes": 329
+    },
+    {
+      "computeUnits": 21357,
+      "instruction": "schedule_fees",
+      "transactionBytes": 347
+    },
+    {
+      "computeUnits": 4364,
+      "instruction": "pause_change",
+      "transactionBytes": 263
+    },
+    {
+      "computeUnits": 524958,
+      "instruction": "publish",
+      "transactionBytes": 1122
+    },
+    {
+      "computeUnits": 51534,
+      "instruction": "seal_evaluation",
+      "transactionBytes": 361
+    },
+    {
+      "computeUnits": 53754,
+      "instruction": "seal_evaluation",
+      "transactionBytes": 361
+    },
+    {
+      "computeUnits": 391613,
+      "instruction": "finalize",
+      "transactionBytes": 461
+    },
+    {
+      "computeUnits": 54621,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 51621,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 55651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 54151,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 55651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 54151,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 55651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 51151,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 57151,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 55651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 55651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 55651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 54151,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 52651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 49651,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 60151,
+      "instruction": "deposit_with_fee",
+      "transactionBytes": 535
+    },
+    {
+      "computeUnits": 524957,
+      "instruction": "publish",
+      "transactionBytes": 1122
+    },
+    {
+      "computeUnits": 92819,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92741,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92650,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92819,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92767,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92780,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92348,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92754,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92728,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92676,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92741,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92806,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92780,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92715,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92637,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92819,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92793,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92806,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92819,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92465,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92754,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92400,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92754,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92478,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92793,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92819,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92728,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92793,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92650,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92793,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 92426,
+      "instruction": "evaluate",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 51533,
+      "instruction": "seal_evaluation",
+      "transactionBytes": 361
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 63464,
+      "instruction": "safety",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 53753,
+      "instruction": "seal_evaluation",
+      "transactionBytes": 361
+    },
+    {
+      "computeUnits": 104573,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 104573,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 106816,
+      "instruction": "execute",
+      "transactionBytes": 427
+    },
+    {
+      "computeUnits": 395080,
+      "instruction": "finalize",
+      "transactionBytes": 461
+    },
+    {
+      "computeUnits": 32161,
+      "instruction": "materialize_position",
+      "transactionBytes": 328
+    },
+    {
+      "computeUnits": 32161,
+      "instruction": "materialize_position",
+      "transactionBytes": 328
+    }
+  ]
+}

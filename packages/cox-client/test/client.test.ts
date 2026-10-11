@@ -36,9 +36,29 @@ test("actual SBF account bytes decode with the generated Anchor IDL", () => {
     const damaged = Buffer.from(value.info.data); damaged[0] ^= 255;
     assert.throws(() => decodeAccount(program, name, { ...value.info, data: damaged }));
     const wrongVersion = Buffer.from(value.info.data);
-    wrongVersion[8] = name === "batch" || name === "publication" ? 1 : 2;
+    wrongVersion[8] = 255;
     assert.throws(() => decodeAccount(program, name, { ...value.info, data: wrongVersion }), /AccountVersionMismatch/);
   }
+});
+
+test("compiled fee accounts decode with committed custody and V2 publication identity", () => {
+  const release = JSON.parse(readFileSync(new URL("../../cox/fixtures/fee-accounts.json", import.meta.url), "utf8")) as { accounts: Fixture[] };
+  const account = <K extends keyof Accounts>(name: K): Accounts[K] => {
+    const value = release.accounts.find(value => value.name === name)!;
+    return decodeAccount(program, name, info(value));
+  };
+  const pool = account("pool"), request = account("request"), batch = account("batch");
+  assert.equal(pool.schemaVersion, 2);
+  assert.equal(request.schemaVersion, 2);
+  assert.equal(batch.schemaVersion, 3);
+  assert.equal(pool.feeBps, 2);
+  assert.ok(pool.fees.gtn(0));
+  assert.equal(request.fee.toString(), request.gross.muln(2).divn(10000).toString());
+  const key = release.accounts.find(value => value.name === "pool")!;
+  const publication = checkedPublication(program.programId, new PublicKey(key.address), account("publication"));
+  assert.equal(publication.schemaVersion, 3);
+  assert.equal(publication.state.feeState!.fees.toString(), pool.fees.toString());
+  assert.equal(publication.state.feeState!.batchFees.toString(), batch.fees.toString());
 });
 test("checked readers validate live account identities and publication preimage", async () => {
   const { account: pool } = fixture("pool");
@@ -131,6 +151,53 @@ test("every unsigned builder uses actual IDL account flags and instruction bytes
     });
   }
   assert.equal(instructions[12]!.data.subarray(0, 8).toString("hex"), discriminator("global", "publish").toString("hex"));
+});
+test("fee-aware and treasury builders match the generated program ABI", () => {
+  const { key: pool, account: state } = fixture("pool");
+  const { key: position, account: owned } = fixture("position");
+  const { key: request } = fixture("request");
+  const keys = { pool, vault: state.vault }, ownerKeys = { ...keys, owner: owned.owner, position, request, userToken: PublicKey.default };
+  const instructions = [builder.depositWithFee(ownerKeys, 2, 1000000n, 1n, 99n, 7n),
+    builder.switchWithFee(ownerKeys, 0, 2, 1000000000000n, 1n, 99n, 7n),
+    builder.redeemWithFee(ownerKeys, 2, 1000000000000n, 999800n, 99n, 7n),
+    builder.quoteRequestWithFee(pool, 0, 255, 2, 1000000n, 0n, 7n), builder.migratePool(owned.owner, keys),
+    builder.scheduleFees(owned.owner, keys, 2, 2000000n, 1800086400n), builder.cancelFees(owned.owner, keys),
+    builder.withdrawFees(owned.owner, keys, PublicKey.default, 200n)];
+  for (const instruction of instructions) {
+    const decoded = new anchor.BorshInstructionCoder(program.idl).decode(instruction.data)!;
+    const definition = program.idl.instructions.find(value => value.name === decoded.name)!;
+    assert.deepEqual([...instruction.data.subarray(0, 8)], definition.discriminator);
+    assert.equal(instruction.keys.length, definition.accounts.length);
+    instruction.keys.forEach((key, i) => {
+      const account = definition.accounts[i]!;
+      assert.ok(!("accounts" in account)); assert.equal(key.isSigner, account.signer ?? false); assert.equal(key.isWritable, account.writable ?? false);
+    });
+    if ("expectedFeeVersion" in decoded.data) assert.equal((decoded.data.expectedFeeVersion as anchor.BN).toString(), "7");
+  }
+  const withdrawal = instructions.at(-1)!;
+  assert.equal(withdrawal.keys.filter(key => key.isSigner).length, 1);
+  assert.ok(withdrawal.keys.find(key => key.isSigner)!.pubkey.equals(owned.owner));
+});
+test("legacy accounts decode without requiring appended fee bytes", () => {
+  for (const name of ["pool", "request", "batch"] as const) {
+    const value = fixture(name);
+    const legacyIdl = structuredClone(program.idl);
+    const feeFields = name === "pool" ? ["feeVersion", "feeBps", "feeCap", "fees", "feeNextVersion", "feePending", "feePendingVersion", "feePendingBps", "feePendingCap", "feePendingCutoff", "feeInitialScheduled"] : name === "request" ? ["feeVersion", "feeBps", "feeCap", "gross", "fee"] : ["fees"];
+    const type = legacyIdl.types!.find(type => type.name === name)!;
+    assert.equal(type.type.kind, "struct");
+    if (type.type.kind !== "struct" || !type.type.fields || !type.type.fields.every(field => typeof field === "object" && "name" in field)) throw new Error("InvalidFixtureType");
+    type.type.fields = type.type.fields.filter(field => typeof field === "object" && "name" in field && !feeFields.includes(field.name));
+    const coder = new anchor.BorshAccountsCoder(legacyIdl);
+    const layouts = coder as unknown as { accountLayouts: Map<string, { layout: { encode(value: unknown, data: Buffer): number }; discriminator: number[] }> };
+    const entry = layouts.accountLayouts.get(name)!;
+    const bytes = Buffer.alloc(4096); Buffer.from(entry.discriminator).copy(bytes);
+    const length = entry.layout.encode(value.account, bytes.subarray(8));
+    const decoded = decodeAccount(program, name, { ...value.info, data: bytes.subarray(0, length + 8) });
+    assert.equal(decoded.schemaVersion, name === "batch" ? 2 : 1);
+    if (name === "pool") assert.equal((decoded as Accounts["pool"]).fees.toString(), "0");
+    if (name === "request") assert.equal((decoded as Accounts["request"]).fee.toString(), "0");
+    if (name === "batch") assert.equal((decoded as Accounts["batch"]).fees.toString(), "0");
+  }
 });
 test("read simulations stay unsigned and reject return data from another program", async () => {
   const { key: pool } = fixture("pool");

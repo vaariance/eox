@@ -30,14 +30,14 @@ describe("planRequest", () => {
 
   it("plans a redeem in unit quanta with a minimum in collateral base units", () => {
     expect(planRequest({ ...base, operation: "redeem", fromClass: "ETH", toClass: null, amount: "1.25", minimum: "100.5", validForBatches: 1 })).toEqual({
-      intent: { operation: "redeem", fromClass: "ETH", units: "1250000000000", minimumProceeds: "100500000", expiryBatch: 10 },
+      intent: { operation: "redeem", fromClass: "ETH", units: "1250000000000000000", minimumProceeds: "100500000", expiryBatch: 10 },
       problem: null,
     });
   });
 
   it("plans a switch in unit quanta", () => {
     expect(planRequest({ ...base, operation: "switch", fromClass: "ETH", toClass: "CRYPTO", amount: "2", minimum: "1" })).toEqual({
-      intent: { operation: "switch", fromClass: "ETH", toClass: "CRYPTO", units: "2000000000000", minimumUnits: "1000000000000", expiryBatch: 12 },
+      intent: { operation: "switch", fromClass: "ETH", toClass: "CRYPTO", units: "2000000000000000000", minimumUnits: "1000000000000000000", expiryBatch: 12 },
       problem: null,
     });
   });

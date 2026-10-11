@@ -26,6 +26,11 @@ The suite verifies:
 - Failed minimum outputs, aggregate class-capacity rejection, arithmetic rejection and released reservations.
 - Missed minutes, snapshot deadlines and thirty-price publication packet/compute usage.
 - Reusable batch/publication account rent, batch resets and preserved lazy position balances.
+- Configurable trading fees, capped and rounded at collateral precision, with post-fee minimum outputs and request-version protection.
+- Atomic treasury commitment, admin-owned withdrawal destinations and withdrawals during later execution or pauses.
+- Publication-based fee activation, 24-hour notice, cancellation, zero-rate/cap disabling and preserved request terms.
+- Legacy-pool migration with nonzero trailing allocation bytes, existing positions, payables, pending requests and predecessor history.
+- V2 receipt commitments and TypeScript state vectors checked against the Rust program encoder; legacy V1 lifecycle commitments remain covered.
 
 Test signing keys are ephemeral and unrelated to deployed runtime identities.
 
@@ -41,6 +46,18 @@ COX_ACCOUNT_FIXTURES_PATH="$PWD/packages/cox/fixtures/accounts.json" \
 ```
 
 This command intentionally rewrites the fixture. Regenerate it only with the corresponding IDL and program release, then run the client tests.
+
+The revenue-mode thirty-asset test can export separate fee-enabled accounts and measurements:
+
+```sh
+COX_PROGRAM_SO="$PWD/packages/cox/target/deploy/cox.so" \
+COX_REVENUE_ACCOUNT_FIXTURES_PATH="/tmp/cox-revenue-accounts.json" \
+COX_REVENUE_MEASUREMENTS_PATH="/tmp/cox-revenue-measurements.json" \
+  cargo test --locked --manifest-path packages/cox/crates/program-tests/Cargo.toml \
+  thirty_asset_revenue_publication_and_execution_measurements
+```
+
+It processes one deposit into each of the 30 assets and the benchmark, using real SPL transfers and fee accounting. Exporting these files does not overwrite the historical fixture.
 
 ## Measurement scope
 

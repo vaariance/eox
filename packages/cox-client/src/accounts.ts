@@ -11,6 +11,7 @@ export interface Pool extends Header {
   poolId: Integer; registry: PublicKey; methodology: PublicKey; collateralMint: PublicKey; vault: PublicKey; origin: Integer; lastBatch: Integer; sequence: Integer;
   stateDigest: number[]; benchmark: Integer; originPrices: Integer[]; lastPrices: Integer[]; references: Integer[]; classes: Class[];
   active: Integer; pending: Integer; payable: Integer; residual: Integer; nextRequestNonce: Integer; stage: PublicKey | null; initialized: boolean; queueStart: Integer; stageBatch: Integer; stageClosedEnd: Integer;
+  feeVersion: Integer; feeBps: number; feeCap: Integer; fees: Integer; feeNextVersion: Integer; feePending: boolean; feePendingVersion: Integer; feePendingBps: number; feePendingCap: Integer; feePendingCutoff: Integer; feeInitialScheduled: boolean;
 }
 export interface Position extends Header {
   pool: PublicKey; owner: PublicKey; appliedSequence: Integer; classes: { units: Integer; locked: Integer }[]; payable: Integer; refundable: Integer;
@@ -20,12 +21,13 @@ export interface Request extends Header {
   pool: PublicKey; owner: PublicKey; nonce: Integer; targetBatch: Integer; expiryBatch: Integer; operation: number; from: number; to: number; amount: Integer; units: Integer;
   minimumUnits: Integer; minimumProceeds: Integer; status: number; eligibleBatch: Integer; evaluated: boolean; boundBatch: Integer; boundSequence: Integer;
   receiptStatus: number; minted: Integer; proceeds: Integer; applied: boolean;
+  feeVersion: Integer; feeBps: number; feeCap: Integer; gross: Integer; fee: Integer;
 }
 export interface Batch extends Header {
   pool: PublicKey; batchId: Integer; sequence: Integer; cutoff: Integer; predecessorSequence: Integer; predecessorDigest: number[]; snapshotDigest: number[];
   prices: PriceWire[]; benchmark: Integer; references: Integer[]; fixed: Class[]; burns: Integer[]; mints: Integer[]; incoming: Integer[]; blocked: boolean[];
   acceptedDeposits: Integer; newPayable: Integer; transferResidual: Integer; executed: number; rejected: number; closedQueueEnd: Integer; queueStart: Integer; cursor: Integer;
-  nextQueueStart: Integer; stagedRoot: number[]; receiptRoot: number[]; acceptedAt: Integer; phase: number; safetyChanged: boolean;
+  nextQueueStart: Integer; stagedRoot: number[]; receiptRoot: number[]; acceptedAt: Integer; phase: number; safetyChanged: boolean; fees: Integer;
 }
 export interface Publication extends Header {
   pool: PublicKey; sequence: Integer; batch: Integer; stateDigest: number[]; snapshotDigest: number[]; manifestDigest: number[]; statePreimage: number[]; prices: PriceWire[]; committedAt: Integer;

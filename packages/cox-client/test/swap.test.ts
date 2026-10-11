@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import anchor, { type Idl } from "@coral-xyz/anchor";
-import { PublicKey, SYSVAR_CLOCK_PUBKEY, type AccountInfo, type Connection } from "@solana/web3.js";
+import { PublicKey, SYSVAR_CLOCK_PUBKEY, type AccountInfo, type Connection, type VersionedTransaction } from "@solana/web3.js";
 import { build } from "esbuild";
 import { CoxSwapSdk, DEVNET_TEST_COLLATERAL, type SwapPlan } from "../src/swap.ts";
 import { addresses } from "../src/pdas.ts";
@@ -20,13 +20,19 @@ function setup() {
   for (const fixture of fixtures.accounts) map.set(fixture.address, account(Buffer.from(fixture.dataHex, "hex"), new PublicKey(fixture.owner)));
   let genesis = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
   let quoteSequence: anchor.BN | null = null;
+  const quoteInstructions: { operation: number; from: number; to: number }[] = [];
   const connection = {
     getGenesisHash: async () => genesis,
     getAccountInfo: async (key: PublicKey) => map.get(key.toBase58()) ?? null,
     getMultipleAccountsInfoAndContext: async (keys: PublicKey[]) => ({ context: { slot: 100 }, value: keys.map(key => map.get(key.toBase58()) ?? null) }),
     getLatestBlockhash: async () => ({ blockhash: PublicKey.default.toBase58(), lastValidBlockHeight: 1000 }),
-    simulateTransaction: async () => ({ value: { err: null, returnData: { programId: program.programId.toBase58(),
-      data: [program.coder.types.encode("quoteRead", { sequence: quoteSequence ?? pool.sequence, minted: bn(2000000000000000000n), proceeds: bn(2000000n) }).toString("base64"), "base64"] } } }),
+    simulateTransaction: async (transaction: VersionedTransaction) => {
+      const instruction = new anchor.BorshInstructionCoder(program.idl).decode(Buffer.from(transaction.message.compiledInstructions[0]!.data))!;
+      assert.ok(instruction.name === "quoteRequest" || instruction.name === "quoteRequestWithFee");
+      quoteInstructions.push(instruction.data as { operation: number; from: number; to: number });
+      return { value: { err: null, returnData: { programId: program.programId.toBase58(),
+        data: [program.coder.types.encode(instruction.name === "quoteRequestWithFee" ? "feeQuoteRead" : "quoteRead", { sequence: quoteSequence ?? pool.sequence, minted: bn(2000000000000000000n), proceeds: bn(instruction.name === "quoteRequestWithFee" ? 1999600n : 2000000n), gross: bn(2000000n), fee: bn(400n), feeVersion: get("pool").feeVersion }).toString("base64"), "base64"] } } };
+    },
   } as unknown as Connection;
   const program = new anchor.Program(idl, { connection });
   const get = <K extends keyof Accounts>(name: K): Accounts[K] => {
@@ -65,7 +71,7 @@ function setup() {
   const expiry = BigInt(pool.lastBatch.toString()) + 10n;
   const buy = { owner, tokenAccount, amount: 2000000n, minimumUnits: 1n, expiryBatch: expiry };
   const decode = (plan: SwapPlan) => new anchor.BorshInstructionCoder(program.idl).decode(plan.instructions[0]!.data)!;
-  return { sdk, program, pool, poolId, poolKey, pdas, position, owner, tokenAccount, map, put, get, now, buy, decode,
+  return { sdk, program, pool, poolId, poolKey, pdas, position, owner, tokenAccount, map, put, get, now, buy, decode, quoteInstructions,
     setGenesis: (value: string) => { genesis = value; }, setQuoteSequence: (value: anchor.BN) => { quoteSequence = value; } };
 }
 
@@ -76,7 +82,7 @@ test("benchmark buy reserves collateral with the exact deployed ABI and an unsig
   assert.equal(plan.kind, "buy-crypto"); assert.equal(plan.testOnly, true);
   assert.equal(instruction.name, "deposit");
   const data = instruction.data as { to: number; amount: anchor.BN; minimumUnits: anchor.BN; expiry: anchor.BN };
-  assert.equal(data.to, 0); assert.equal(data.amount.toString(), "2000000");
+  assert.equal(data.to, s.pool.classes.length - 1); assert.equal(data.amount.toString(), "2000000");
   assert.equal(data.minimumUnits.toString(), "1"); assert.equal(data.expiry.toString(), s.buy.expiryBatch.toString());
   assert.ok(plan.request!.address.equals(s.pdas.request(s.poolKey, BigInt(s.pool.nextRequestNonce.toString()))));
   assert.ok(plan.request!.earliestBatchEstimate > BigInt(s.pool.lastBatch.toString()));
@@ -87,21 +93,34 @@ test("benchmark buy reserves collateral with the exact deployed ABI and an unsig
   assert.ok(transaction.transaction.serialize().length <= 1232);
 });
 
-test("sell uses only CRYPTO class zero; receipt proceeds require a separate withdrawal", async () => {
+test("sell uses only the final CRYPTO class; receipt proceeds require a separate withdrawal", async () => {
   const s = setup();
   s.position.staged = false;
-  s.position.classes[0] = { units: bn(5000000000000n), locked: bn(1000000000000n) };
+  s.position.classes[s.pool.classes.length - 1] = { units: bn(5000000000000n), locked: bn(1000000000000n) };
   s.position.payable = bn(3000000n);
   s.put("position", s.pdas.position(s.poolKey, s.owner), s.position);
   const sell = await s.sdk.prepareSell({ owner: s.owner, tokenAccount: s.tokenAccount, units: 2000000000000n, minimumProceeds: 10n, expiryBatch: s.buy.expiryBatch });
   const instruction = s.decode(sell);
   assert.equal(instruction.name, "redeem");
-  assert.equal((instruction.data as { from: number }).from, 0);
+  assert.equal((instruction.data as { from: number }).from, s.pool.classes.length - 1);
   assert.equal(sell.instructions.length, 1);
   const withdrawal = await s.sdk.prepareWithdraw({ owner: s.owner, tokenAccount: s.tokenAccount, amount: 3000000n });
   assert.equal(s.decode(withdrawal).name, "withdraw"); assert.equal(withdrawal.request, null);
   await assert.rejects(s.sdk.prepareWithdraw({ owner: s.owner, tokenAccount: s.tokenAccount, amount: 3000001n }), /SwapInsufficientPayable/);
   await assert.rejects(s.sdk.prepareSell({ owner: s.owner, tokenAccount: s.tokenAccount, units: 4000000000001n, minimumProceeds: 0n, expiryBatch: s.buy.expiryBatch }), /SwapInsufficientUnlockedUnits/);
+});
+
+test("asset-zero units cannot fund a benchmark redemption or appear in benchmark balances", async () => {
+  const s = setup();
+  s.position.staged = false;
+  s.position.classes = s.pool.classes.map(() => ({ units: bn(0), locked: bn(0) }));
+  s.position.classes[0] = { units: bn(5000000000000n), locked: bn(0) };
+  s.put("position", s.pdas.position(s.poolKey, s.owner), s.position);
+  assert.equal((await s.sdk.balances(s.owner)).availableUnits, 0n);
+  await assert.rejects(s.sdk.prepareSell({ owner: s.owner, tokenAccount: s.tokenAccount, units: 1n, minimumProceeds: 0n, expiryBatch: s.buy.expiryBatch }), /SwapInsufficientUnlockedUnits/);
+  s.position.classes[s.pool.classes.length - 1] = { units: bn(300n), locked: bn(100n) };
+  s.put("position", s.pdas.position(s.poolKey, s.owner), s.position);
+  assert.equal((await s.sdk.balances(s.owner)).availableUnits, 200n);
 });
 
 test("staged CRYPTO units and proceeds become spendable only after global finalization", async () => {
@@ -112,7 +131,7 @@ test("staged CRYPTO units and proceeds become spendable only after global finali
   s.position.payable = bn(0);
   s.position.classes = s.pool.classes.map(() => ({ units: bn(0), locked: bn(0) }));
   s.position.stagedBurns = s.pool.classes.map(() => bn(0));
-  s.position.stagedMints = s.pool.classes.map((_, i) => bn(i === 0 ? 2000000000000n : 0));
+  s.position.stagedMints = s.pool.classes.map((_, i) => bn(i === s.pool.classes.length - 1 ? 2000000000000n : 0));
   s.position.stagedUnlocks = s.pool.classes.map(() => bn(0));
   s.position.stagedPayable = bn(2000000); s.position.stagedRefundable = bn(0);
   s.put("position", s.pdas.position(s.poolKey, s.owner), s.position);
@@ -132,6 +151,10 @@ test("pool-wide nonce races require rebuilding; quotes never promise the later f
   assert.equal(quote.estimatedOutput, 2000000000000000000n);
   assert.equal(quote.guaranteed, false); assert.equal(quote.execution, "future-publication");
   assert.equal((await s.sdk.quoteSell(s.owner, 2000000000000000000n)).estimatedOutput, 2000000n);
+  assert.deepEqual(s.quoteInstructions.map(({ operation, from, to }) => ({ operation, from, to })), [
+    { operation: 0, from: 255, to: s.pool.classes.length - 1 },
+    { operation: 2, from: s.pool.classes.length - 1, to: 255 },
+  ]);
   s.setQuoteSequence(s.pool.sequence.addn(1));
   await assert.rejects(s.sdk.quoteBuy(s.owner, 2000000n), /SwapReadChangedRetry/);
 });
@@ -156,7 +179,7 @@ test("wrong collateral, network, ownership, precision and paused/uninitialized p
 test("request visibility, safety rejection and explicit refunds use committed states", async () => {
   const s = setup();
   const request = s.get("request");
-  request.owner = s.owner; request.operation = 0; request.to = 0; request.from = 255;
+  request.owner = s.owner; request.operation = 0; request.to = s.pool.classes.length - 1; request.from = 255;
   request.status = 0; request.applied = true; request.receiptStatus = 4;
   request.boundSequence = s.pool.sequence.addn(1); request.amount = bn(2000000n);
   request.minted = bn(999); request.proceeds = bn(999);
@@ -179,7 +202,7 @@ test("request visibility, safety rejection and explicit refunds use committed st
 test("accepted requests cannot be cancelled or expired even after a minute", async () => {
   const s = setup();
   const request = s.get("request");
-  request.owner = s.owner; request.operation = 0; request.to = 0; request.from = 255;
+  request.owner = s.owner; request.operation = 0; request.to = s.pool.classes.length - 1; request.from = 255;
   request.status = 0; request.applied = false; request.evaluated = false;
   request.targetBatch = s.pool.lastBatch.addn(1); request.expiryBatch = request.targetBatch.addn(1);
   const nonce = BigInt(request.nonce.toString());
@@ -202,14 +225,59 @@ test("swap entry point bundles for browsers without Node built-ins or service si
   assert.ok(!result.outputFiles[0]!.text.includes('from "node:crypto"'));
 });
 
-test("compiled-program benchmark deposit receipt preserves the protocol's unit denomination", async () => {
+test("compiled-program asset-zero receipt is refused as a benchmark swap", async () => {
   const s = setup();
   const receipt = s.get("request");
   assert.equal(receipt.operation, 0); assert.equal(receipt.to, 0);
   assert.equal(receipt.amount.toString(), "1000000");
-  const result = await s.sdk.request(receipt.owner, BigInt(receipt.nonce.toString()));
-  assert.equal(result.status, "filled");
-  assert.equal(result.mintedUnits, 1000000000000000000n);
+  await assert.rejects(s.sdk.request(receipt.owner, BigInt(receipt.nonce.toString())), /SwapRequestNotBenchmark/);
+  assert.equal((await s.sdk.market()).cryptoClass, s.pool.classes.length - 1);
   assert.equal((await s.sdk.market()).cryptoUnitDecimals, 12);
-  assert.equal(result.mintedUnits / 10n ** 12n, 1000000n);
+});
+
+test("migrated pool swaps lock fee versions and expose gross, fee and net quotes", async () => {
+  const s = setup();
+  s.pool.schemaVersion = 2; s.pool.feeVersion = bn(1); s.pool.feeBps = 2; s.pool.feeCap = bn(2000000);
+  s.put("pool", s.poolKey, s.pool);
+  const quote = await s.sdk.quoteBuy(s.owner, 2000000n);
+  assert.deepEqual(quote.feeTerms, { version: 1n, bps: 2, cap: 2000000n });
+  assert.equal(quote.gross, 2000000n); assert.equal(quote.fee, 400n); assert.equal(quote.netCollateral, 1999600n);
+  const buy = await s.sdk.prepareBuy({ ...s.buy, expectedFeeVersion: quote.feeTerms.version });
+  const instruction = s.decode(buy);
+  assert.equal(instruction.name, "depositWithFee");
+  assert.equal((instruction.data as { expectedFeeVersion: anchor.BN }).expectedFeeVersion.toString(), "1");
+  assert.deepEqual(buy.feeTerms, quote.feeTerms);
+  s.position.staged = false;
+  s.position.classes[s.pool.classes.length - 1] = { units: bn(5000000000000n), locked: bn(0) };
+  s.put("position", s.pdas.position(s.poolKey, s.owner), s.position);
+  const sellQuote = await s.sdk.quoteSell(s.owner, 2000000000000n);
+  assert.equal(sellQuote.estimatedOutput, 1999600n);
+  const sell = await s.sdk.prepareSell({ owner: s.owner, tokenAccount: s.tokenAccount, units: 2000000000000n,
+    minimumProceeds: 1999600n, expiryBatch: s.buy.expiryBatch, expectedFeeVersion: 1n });
+  assert.equal(s.decode(sell).name, "redeemWithFee");
+  s.pool.feeVersion = bn(2); s.put("pool", s.poolKey, s.pool);
+  await assert.rejects(s.sdk.transaction(buy), /SwapFeeChangedRebuild/);
+  await assert.rejects(s.sdk.prepareBuy({ ...s.buy, expectedFeeVersion: 1n }), /SwapFeeChangedRebuild/);
+  await assert.rejects(s.sdk.prepareSell({ owner: s.owner, tokenAccount: s.tokenAccount, units: 1n,
+    minimumProceeds: 0n, expiryBatch: s.buy.expiryBatch, expectedFeeVersion: 1n }), /SwapFeeChangedRebuild/);
+});
+test("committed fee reserves cannot be mistaken for available custody or staged user receipts", async () => {
+  const s = setup();
+  s.pool.schemaVersion = 2; s.pool.fees = bn(100); s.put("pool", s.poolKey, s.pool);
+  await assert.rejects(s.sdk.market(), /SwapCollateralShortfall/);
+  const vault = s.map.get(s.pool.vault.toBase58())!;
+  vault.data.writeBigUInt64LE(vault.data.readBigUInt64LE(64) + 100n, 64);
+  assert.equal((await s.sdk.market()).feeTerms.version, 0n);
+  const request = s.get("request");
+  request.schemaVersion = 2; request.operation = 0; request.to = s.pool.classes.length - 1;
+  request.status = 0; request.applied = true; request.boundSequence = s.pool.sequence.addn(1);
+  request.receiptStatus = 0; request.feeVersion = bn(1); request.feeBps = 2; request.feeCap = bn(2000000);
+  request.gross = bn(1000000); request.fee = bn(200);
+  s.put("request", s.pdas.request(s.poolKey, BigInt(request.nonce.toString())), request);
+  const staged = await s.sdk.request(request.owner, BigInt(request.nonce.toString()));
+  assert.equal(staged.fee, 0n); assert.equal(staged.gross, 0n);
+  s.pool.sequence = request.boundSequence; s.put("pool", s.poolKey, s.pool);
+  const committed = await s.sdk.request(request.owner, BigInt(request.nonce.toString()));
+  assert.equal(committed.fee, 200n); assert.equal(committed.gross, 1000000n);
+  assert.equal(committed.feeTerms.version, 1n);
 });

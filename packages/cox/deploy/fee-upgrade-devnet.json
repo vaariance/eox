@@ -1,0 +1,70 @@
+{
+  "schema": "cox.fee-upgrade/v1",
+  "status": "prepared-not-deployed",
+  "network": "solana-devnet",
+  "program": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+  "poolId": "1",
+  "pool": "F44g6A58N3cu9TGaDE1LiDB3r1BCxCrfFkMQV1DcEv37",
+  "vault": "6fMcr5FTx3ZmrZp5XpxjD3fpUqfdza27XccVHaaoRGEp",
+  "collateralMint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "methodology": "5h3fnfD9BFbJ1iRmRTy7fd6DPy1xEWNg4h2KGheRxFT6",
+  "methodologyDigest": "8dff8843ae85724738e37b9216257fb2407be42655d9fa25b6ba71375ee1c819",
+  "feePolicyDigest": "2cce668146fd6a58a922a03d0fa6ba0df8d1ed82cfb3d0b8d003218d1d673b96",
+  "policy": "COX/FEES/V1",
+  "initial": {
+    "bps": 2,
+    "capBaseUnits": "2000000",
+    "activationCutoff": null
+  },
+  "limits": {
+    "bps": 100,
+    "capBaseUnits": "2000000",
+    "noticeSeconds": 86400
+  },
+  "schemas": {
+    "pool": 2,
+    "request": 2,
+    "batch": 3,
+    "publication": 3,
+    "state": "COX/STATE/V2",
+    "receipt": "COX/RECEIPTS/V2"
+  },
+  "sbfBuildSha256": "865dcb315e2b9359294df8640c9d6aa04b3f9c308e2f1b74ff5a8db0e36a9b3c",
+  "sbfBytes": 1029528,
+  "idlSha256": "0c0da22338aedbddbaa495f48c46e762b59d5a1a81ef7143ad818e572d91f493",
+  "approvedCommit": null,
+  "verification": {
+    "compiledProgramTests": 29,
+    "clientTests": 29,
+    "publisherTests": 79,
+    "rustWorkspaceTests": 26,
+    "typeChecksPassed": true,
+    "clippyPassed": true,
+    "devnetFeeJourney": "not-run"
+  },
+  "runtimeInstructionsUnchanged": true,
+  "adminInstructions": [
+    "migrate_pool",
+    "schedule_fees",
+    "cancel_fees",
+    "withdraw_fees"
+  ],
+  "userInstructions": [
+    "deposit_with_fee",
+    "switch_with_fee",
+    "redeem_with_fee"
+  ],
+  "quoteInstruction": "quote_request_with_fee",
+  "handoff": {
+    "joel": "Update signer layouts, API fee-aware builders/quotes/receipts and custody including committed fees. Keep admin/user instructions refused by publisher signer.",
+    "godwin": "Display gross/fee/net and locked terms before signing. Update independent monitor for V2 commitments and separate fee custody.",
+    "peter": "Approval, coordinated program migration and publisher deployment, initial activation, live fee journey."
+  },
+  "references": {
+    "spec": "packages/cox/SPEC.md",
+    "rollout": "packages/cox/deploy/README.md",
+    "accounts": "packages/cox/fixtures/fee-accounts.json",
+    "vectors": "packages/cox/fixtures/fee-state-vectors.json",
+    "measurements": "packages/cox/results/revenue-runtime.json"
+  }
+}

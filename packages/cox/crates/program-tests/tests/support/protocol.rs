@@ -151,7 +151,7 @@ impl PoolHarness {
         let pool = self.pool_state();
         assert_eq!(
             self.h.token_balance(self.vault),
-            pool.active + pool.pending + pool.payable + pool.residual
+            pool.active + pool.pending + pool.payable + pool.residual + pool.fees
         );
         assert_eq!(
             pool.active,

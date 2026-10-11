@@ -57,6 +57,15 @@ export class CoxInstructions {
   redeem(keys: OwnerKeys, from: number, units: bigint, minimumProceeds: bigint, expiry: bigint) {
     return this.submit("redeem", { from, units: bn(units), minimumProceeds: bn(minimumProceeds), expiry: bn(expiry) }, keys);
   }
+  depositWithFee(keys: OwnerKeys, to: number, amount: bigint, minimumUnits: bigint, expiry: bigint, expectedFeeVersion: bigint) {
+    return this.submit("depositWithFee", { to, amount: bn(amount), minimumUnits: bn(minimumUnits), expiry: bn(expiry), expectedFeeVersion: bn(expectedFeeVersion) }, keys);
+  }
+  switchWithFee(keys: OwnerKeys, from: number, to: number, units: bigint, minimumUnits: bigint, expiry: bigint, expectedFeeVersion: bigint) {
+    return this.submit("switchWithFee", { from, to, units: bn(units), minimumUnits: bn(minimumUnits), expiry: bn(expiry), expectedFeeVersion: bn(expectedFeeVersion) }, keys);
+  }
+  redeemWithFee(keys: OwnerKeys, from: number, units: bigint, minimumProceeds: bigint, expiry: bigint, expectedFeeVersion: bigint) {
+    return this.submit("redeemWithFee", { from, units: bn(units), minimumProceeds: bn(minimumProceeds), expiry: bn(expiry), expectedFeeVersion: bn(expectedFeeVersion) }, keys);
+  }
   cancel(keys: Omit<OwnerKeys, "userToken">) {
     const { owner, ...rest } = keys;
     return this.build("cancel", {}, { ...rest, authority: owner, registry: this.pdas.registry() });
@@ -81,6 +90,17 @@ export class CoxInstructions {
   readReference(pool: PublicKey, classIndex: number) { return this.build("readReference", { class: classIndex }, { pool }); }
   readPosition(pool: PublicKey, owner: PublicKey) { return this.build("readPosition", { owner }, { pool, position: this.pdas.position(pool, owner) }); }
   quoteRequest(pool: PublicKey, operation: 0 | 1 | 2, from: number, to: number, amount: bigint, units: bigint) { return this.build("quoteRequest", { operation, from, to, amount: bn(amount), units: bn(units) }, { pool }); }
+  quoteRequestWithFee(pool: PublicKey, operation: 0 | 1 | 2, from: number, to: number, amount: bigint, units: bigint, expectedFeeVersion: bigint) {
+    return this.build("quoteRequestWithFee", { operation, from, to, amount: bn(amount), units: bn(units), expectedFeeVersion: bn(expectedFeeVersion) }, { pool });
+  }
+  migratePool(admin: PublicKey, keys: PoolKeys) { return this.build("migratePool", {}, { admin, registry: this.pdas.registry(), ...keys }); }
+  scheduleFees(admin: PublicKey, keys: PoolKeys, bps: number, cap: bigint, activationCutoff: bigint) {
+    return this.build("scheduleFees", { bps, cap: bn(cap), activationCutoff: bn(activationCutoff) }, { admin, registry: this.pdas.registry(), ...keys });
+  }
+  cancelFees(admin: PublicKey, keys: PoolKeys) { return this.build("cancelFees", {}, { admin, registry: this.pdas.registry(), ...keys }); }
+  withdrawFees(admin: PublicKey, keys: PoolKeys, treasuryToken: PublicKey, amount: bigint) {
+    return this.build("withdrawFees", { amount: bn(amount) }, { admin, registry: this.pdas.registry(), ...keys, treasuryToken, tokenProgram: TOKEN_PROGRAM });
+  }
   pause(admin: PublicKey) { return this.build("pause", {}, { admin, registry: this.pdas.registry() }); }
   unpause(admin: PublicKey) { return this.build("unpause", {}, { admin, registry: this.pdas.registry() }); }
   rotateRuntime(admin: PublicKey, newRuntime: PublicKey, effectiveBatch: bigint) { return this.build("rotateRuntime", { newRuntime, effectiveBatch: bn(effectiveBatch) }, { admin, registry: this.pdas.registry() }); }

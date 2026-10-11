@@ -708,3 +708,59 @@ another agent needs to know.
 - **What:** Before pool 1's origin, the live API saw upstream `403 "Your IP or provider is blocked from this endpoint"` responses until 10:08 UTC, which neither the Worker nor the services failed over on. The Worker and both services' in-process failover now also move to the next RPC on HTTP 401, 403 and 408, as well as 429 and 5xx; other 4xx still pass through. `wrangler.toml` now declares Peter's custom domain `cox-rpc-proxy.variance.space`, so redeploys keep it; Peter's current upstreams (Ankr, then public devnet) were not changed. Deployed: Worker version `12d8410b`, signer `eox-signer-00008-wcq` (signing the publisher's traffic, none refused), public live API `cox-app-api-live-00003-rb2` (pool 1 publications 0 to 29 without gaps), VM live API at `e848856`.
 - **Rules for agents:** A 401 or 403 from an RPC means the provider refused us, not that the request was wrong; fail over rather than surface it.
 - **Refs:** commits up to `e848856`.
+
+### 2026-10-11 · Godwin (Claude Code) · Swap page uses @cox/client/swap
+
+- **Area:** `apps/web`.
+- **What:** Following `product.md` version 14, the Swap page now moves only between the pool's test collateral and the CRYPTO class, through Peter's `CoxSwapSdk`. The SDK runs on the server of the Next.js app against Solana devnet pool 0: market state, balances, on-chain quote, `prepareBuy`, `prepareSell`, `prepareWithdraw` and `transaction`. The wallet signs in the browser after a check that it is the fee payer and only signer, and the server sends the bytes to devnet. Checked against devnet at publication sequence 6: the market read and a 250 test USDC quote (250,000,000 CRYPTO units) work, and the production build passes. This narrows the rule in Godwin's 2026-10-11 "In-browser request building removed from the web app" entry: the Swap page prepares transactions with Peter's SDK as `product.md` assigns; asset-page Buy, Switch, Redeem, Cancel, Refund and Withdraw still go through Joel's app API.
+- **Rules for agents:** The collateral is still the devnet test mint `5rpGrekf…wV3X` (supply 0 when checked), not Circle's devnet USDC, so the app keeps the `tUSDC` label. No swap has been signed by a real wallet yet. `apps/web` now needs `experimental.externalDir` to import `packages/cox/idl/cox.json`.
+- **Open:** Peter: how a tester gets test collateral, since the mint's supply is 0. Joel: a local `APP_API_SOURCE=cox-live` server at `d07a773` still reports no publication while the pool is at sequence 6, so Markets stays empty; this looks like the indexer change noted in Joel's 2026-10-11 J5 entry.
+- **Refs:** `apps/web/README.md` (Swap page), commits `b8597f5`..`4cb55a8`; `product.md` version 14.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app reads the public live app API; Faucet page; Vercel redeployed
+
+- **Area:** `apps/web`; Vercel project `cox-web`.
+- **What:** Joel's live app API is public at `https://cox-app-api-live-529206295845.europe-west1.run.app` and is now the web app's default (`COX_API_URL` still overrides; the fixture API stays at the `us-central1` address). Checked at publication sequence 59: all pages load with the 30 assets, prices, references and charts. The navigation is Markets, CRYPTO, Portfolio, Swap, Faucet; the Publications page stays at `/publications` without a link. The new Faucet page links to Solana's devnet SOL faucet and Circle's devnet USDC faucet and shows the connected wallet's balances. At Godwin's request the status banner no longer carries the "test collateral, MVP-0, operator-attested prices" line. <https://cox-web.vercel.app> was redeployed from `dev` with these changes. Supersedes the statement in Godwin's 2026-10-11 "Web app deployed on Vercel" entry that the site shows fixture data only.
+- **Rules for agents:** `product.md` G3 asks for the test-collateral, MVP-0 and operator-attested labels on every trading screen; they were removed from the banner by Godwin's decision for the demo, so do not assume the app still shows them. The pool's collateral is still the test mint `5rpGrekf…wV3X`, not Circle's devnet USDC `4zMMC9sr…ncDU`, so USDC from the Faucet page cannot be deposited into pool 0.
+- **Open:** Peter: whether a pool on Circle's devnet USDC will be created, or the test mint handed to testers. No request has been signed by a real wallet yet.
+- **Refs:** `apps/web/README.md`, commits `d6c57a2`..`a76dcbf` and the three that follow.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app on pool 1 and devnet USDC; Swap page back on the app API
+
+- **Area:** `apps/web`.
+- **What:** Following Joel's 2026-10-11 "Signer and live APIs moved to pool 1 (devnet USDC)" entry, the web app labels the collateral `USDC` (Circle's devnet USDC), and the Faucet page reads the wallet's devnet SOL and USDC. The Swap page (collateral ↔ CRYPTO only) now uses the app API's `buildDeposit` and `buildRedeem` with class `CRYPTO`, and `apps/web` no longer depends on `@cox/client`. A dry run against the public live API prepared a 1 USDC deposit into CRYPTO for pool 1 and was refused only because the test owner had no USDC account. Supersedes Godwin's 2026-10-11 "Swap page uses @cox/client/swap" entry.
+- **Rules for agents:** Do not use `@cox/client/swap` for the benchmark until it is fixed: its `CRYPTO_CLASS` is 0, which is the first asset's class (BTC), while `packages/cox/SPEC.md` §3, the program (`h.push(SCALE)` last) and the app API put CRYPTO at index N (30). Its `DEVNET_TEST_COLLATERAL` is also pool 0's mint. An empty class mints one unit per collateral base unit, so the app estimates an empty class at 10^-6 USDC per unit.
+- **Open:** Peter: fix `CRYPTO_CLASS` and its tests in `packages/cox-client/src/swap.ts` (he confirmed to Godwin that CRYPTO is the last index). No request has been signed by a real wallet yet.
+- **Refs:** `apps/web/README.md` (Swap page), commits `d1e605f`..`0d6bf73`.
+
+### 2026-10-11 · Peter (Codex) · Configurable fee upgrade prepared
+
+- **Area:** `packages/cox`, `packages/cox-client`, `apps/cox-publisher`.
+- **What:** Implemented the approved fee extension: initial 2 bps/$2 cap, admin limits 100 bps/$2, 24-hour notice after initial scheduling, request-locked terms, net minimums, finalization-only treasury credits and admin-owned collateral withdrawals. Pool 1 migrates in place; legacy requests/history remain supported. Added stale-padding migration protection, V2 commitments, compiled fixtures, integration handoff and rollout instructions. Verification: 29 compiled lifecycle/custody tests, 29 client tests, 78 publisher tests and 26 Rust workspace tests pass; type checks, formatting and clippy pass.
+- **Rules for agents:** This is prepared, uncommitted and not deployed. Do not enable fees before matching signer/API/UI integration and coordinated upgrade approval. Runtime signer allowlist stays the same six instructions; admin and user fee instructions are excluded. Use fee-aware builders with expected configuration versions and include `pool.fees` in vault accounting. Preserve V1 history and sealed methodology bytes; read the explicit `COX/FEES/V1` extension in SPEC.md.
+- **Open:** Commit/deployment approval; Joel's signer/API integration; Godwin's UI/monitor integration; devnet fee journey and activation. No live service was changed by this implementation.
+- **Refs:** `packages/cox/deploy/fee-upgrade-devnet.json`, `packages/cox/deploy/README.md`, `packages/cox/fixtures/fee-accounts.json`, `packages/cox/fixtures/fee-state-vectors.json`, `packages/cox/results/revenue-runtime.json`.
+
+### 2026-10-11 · Peter (Codex) · Fee implementation commit approved
+
+- **Area:** COX configurable fee release and publisher history compatibility.
+- **What:** Peter approved committing the prepared fee implementation. Committed as `2c16095`; publisher verification now includes 79 passing tests with mixed V1/V2 archive continuity. This supersedes the uncommitted status in the earlier 2026-10-11 Configurable fee upgrade prepared entry.
+- **Rules for agents:** Commit approval does not authorize deployment or fee activation. Keep the live pool and publisher unchanged until the coordinated upgrade is separately approved.
+- **Open:** Joel/Godwin integration, deployment approval, in-place migration and live fee journey.
+- **Refs:** `2c16095`, `packages/cox/deploy/fee-upgrade-devnet.json`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app: swap for CRYPTO, then buy and sell assets with CRYPTO
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's direction, and matching `product.md` version 14, USDC enters and leaves only on the Swap page (deposit into CRYPTO, redeem from CRYPTO). Asset pages now offer Buy (switch CRYPTO → asset) and Sell (switch asset → CRYPTO) and no longer take USDC directly; the CRYPTO page links to Swap. The first real request went through the deployed app on pool 1: Godwin's wallet deposited 10 USDC into CRYPTO (class 30), filled, vault and ledger both 10 USDC. Units are displayed at 10^(12 + collateral decimals) quanta per unit, so 10 USDC reads as 10 CRYPTO and a fresh class has unit value 1; requests are still sent in exact quanta.
+- **Rules for agents:** The displayed unit is a web-app convention only; the API, the program and `packages/cox` still count units at 10^12. The app presents CRYPTO as what the user pays with, but it is the CRYPTO claim class: its value in USDC can change once other classes hold backing.
+- **Open:** A switch (Buy or Sell) has not been signed by a real wallet yet.
+- **Refs:** `apps/web/README.md` (Swap, buy and sell), the three commits before this entry.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app: full exit path, position trading view, candles
+
+- **Area:** `apps/web`.
+- **What:** Since the previous entry a real wallet has completed the whole journey on pool 1 through the deployed app: swap in, buy (switch from CRYPTO), cash out and withdraw. Added: Cash out (redeem straight from any class to USDC) on asset pages and Portfolio rows; cost, worth and gain or loss per position from the wallet's filled requests (`src/lib/basis.ts`, average cost); a snackbar when an order is placed; a position page at `/portfolio/<class>` laid out as a trading screen with bought-at and sold-at prices (`src/lib/trades.ts`); charts with a crosshair, entry line, trade markers, candlesticks, bar intervals and ranges up to 1M. The server now keeps the last 1,440 publications in memory and fetches only newer ones, starting from `latestSequence − 1440`.
+- **Rules for agents:** Cost and gain or loss are a web-app calculation, not a figure from the program or the app API. Candles are built from one value per publication, so they are not exchange OHLC. The 1W and 1M ranges show at most 24 hours.
+- **Open:** Joel: a compact history route (for example one value per class and asset per publication, or pre-grouped bars) so the app can show a week or a month without downloading every publication; and a deposited basis in the portfolio.
+- **Refs:** `apps/web/README.md`.

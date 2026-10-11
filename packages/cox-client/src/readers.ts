@@ -1,20 +1,53 @@
 import { Buffer } from "buffer";
-import type { Program } from "@coral-xyz/anchor";
+import { BN, BorshAccountsCoder, type Idl, type Program } from "@coral-xyz/anchor";
 import { PublicKey, type AccountInfo } from "@solana/web3.js";
 import type { Accounts, Pool, Position, Publication, Request } from "./accounts.ts";
 import { addresses } from "./pdas.ts";
 import { decodeState, sha256 } from "./wire.ts";
 
+const appended = {
+  pool: ["feeVersion", "feeBps", "feeCap", "fees", "feeNextVersion", "feePending", "feePendingVersion", "feePendingBps", "feePendingCap", "feePendingCutoff", "feeInitialScheduled"],
+  request: ["feeVersion", "feeBps", "feeCap", "gross", "fee"],
+  batch: ["fees"],
+};
+const legacyCoders = new WeakMap<Program, BorshAccountsCoder>();
+function legacyCoder(program: Program): BorshAccountsCoder {
+  let coder = legacyCoders.get(program);
+  if (!coder) {
+    const idl = structuredClone(program.idl) as Idl;
+    for (const type of idl.types ?? []) {
+      const fields = appended[type.name as keyof typeof appended];
+      if (fields && type.type.kind === "struct" && type.type.fields && type.type.fields.every(field => typeof field === "object" && "name" in field)) {
+        type.type.fields = type.type.fields.filter(field => typeof field === "object" && "name" in field && !fields.includes(field.name));
+      }
+    }
+    coder = new BorshAccountsCoder(idl);
+    legacyCoders.set(program, coder);
+  }
+  return coder;
+}
 export function decodeAccount<K extends keyof Accounts>(program: Program, name: K, info: AccountInfo<Buffer>): Accounts[K] {
   if (!info.owner.equals(program.programId)) throw new Error("AccountOwnerMismatch");
-  const account = program.coder.accounts.decode(name, info.data) as Accounts[K];
-  if (account.schemaVersion !== (name === "batch" || name === "publication" ? 2 : 1)) throw new Error("AccountVersionMismatch");
+  if (info.data.length < 10) throw new Error("AccountVersionMismatch");
+  const schema = info.data.readUInt16LE(8);
+  const legacy = name === "pool" || name === "request" ? schema === 1 : name === "batch" ? schema === 2 : false;
+  const supported = name === "pool" || name === "request" ? schema === 1 || schema === 2
+    : name === "batch" || name === "publication" ? schema === 2 || schema === 3 : schema === 1;
+  if (!supported) throw new Error("AccountVersionMismatch");
+  const account = (legacy ? legacyCoder(program) : program.coder.accounts).decode(name, info.data) as Accounts[K];
+  if (legacy) {
+    for (const field of appended[name as keyof typeof appended] ?? []) {
+      const value = field === "feeBps" || field === "feePendingBps" ? 0 : field === "feePending" || field === "feeInitialScheduled" ? false : new BN(0);
+      Object.assign(account, { [field]: value });
+    }
+  }
   return account;
 }
 export function checkedPublication(programId: PublicKey, pool: PublicKey, value: Publication) {
-  if (value.schemaVersion !== 2) throw new Error("AccountVersionMismatch");
+  if (value.schemaVersion !== 2 && value.schemaVersion !== 3) throw new Error("AccountVersionMismatch");
   if (!value.pool.equals(pool) || !sha256(Buffer.from(value.statePreimage)).equals(Buffer.from(value.stateDigest))) throw new Error("PublicationIdentityMismatch");
   const state = decodeState(Buffer.from(value.statePreimage));
+  if ((value.schemaVersion === 3) !== (state.feeState !== undefined)) throw new Error("PublicationVersionMismatch");
   if (!Buffer.from(state.program).equals(programId.toBuffer()) || !Buffer.from(state.pool).equals(pool.toBuffer()) || state.sequence.toString() !== value.sequence.toString() || state.batch.toString() !== value.batch.toString()
     || !Buffer.from(state.snapshot).equals(Buffer.from(value.snapshotDigest)) || !Buffer.from(state.manifest).equals(Buffer.from(value.manifestDigest))) throw new Error("PublicationStateMismatch");
   if (state.prices.length !== value.prices.length || state.prices.some((price, index) => price.toString() !== value.prices[index]!.priceE8.toString())) throw new Error("PublicationPriceMismatch");

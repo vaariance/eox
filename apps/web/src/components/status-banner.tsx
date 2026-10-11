@@ -17,6 +17,7 @@ export function StatusBanner({ status, origin }: { status: CoxStatus; origin: Co
   const state = states[status.state];
   const mismatch = status.monitor?.verdict === "mismatch";
 
+  if (status.state === "fresh" && !mismatch && origin !== "fixture") return null;
   return (
     <div className="border-b border-line bg-bg">
       <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-1 px-4 pt-2 text-xs text-muted sm:px-6">
@@ -35,14 +36,13 @@ export function StatusBanner({ status, origin }: { status: CoxStatus; origin: Co
         )}
         {status.executing && <span className="text-warn">Filling the accepted batch</span>}
         {status.currentBatch && <OpenBatchLabel known={status.currentBatch} />}
-        <span className={mismatch ? "text-down" : undefined}>
-          Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{status.monitor ? verdicts[status.monitor.verdict] : "no verdict yet"}</span>
-        </span>
+        {status.monitor && (
+          <span className={mismatch ? "text-down" : undefined}>
+            Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{verdicts[status.monitor.verdict]}</span>
+          </span>
+        )}
         {origin === "fixture" && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Fixture data: synthetic assets, not market prices</span>}
       </div>
-      <p className="mx-auto w-full max-w-7xl px-4 pb-2 pt-1 text-xs text-muted sm:px-6">
-        Solana devnet · Test collateral (tUSDC has no real value) · MVP-0 is a test mechanism · Prices attested by the operator from exchange data
-      </p>
     </div>
   );
 }

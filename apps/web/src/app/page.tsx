@@ -2,18 +2,20 @@ import Link from "next/link";
 import { Change } from "@/components/change";
 import { FirstPublication } from "@/components/first-publication";
 import { PriceSource } from "@/components/price-source";
+import { RowLink } from "@/components/row-link";
 import { Sparkline } from "@/components/sparkline";
-import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
+import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
 import { CRYPTO_CLASS, changeSince, decimalsOf, classViews, currentOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 const WINDOW = 4 * HOUR;
+const SPARK = 240;
 const EMPTY = "—";
 
 function EmptyRow({ id, name, href }: { id: string; name: string; href: string }) {
   return (
-    <tr className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
+    <RowLink href={href} className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
       <th scope="row" className="px-4 py-3 text-left font-normal">
         <Link href={href} className="flex items-baseline gap-2">
           <span className="font-medium text-ink">{id}</span>
@@ -27,12 +29,12 @@ function EmptyRow({ id, name, href }: { id: string; name: string; href: string }
       <td className="px-4 py-3 text-muted">{EMPTY}</td>
       <td className="num px-4 py-3 text-right">{formatAmount(0)}</td>
       <td className="num px-4 py-3 text-right text-muted">n/a</td>
-    </tr>
+    </RowLink>
   );
 }
 
 export default async function MarketsPage() {
-  const [assets, crypto, deployment, publications, status] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications(), getStatus()]);
+  const [assets, deployment, publications, status] = await Promise.all([getAssets(), getDeployment(), getPublications(), getStatus()]);
   const current = currentOf(publications);
 
   const classes = classViews(current, assets, decimalsOf(deployment));
@@ -45,14 +47,11 @@ export default async function MarketsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-title font-semibold tracking-tight">Markets</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Each asset is measured against {crypto.label}. A reference above 100 means the asset has outperformed CRYPTO since the origin.
-          </p>
         </div>
         <dl className="flex gap-8 text-sm">
           <div>
             <dt className="text-xs text-muted">Active backing</dt>
-            <dd className="num mt-0.5 text-lg">{formatAmount(active)} <span className="text-xs text-muted">tUSDC</span></dd>
+            <dd className="num mt-0.5 text-lg">{formatAmount(active)} <span className="text-xs text-muted">USDC</span></dd>
           </div>
           <div>
             <dt className="text-xs text-muted">CRYPTO level</dt>
@@ -83,24 +82,24 @@ export default async function MarketsPage() {
               const claim = findClass(classes, asset.assetId);
               if (!current) return <EmptyRow key={asset.assetId} id={asset.assetId} name={asset.name} href={`/assets/${asset.assetId}`} />;
               return (
-                <tr key={asset.assetId} className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
+                <RowLink key={asset.assetId} href={`/assets/${asset.assetId}`} className="border-b border-line transition-colors duration-150 hover:bg-surface-2">
                   <th scope="row" className="px-4 py-3 text-left font-normal">
                     <Link href={`/assets/${asset.assetId}`} className="flex items-baseline gap-2">
                       <span className="font-medium text-ink">{asset.assetId}</span>
-                      <span className="text-xs text-muted">{asset.name}</span>
+                      {asset.name !== asset.assetId && <span className="text-xs text-muted">{asset.name}</span>}
                     </Link>
                   </th>
                   <td className="num px-4 py-3 text-right">{formatPrice(latest(priceSeries([current], asset.assetId)))}</td>
                   <td className="px-4 py-3"><PriceSource price={priceOf(current, asset.assetId)} /></td>
                   <td className="num px-4 py-3 text-right text-base">{formatAmount(latest(reference), 4)}</td>
                   <td className="px-4 py-3 text-right"><Change ratio={changeSince(reference, HOUR)} /></td>
-                  <td className="px-4 py-3"><Sparkline points={reference} tone={direction(changeSince(reference, WINDOW))} /></td>
+                  <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(changeSince(reference, WINDOW))} /></td>
                   <td className="num px-4 py-3 text-right">{formatAmount(claim.backing)}</td>
                   <td className="num px-4 py-3 text-right">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</td>
-                </tr>
+                </RowLink>
               );
             })}
-            <tr className="bg-bg">
+            <RowLink href="/crypto" className="bg-bg transition-colors duration-150 hover:bg-surface-2">
               <th scope="row" className="px-4 py-3 text-left font-normal">
                 <Link href="/crypto" className="flex items-baseline gap-2">
                   <span className="font-medium text-ink">CRYPTO</span>
@@ -111,17 +110,14 @@ export default async function MarketsPage() {
               <td className="px-4 py-3 text-xs text-muted">All {assets.length} assets</td>
               <td className="num px-4 py-3 text-right text-base">{formatAmount(100, 4)}</td>
               <td className="px-4 py-3 text-right">{current ? <Change ratio={0} /> : <span className="text-muted">{EMPTY}</span>}</td>
-              <td className="px-4 py-3">{current ? <Sparkline points={level} tone={direction(changeSince(level, WINDOW))} /> : <span className="text-muted">{EMPTY}</span>}</td>
+              <td className="px-4 py-3">{current ? <Sparkline points={level.slice(-SPARK)} tone={direction(changeSince(level, WINDOW))} /> : <span className="text-muted">{EMPTY}</span>}</td>
               <td className="num px-4 py-3 text-right">{formatAmount(cryptoClass.backing)}</td>
               <td className="num px-4 py-3 text-right">{cryptoClass.unitValue === null ? "n/a" : formatAmount(cryptoClass.unitValue, 6)}</td>
-            </tr>
+            </RowLink>
           </tbody>
         </table>
       </div>
 
-      <p className="text-xs text-muted">
-        A rising reference is not a promise of the same gain on a position. What a position can redeem for is its class unit value, set by the pool at each publication. Each price is the exchange's one-minute closing price for the batch: Kraken first, then Coinbase, then Bybit when Kraken had no trade.
-      </p>
     </div>
   );
 }

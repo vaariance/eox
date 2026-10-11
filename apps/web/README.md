@@ -18,7 +18,7 @@ Open <http://localhost:3100>. The default fixture API is hosted remotely, so a l
 
 | Variable | Purpose |
 | --- | --- |
-| `COX_API_URL` | Server-side base URL for a `cox.app-api/v1` API. Defaults to `https://cox-app-api-529206295845.us-central1.run.app`. For a local fixture API, use `http://127.0.0.1:8790`. |
+| `COX_API_URL` | Server-side base URL for a `cox.app-api/v1` API. Defaults to the live devnet API, `https://cox-app-api-live-529206295845.europe-west1.run.app`. The fixture API is `https://cox-app-api-529206295845.us-central1.run.app`. For a local fixture API, use `http://127.0.0.1:8790`. |
 | `COX_DEMO_WALLET` | Portfolio wallet used with fixture data. Defaults to the first fixture wallet; ignored in live mode. |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Browser wallet-adapter RPC. Defaults to public Solana devnet. This value is exposed to browsers; use only an endpoint intended for public client access. |
 
@@ -48,3 +48,69 @@ pnpm --filter @eox/web start
 ```
 
 Development and production builds use webpack. [`next.config.ts`](next.config.ts) maps `.js` import specifiers to workspace TypeScript sources through `resolve.extensionAlias`; use the package scripts to preserve that configuration.
+
+## Swap, buy and sell
+
+USDC enters and leaves through the Swap page only: it deposits USDC into the
+CRYPTO class and redeems CRYPTO back to USDC (`product.md` version 14), using
+the app API's `buildDeposit` and `buildRedeem`. The page presents CRYPTO as
+what the user pays with. Asset pages have two actions: Buy is a switch from
+CRYPTO into that asset's class, and Sell is a switch back to CRYPTO
+(`buildSwitch`). Cash out, on asset pages and on each Portfolio row, redeems
+straight from a class to USDC (`buildRedeem`), so leaving does not need a
+sale and a swap. The CRYPTO page has no form; it links to Swap. The app does
+not use `@cox/client/swap`, whose `CRYPTO_CLASS` is 0 while the program and
+`packages/cox/SPEC.md` §3 put CRYPTO last.
+
+Units are shown at 10^(12 + collateral decimals) quanta per displayed unit, so
+with USDC one displayed unit is 10^18 quanta. An empty class mints one unit of
+10^12 quanta per collateral base unit, so 10 USDC reads as 10 CRYPTO and a
+fresh class has a unit value of 1. Requests are still sent in exact quanta.
+
+## Faucet page
+
+The Faucet page links to Solana's devnet SOL faucet and Circle's devnet USDC
+faucet, shows the connected wallet's address to paste there, and reads its
+devnet SOL and USDC balances (`COX_RPC_URL`, default public devnet). The
+navigation no longer links to Publications; the page is still at
+`/publications`.
+
+## Gain or loss
+
+The Portfolio page and each "Your position" box show what a position cost,
+what it is worth now and the difference, to six decimal places. The app API
+has no deposited basis, so `src/lib/basis.ts` works the cost out from the
+wallet's filled requests at average cost: a swap in costs its USDC amount, a
+buy costs the value moved from CRYPTO (`receipt.proceeds`), and a sale or swap
+out reduces the cost in proportion. No figure is shown when the filled
+requests do not account for the units held.
+
+## Order confirmation and position view
+
+After a buy, sale, cash out or swap is sent, a snackbar at the top of the
+page says the order was placed, what it was and which batch it fills in, with
+links to the portfolio and the transaction. It closes after ten seconds.
+
+Clicking a row on the Portfolio page opens `/portfolio/<class>`, laid out as a
+trading screen: a header with the unit value and the position's gain or loss,
+a strip with bought at, sold at, units, paid and worth, a chart beside the
+Buy, Sell and Cash out form, and a table of the wallet's filled trades with
+the price of each. The chart (`src/components/trade-chart.tsx`, also used on
+the asset and CRYPTO pages) has a crosshair with price and time tags, a tag
+for the latest value, a dashed "Bought at" line at the average entry price and
+B and S markers where trades filled. Bought-at and sold-at prices come from
+filled requests (`src/lib/trades.ts`): the USDC value moved divided by the
+units. The Portfolio and position pages reload their publication data every 20
+seconds.
+
+## Candles, intervals and ranges
+
+Every chart can be drawn as a line or as candlesticks, with bars of 1 minute
+to 1 day and ranges of 1H, 4H, 1D, 1W and 1M. The source has one value per
+publication, so a candle opens at the previous bar's close and its high and
+low are the highest and lowest values in the bar (`src/lib/bars.ts`).
+
+The server keeps the last 1,440 publications (24 hours) in memory and fetches
+only newer ones on each request (`src/lib/data.ts`). The 1W and 1M ranges
+therefore show at most 24 hours until the app API offers a compact history
+route; the chart says how much history it is showing.

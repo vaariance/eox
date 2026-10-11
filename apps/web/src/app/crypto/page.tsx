@@ -4,7 +4,6 @@ import { Change } from "@/components/change";
 import { FirstPublication } from "@/components/first-publication";
 import { MyPosition } from "@/components/my-position";
 import { PriceSource } from "@/components/price-source";
-import { TradeForm } from "@/components/trade-form";
 import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { formatAmount } from "@/lib/format";
 import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceOf, priceSeries } from "@/lib/view";
@@ -18,7 +17,6 @@ export default async function CryptoPage() {
   const current = currentOf(publications);
   const classes = classViews(current, assets, decimals);
   const claim = findClass(classes, CRYPTO_CLASS);
-  const others = classes.filter((item) => item.id !== CRYPTO_CLASS);
 
   const level = levelSeries(publications);
   const members = crypto.members.map((member) => {
@@ -56,7 +54,7 @@ export default async function CryptoPage() {
         <div className="rounded-card border border-line bg-surface p-4 shadow-card">
           <div className="text-xs text-muted">Class unit value</div>
           <div className="num mt-2 text-2xl">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</div>
-          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} tUSDC backing</div>
+          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} USDC backing</div>
         </div>
       </div>
 
@@ -102,10 +100,12 @@ export default async function CryptoPage() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <TradeForm claim={claim} others={others} nextBatch={status.currentBatch} decimals={decimals} />
-          <MyPosition classId={CRYPTO_CLASS} unitValue={claim.unitValue} />
+          <MyPosition classId={CRYPTO_CLASS} unitValue={claim.unitValue} decimals={decimals} />
+          <Link href="/swap" className="flex h-11 items-center justify-center rounded-pill bg-accent text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90">
+            Swap USDC and CRYPTO
+          </Link>
           <p className="px-1 text-xs text-muted">
-            A CRYPTO position follows the benchmark. It is not cash and it is not risk-free: its unit value can fall.
+            CRYPTO is what you pay with on COX. Swap USDC for it, then use it to buy any asset from the Markets page.
           </p>
         </div>
       </div>
