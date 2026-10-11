@@ -21,7 +21,7 @@ const states: Record<RequestState, { label: string; tone: string; Icon: typeof C
 
 function operationLabel(request: CoxRequest): string {
   if (request.operation === "deposit") return request.toClass === CRYPTO_CLASS ? "Swap in" : "Buy";
-  if (request.operation === "redeem") return request.fromClass === CRYPTO_CLASS ? "Swap out" : "Redeem";
+  if (request.operation === "redeem") return request.fromClass === CRYPTO_CLASS ? "Swap out" : "Cash out";
   if (request.fromClass === CRYPTO_CLASS) return "Buy";
   if (request.toClass === CRYPTO_CLASS) return "Sell";
   return "Switch";

@@ -8,18 +8,22 @@ import { costBasis, paidFor } from "@/lib/basis";
 import { direction, formatAmount, formatSigned, formatWhole } from "@/lib/format";
 import { CRYPTO_CLASS, type ClassView, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
+import { useOpenBatch } from "./open-batch";
 import { RequestList } from "./request-list";
 import { SendButton } from "./send-button";
 
 export function PortfolioView({ classes, status, decimals }: { classes: ClassView[]; status: CoxStatus; decimals: number }) {
   const { portfolio, owner, live, loading } = useAccount();
+  const open = useOpenBatch(status.currentBatch);
+  const expiryBatch = open.batch ? open.batch.batch + 2 : null;
   const book = costBasis(portfolio?.requests ?? [], decimals);
   const rows = (portfolio?.positions ?? []).map((position) => {
     const units = toNumber(position.units, unitDigits(decimals));
     const unitValue = classes.find((item) => item.id === position.classId)?.unitValue ?? null;
     const redeemable = unitValue === null ? null : units * unitValue;
     const paid = paidFor(book, position.classId, units);
-    return { classId: position.classId, units, locked: toNumber(position.locked, unitDigits(decimals)), unitValue, redeemable, paid, change: redeemable === null || paid === null ? null : redeemable - paid };
+    const free = BigInt(position.units) - BigInt(position.locked);
+    return { free: free > 0n ? free.toString() : null, classId: position.classId, units, locked: toNumber(position.locked, unitDigits(decimals)), unitValue, redeemable, paid, change: redeemable === null || paid === null ? null : redeemable - paid };
   });
   const redeemable = rows.reduce((sum, row) => sum + (row.redeemable ?? 0), 0);
   const total = rows.length > 0 && rows.every((row) => row.change !== null) ? rows.reduce((sum, row) => sum + (row.change ?? 0), 0) : null;
@@ -82,7 +86,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
         {rows.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted">No positions yet.</p>
         ) : (
-          <table className="w-full min-w-[820px] text-sm">
+          <table className="w-full min-w-[940px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
                 <th scope="col" className="px-4 py-3 font-normal">Class</th>
@@ -92,6 +96,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
                 <th scope="col" className="px-4 py-3 text-right font-normal">Paid ({COLLATERAL.symbol})</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Worth now, about ({COLLATERAL.symbol})</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Gain or loss</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -106,6 +111,17 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
                   <td className="num px-4 py-3 text-right">{row.paid === null ? "—" : formatAmount(row.paid, 4)}</td>
                   <td className="num px-4 py-3 text-right">{row.redeemable === null ? "n/a" : formatAmount(row.redeemable, 6)}</td>
                   <td className={`num px-4 py-3 text-right ${tone(row.change)}`}>{row.change === null ? "—" : formatSigned(row.change, 6)}</td>
+                  <td className="px-4 py-2 text-right">
+                    <span className="inline-flex flex-col items-end gap-1">
+                      <SendButton
+                        intent={row.free !== null && expiryBatch !== null ? { operation: "redeem", fromClass: row.classId, units: row.free, minimumProceeds: "0", expiryBatch } : null}
+                        label="Cash out"
+                        connectLabel="Cash out"
+                        className="h-9 rounded-pill border border-line px-3 text-xs"
+                        quiet
+                      />
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
