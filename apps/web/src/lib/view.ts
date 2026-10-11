@@ -50,6 +50,12 @@ export function feeLabel(fee: FeeTerms | null, decimals: number): string {
   return cap > 0 ? `${rate}, at most ${cap} ${COLLATERAL.symbol}` : rate;
 }
 
+export function quotedFee(fee: string, terms: FeeTerms, decimals: number): string {
+  const amount = toNumber(fee, decimals);
+  const shown = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: decimals }).format(amount);
+  return `${shown} ${COLLATERAL.symbol} (${(terms.bps / 100).toFixed(2)}%)`;
+}
+
 export function currentOf(publications: readonly Publication[]): Publication | null {
   return publications[publications.length - 1] ?? null;
 }

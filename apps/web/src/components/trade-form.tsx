@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { formatAmount } from "@/lib/format";
 import { planRequest } from "@/lib/requests";
-import { CRYPTO_CLASS, type ClassView, feeLabel, holdingsOf, unlockedProblem } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, feeLabel, holdingsOf, quotedFee, toNumber, unitDigits, unlockedProblem } from "@/lib/view";
 import { useAccount } from "./account";
-import { TargetBatch, useOpenBatch } from "./open-batch";
+import { useOpenBatch } from "./open-batch";
 import { SendButton } from "./send-button";
+import { useQuote } from "./use-quote";
 
 type Side = "buy" | "sell";
 
@@ -17,6 +18,7 @@ const sides: { id: Side; label: string }[] = [
   { id: "sell", label: "Sell" },
 ];
 
+const VALID_FOR = 3;
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
 export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: ClassView; crypto: ClassView; nextBatch: Batch | null; decimals: number }) {
@@ -26,7 +28,6 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
   const [side, setSide] = useState<Side>("buy");
   const [amount, setAmount] = useState("10");
   const [minimum, setMinimum] = useState("");
-  const [validFor, setValidFor] = useState(3);
 
   const buying = side === "buy";
   const from = buying ? CRYPTO_CLASS : claim.id;
@@ -36,10 +37,13 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
   const held = holdings?.find((item) => item.classId === from);
   const available = held ? held.units - held.locked : holdings === null ? null : 0;
   const unitsProblem = valid ? unlockedProblem(holdings, from, parsed) : null;
-  const planned = planRequest({ operation: "switch", fromClass: from, toClass: to, amount, minimum, validForBatches: validFor, targetBatch: open.batch?.batch ?? null, collateralDecimals: decimals });
+  const planned = planRequest({ operation: "switch", fromClass: from, toClass: to, amount, minimum, validForBatches: VALID_FOR, targetBatch: open.batch?.batch ?? null, collateralDecimals: decimals });
   const fromValue = (buying ? crypto : claim).unitValue ?? 1;
   const toValue = (buying ? claim : crypto).unitValue ?? 1;
   const estimate = valid ? ((parsed * fromValue) / toValue) * (1 - (fee?.bps ?? 0) / 10000) : null;
+  const { quote, pending } = useQuote(planned.intent);
+  const quoted = quote === null || quote.mintedUnits === null ? null : toNumber(quote.mintedUnits, unitDigits(decimals));
+  const shown = quoted ?? estimate;
   const receives = buying ? `${claim.id} units` : "$CRYPTO";
   const needsCrypto = buying && live && owner !== null && available === 0;
 
@@ -73,38 +77,24 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
             </p>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="trade-condition" className="mb-1 block text-xs text-muted">Minimum to receive</label>
-            <input id="trade-condition" inputMode="decimal" placeholder="Optional" value={minimum} onChange={(event) => setMinimum(event.target.value)} className={field} />
-          </div>
-          <div>
-            <label htmlFor="trade-expiry" className="mb-1 block text-xs text-muted">Expires after</label>
-            <select id="trade-expiry" value={validFor} onChange={(event) => setValidFor(Number(event.target.value))} className={`${field} cursor-pointer`}>
-              <option value="1">1 batch</option>
-              <option value="3">3 batches</option>
-              <option value="10">10 batches</option>
-            </select>
-          </div>
+        <div>
+          <label htmlFor="trade-condition" className="mb-1 block text-xs text-muted">Minimum to receive</label>
+          <input id="trade-condition" inputMode="decimal" placeholder="Optional" value={minimum} onChange={(event) => setMinimum(event.target.value)} className={field} />
         </div>
 
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
-            <dt className="text-muted">Target batch</dt>
-            <dd className="num"><TargetBatch batch={open.batch} seconds={open.seconds} /></dd>
-          </div>
-          <div className="flex justify-between">
             <dt className="text-muted">You receive</dt>
-            <dd className="num">{estimate === null ? "—" : `≈ ${formatAmount(estimate, 4)} ${receives}`}</dd>
+            <dd className="num">{shown === null ? "—" : pending ? "…" : `≈ ${formatAmount(shown, 4)} ${receives}`}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Fee</dt>
-            <dd className="num">{feeLabel(fee, decimals)}</dd>
+            <dd className="num">{quote ? quotedFee(quote.fee, quote.feeTerms, decimals) : feeLabel(fee, decimals)}</dd>
           </div>
         </dl>
 
 
-        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? null : unitsProblem)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={pending ? "Calculating" : buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? "" : unitsProblem) ?? (pending ? "" : null)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

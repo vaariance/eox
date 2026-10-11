@@ -6,10 +6,11 @@ import { useState } from "react";
 import { COLLATERAL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
 import { planRequest } from "@/lib/requests";
-import { CRYPTO_CLASS, type ClassView, feeLabel, holdingsOf, unlockedProblem } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, feeLabel, holdingsOf, quotedFee, toNumber, unitDigits, unlockedProblem } from "@/lib/view";
 import { useAccount } from "./account";
-import { TargetBatch, useOpenBatch } from "./open-batch";
+import { useOpenBatch } from "./open-batch";
 import { SendButton } from "./send-button";
+import { useQuote } from "./use-quote";
 
 const VALID_FOR_BATCHES = 3;
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
@@ -39,6 +40,9 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
   });
   const gross = valid ? (buying ? parsed / unitValue : parsed * unitValue) : null;
   const estimate = gross === null ? null : gross * (1 - (fee?.bps ?? 0) / 10000);
+  const { quote, pending } = useQuote(planned.intent);
+  const quoted = quote === null ? null : buying ? (quote.mintedUnits === null ? null : toNumber(quote.mintedUnits, unitDigits(decimals))) : toNumber(quote.proceeds ?? quote.net, decimals);
+  const shown = quoted ?? estimate;
   const give = buying ? COLLATERAL.symbol : "$CRYPTO";
   const get = buying ? "$CRYPTO" : COLLATERAL.symbol;
 
@@ -65,28 +69,20 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
         <div className="rounded-control bg-surface-2 p-3">
           <div className="mb-2 block text-xs text-muted">You get (estimate)</div>
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
-            <output htmlFor="swap-amount" className={`${fixed} num`}>{estimate === null ? "—" : `≈ ${formatAmount(estimate)}`}</output>
+            <output htmlFor="swap-amount" className={`${fixed} num`}>{shown === null ? "—" : pending ? "…" : `≈ ${formatAmount(shown, quoted === null ? 2 : 4)}`}</output>
             <span className={fixed}>{get}</span>
           </div>
         </div>
 
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
-            <dt className="text-muted">Target batch</dt>
-            <dd className="num"><TargetBatch batch={open.batch} seconds={open.seconds} /></dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-muted">Stays valid for</dt>
-            <dd className="num">{VALID_FOR_BATCHES} batches</dd>
-          </div>
-          <div className="flex justify-between">
             <dt className="text-muted">Fee</dt>
-            <dd className="num">{feeLabel(fee, decimals)}</dd>
+            <dd className="num">{quote ? quotedFee(quote.fee, quote.feeTerms, decimals) : feeLabel(fee, decimals)}</dd>
           </div>
         </dl>
 
 
-        <SendButton describe={`Swap ${amount} ${give} for ${get}`} intent={planned.intent} label="Swap" connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={`Swap ${amount} ${give} for ${get}`} intent={planned.intent} label={pending ? "Calculating" : "Swap"} connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem ?? (pending ? "" : null)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

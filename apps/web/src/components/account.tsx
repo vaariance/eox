@@ -16,10 +16,12 @@ interface Account {
   portfolio: Portfolio | null;
   loading: boolean;
   fee: FeeTerms | null;
+  apiUrl: string;
+  sequence: number | null;
   refresh: () => Promise<void>;
 }
 
-const AccountContext = createContext<Account>({ live: false, owner: null, portfolio: null, loading: false, fee: null, refresh: async () => undefined });
+const AccountContext = createContext<Account>({ live: false, owner: null, portfolio: null, loading: false, fee: null, apiUrl: "", sequence: null, refresh: async () => undefined });
 
 function parse<T>(event: Event): T | null {
   try {
@@ -116,10 +118,10 @@ export function AccountProvider({
   }, [streaming, router, refresh]);
 
   const value = useMemo<Account>(() => {
-    if (!live) return { live, owner, portfolio: demo, loading: false, fee, refresh };
+    if (!live) return { live, owner, portfolio: demo, loading: false, fee, apiUrl, sequence, refresh };
     const loaded = own !== null && own.owner === owner;
-    return { live, owner, portfolio: loaded ? own.portfolio : null, loading: owner !== null && !loaded, fee, refresh };
-  }, [live, owner, demo, own, fee, refresh]);
+    return { live, owner, portfolio: loaded ? own.portfolio : null, loading: owner !== null && !loaded, fee, apiUrl, sequence, refresh };
+  }, [live, owner, demo, own, fee, apiUrl, sequence, refresh]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
