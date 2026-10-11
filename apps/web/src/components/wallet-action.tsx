@@ -1,9 +1,13 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useEffect, useState } from "react";
 
 export function WalletAction({ needsWallet, className }: { needsWallet: string; className: string }) {
-  const { connected } = useWallet();
+  const wallet = useWallet();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const connected = mounted && wallet.connected;
   return (
     <>
       <button type="submit" disabled className={`${className} opacity-50`}>
