@@ -1,0 +1,1169 @@
+{
+  "schema": "cox.app-api/fee-examples/v1",
+  "source": "Responses produced by the live source, builders and quote over packages/cox/fixtures/fee-accounts.json (compiled fee-upgrade accounts, synthetic devnet pool). The quote's simulated return mirrors that fixture's committed receipt. Not live market data.",
+  "status": {
+    "fees": {
+      "policy": "COX/FEES/V1",
+      "active": {
+        "version": "1",
+        "bps": 2,
+        "cap": "2000000"
+      },
+      "scheduled": null,
+      "migrated": true,
+      "committed": "6200"
+    },
+    "reconciliation": {
+      "sequence": 2,
+      "vault": "31000000",
+      "ledger": "31000000",
+      "fees": "6200",
+      "covered": true
+    }
+  },
+  "publication": {
+    "identity": {
+      "program": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+      "poolId": "0",
+      "sequence": 2,
+      "batch": 2,
+      "predecessorSequence": 1,
+      "predecessorBatch": 1,
+      "missedBatches": [],
+      "cutoff": 120120,
+      "manifestDigest": "58c8444f8e5b1ee223a43597d8e8bf7073122a04c877b6f0687e35cc7b1f67e1",
+      "snapshotDigest": "090de526533d88e47f4e90580b411a733118b98fefbf3305786739c9f3fa12d9",
+      "stateDigest": "0c23b98a12684136b505d93a080903bf2da4616a3d4dd50dd9ed2ade5fb21747",
+      "committedAt": 120120,
+      "finalization": {
+        "transaction": null,
+        "slot": 1,
+        "finalized": true
+      }
+    },
+    "prices": [
+      {
+        "assetId": "BTC",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "ETH",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "SOL",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "XRP",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "BNB",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "TRX",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "AVAX",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "DOT",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "NEAR",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "SUI",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "APT",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "UNI",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "ARB",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "OP",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "INJ",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "AAVE",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "ZEC",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "STRK",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "HYPE",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "TAO",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "WLD",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "ONDO",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "ENA",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "ZRO",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "FET",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "JUP",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "AERO",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "RENDER",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "TIA",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      },
+      {
+        "assetId": "W",
+        "priceE8": "100000000",
+        "venue": "kraken",
+        "step": 1,
+        "candleStart": 120060,
+        "tradeAgeMinutes": 0
+      }
+    ],
+    "benchmarkGross": null,
+    "benchmark": "100000000000000",
+    "references": [
+      {
+        "assetId": "BTC",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "ETH",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "SOL",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "XRP",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "BNB",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "TRX",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "AVAX",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "DOT",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "NEAR",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "SUI",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "APT",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "UNI",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "ARB",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "OP",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "INJ",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "AAVE",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "ZEC",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "STRK",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "HYPE",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "TAO",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "WLD",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "ONDO",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "ENA",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "ZRO",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "FET",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "JUP",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "AERO",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "RENDER",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "TIA",
+        "gross": null,
+        "reference": "100000000000000"
+      },
+      {
+        "assetId": "W",
+        "gross": null,
+        "reference": "100000000000000"
+      }
+    ],
+    "classes": [
+      {
+        "classId": "BTC",
+        "classIndex": 0,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "ETH",
+        "classIndex": 1,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "SOL",
+        "classIndex": 2,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "XRP",
+        "classIndex": 3,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "BNB",
+        "classIndex": 4,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "TRX",
+        "classIndex": 5,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "AVAX",
+        "classIndex": 6,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "DOT",
+        "classIndex": 7,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "NEAR",
+        "classIndex": 8,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "SUI",
+        "classIndex": 9,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "APT",
+        "classIndex": 10,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "UNI",
+        "classIndex": 11,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "ARB",
+        "classIndex": 12,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "OP",
+        "classIndex": 13,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "INJ",
+        "classIndex": 14,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "AAVE",
+        "classIndex": 15,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "ZEC",
+        "classIndex": 16,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "STRK",
+        "classIndex": 17,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "HYPE",
+        "classIndex": 18,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "TAO",
+        "classIndex": 19,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "WLD",
+        "classIndex": 20,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "ONDO",
+        "classIndex": 21,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "ENA",
+        "classIndex": 22,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "ZRO",
+        "classIndex": 23,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "FET",
+        "classIndex": 24,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "JUP",
+        "classIndex": 25,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "AERO",
+        "classIndex": 26,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "RENDER",
+        "classIndex": 27,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "TIA",
+        "classIndex": 28,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "W",
+        "classIndex": 29,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      },
+      {
+        "classId": "CRYPTO",
+        "classIndex": 30,
+        "transferFactor": null,
+        "preRevaluation": {
+          "backing": "0",
+          "units": "0"
+        },
+        "fixed": {
+          "backing": "0",
+          "units": "0"
+        },
+        "final": {
+          "backing": "999800",
+          "units": "999800000000000000"
+        }
+      }
+    ],
+    "flows": {
+      "acceptedDeposits": "31000000",
+      "newPayable": "0",
+      "transferResidual": "0",
+      "flowResidual": "0",
+      "fees": "6200",
+      "executed": 31,
+      "rejected": 0
+    },
+    "ledger": {
+      "active": "30993800",
+      "pending": "0",
+      "refundable": null,
+      "payable": "0",
+      "residual": "0",
+      "fees": "6200",
+      "vault": "31000000"
+    },
+    "fees": {
+      "policy": "COX/FEES/V1",
+      "active": {
+        "version": "1",
+        "bps": 2,
+        "cap": "2000000"
+      },
+      "scheduled": null
+    },
+    "receiptRoot": "9193b8ca356aa12604fd18b333f4777d0037628c48b8bcd460f95ad1656cc2f4"
+  },
+  "portfolio": {
+    "owner": "7sR7Xp1CoU2JWz3mLPYZvADm39yPXtj2UGswk2cpZuKD",
+    "appliedSequence": 2,
+    "positions": [
+      {
+        "classId": "BTC",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "SOL",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "BNB",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "AVAX",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "NEAR",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "APT",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "ARB",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "INJ",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "ZEC",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "HYPE",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "WLD",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "ENA",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "FET",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "AERO",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "TIA",
+        "units": "999800000000000000",
+        "locked": "0"
+      },
+      {
+        "classId": "CRYPTO",
+        "units": "999800000000000000",
+        "locked": "0"
+      }
+    ],
+    "payable": "0",
+    "refundable": "0",
+    "pending": "0",
+    "requests": [
+      {
+        "requestId": "H6wVPbPg4N3qsTyCWyYuuDfWhUUeGTBp2eGiZWuvXQG7",
+        "owner": "7sR7Xp1CoU2JWz3mLPYZvADm39yPXtj2UGswk2cpZuKD",
+        "operation": "deposit",
+        "fromClass": null,
+        "toClass": "BTC",
+        "amount": "1000000",
+        "units": null,
+        "minimumUnits": "0",
+        "minimumProceeds": null,
+        "targetBatch": 2,
+        "expiryBatch": 20,
+        "state": "filled",
+        "feeTerms": {
+          "version": "1",
+          "bps": 2,
+          "cap": "2000000"
+        },
+        "receipt": {
+          "requestId": "H6wVPbPg4N3qsTyCWyYuuDfWhUUeGTBp2eGiZWuvXQG7",
+          "sequence": 2,
+          "batch": 2,
+          "status": "filled",
+          "minted": "999800000000000000",
+          "proceeds": "0",
+          "gross": "1000000",
+          "fee": "200"
+        }
+      }
+    ]
+  },
+  "quote": {
+    "operation": "deposit",
+    "fromClass": null,
+    "toClass": "BTC",
+    "amount": "1000000",
+    "units": null,
+    "gross": "1000000",
+    "fee": "200",
+    "net": "999800",
+    "mintedUnits": "999800000000000000",
+    "proceeds": null,
+    "feeTerms": {
+      "version": "1",
+      "bps": 2,
+      "cap": "2000000"
+    },
+    "scheduledFees": null,
+    "observedSequence": 2,
+    "estimate": true
+  },
+  "unsignedDeposit": {
+    "operation": "deposit",
+    "owner": "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB",
+    "lastValidBlockHeight": 4242,
+    "requestId": "9tovFQNUappS1B143AizTtJphV9XUtnihddUEMok1D6K",
+    "nonce": "31",
+    "targetBatch": {
+      "batch": 6,
+      "cutoff": 120360,
+      "acceptanceDeadline": 120415
+    },
+    "expiryBatch": 10,
+    "fromClass": null,
+    "toClass": "BTC",
+    "amount": "1000000",
+    "units": null,
+    "minimumUnits": "999800000000000000",
+    "minimumProceeds": null,
+    "feeTerms": {
+      "version": "1",
+      "bps": 2,
+      "cap": "2000000"
+    }
+  },
+  "feeChangedError": {
+    "schemaVersion": "cox.app-api/v1",
+    "error": {
+      "code": "FEE_CHANGED",
+      "message": "the pool's fee terms changed; request a fresh quote before signing"
+    }
+  }
+}

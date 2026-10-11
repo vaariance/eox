@@ -9,12 +9,19 @@ import {
   type CoxDeployment,
   type CoxStatus,
   type CryptoComposition,
+  type FeeStatus,
+  type FeeTerms,
   type Portfolio,
   type Publication,
 } from "@eox/app-api";
 import type { CoxSource } from "./source.js";
 
-interface FixturePublication extends Omit<Publication, "identity" | "prices" | "receiptRoot"> {
+const FEE_FREE: FeeTerms = { version: "0", bps: 0, cap: "0" };
+const FEE_STATUS: FeeStatus = { policy: null, migrated: false, active: FEE_FREE, scheduled: null, committed: "0" };
+
+interface FixturePublication extends Omit<Publication, "identity" | "prices" | "receiptRoot" | "fees" | "flows" | "ledger"> {
+  flows: Omit<Publication["flows"], "fees">;
+  ledger: Omit<Publication["ledger"], "fees">;
   sequence: number;
   batch: number;
   predecessorSequence: number | null;
@@ -30,8 +37,11 @@ interface FixtureFile {
   methodology: { digest: string | null; label: string; status: "draft"; assetCount: number };
   assets: { assetId: string; name: string; classIndex: number }[];
   publications: FixturePublication[];
-  wallets: Portfolio[] extends (infer W)[] ? Omit<W, "appliedSequence">[] : never;
+  wallets: FixtureWallet[];
 }
+
+type FixtureRequest = Omit<Portfolio["requests"][number], "feeTerms" | "receipt"> & { receipt: Omit<NonNullable<Portfolio["requests"][number]["receipt"]>, "gross" | "fee"> | null };
+type FixtureWallet = Omit<Portfolio, "appliedSequence" | "requests"> & { requests: FixtureRequest[] };
 
 export class CoxFixtureSource implements CoxSource {
   private readonly fixture: FixtureFile;
@@ -88,8 +98,9 @@ export class CoxFixtureSource implements CoxSource {
         benchmark: p.benchmark,
         references: p.references,
         classes: p.classes,
-        flows: p.flows,
-        ledger: p.ledger,
+        flows: { ...p.flows, fees: "0" },
+        ledger: { ...p.ledger, fees: "0" },
+        fees: null,
         receiptRoot: null,
       };
     });
@@ -109,7 +120,8 @@ export class CoxFixtureSource implements CoxSource {
       state: systemState(missedCutoffs, false, false),
       executing: false,
       monitor: null,
-      reconciliation: { sequence: latest.identity.sequence, vault: latest.ledger.vault, ledger: latest.ledger.vault, covered: true },
+      reconciliation: { sequence: latest.identity.sequence, vault: latest.ledger.vault, ledger: latest.ledger.vault, fees: "0", covered: true },
+      fees: FEE_STATUS,
       currentBatch: current,
     };
   }
@@ -140,7 +152,11 @@ export class CoxFixtureSource implements CoxSource {
   async portfolio(owner: string): Promise<Portfolio | null> {
     const wallet = this.fixture.wallets.find((w) => w.owner === owner);
     if (!wallet) return null;
-    return { ...wallet, appliedSequence: this.fixture.publications.at(-1)!.sequence };
+    return {
+      ...wallet,
+      appliedSequence: this.fixture.publications.at(-1)!.sequence,
+      requests: wallet.requests.map((request) => ({ ...request, feeTerms: FEE_FREE, receipt: request.receipt ? { ...request.receipt, gross: null, fee: "0" } : null })),
+    };
   }
 
   onPublication(): () => void {

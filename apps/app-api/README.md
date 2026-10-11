@@ -51,17 +51,21 @@ All fixed-point quantities are decimal integer strings. Prices use USD × 10⁸;
 | Route | Result |
 |---|---|
 | `GET /v1/deployment` | Network, program, pool, test collateral and methodology identity |
-| `GET /v1/status` | Publication age, missed cutoffs, execution state and vault reconciliation |
+| `GET /v1/status` | Publication age, missed cutoffs, execution state, vault reconciliation and fee terms |
 | `GET /v1/assets`, `GET /v1/assets/:id` | Asset roster, venue symbols and latest published prices |
 | `GET /v1/crypto` | Benchmark composition and exact weights |
 | `GET /v1/publications/latest` | Latest indexed publication |
 | `GET /v1/publications/:sequence` | Publication by sequence |
 | `GET /v1/publications?after=&limit=` | Publications strictly after the cursor; default limit 100, maximum 500 |
 | `GET /v1/publications/stream` | Server-sent events; resume with `Last-Event-ID` |
+| `GET /v1/stream?wallet=` | Real-time server-sent events: publications, status changes and, with `wallet`, that wallet's portfolio |
 | `GET /v1/wallets/:owner/portfolio` | Committed positions, locked units, payables, refunds and requests |
-| `POST /v1/transactions/deposit` | Build with `{ owner, toClass, amount, minimumUnits, expiryBatch }` |
-| `POST /v1/transactions/switch` | Build with `{ owner, fromClass, toClass, units, minimumUnits, expiryBatch }` |
-| `POST /v1/transactions/redeem` | Build with `{ owner, fromClass, units, minimumProceeds, expiryBatch }` |
+| `POST /v1/quotes/deposit` | Estimate with `{ owner, toClass, amount }` |
+| `POST /v1/quotes/switch` | Estimate with `{ owner, fromClass, toClass, units }` |
+| `POST /v1/quotes/redeem` | Estimate with `{ owner, fromClass, units }` |
+| `POST /v1/transactions/deposit` | Build with `{ owner, toClass, amount, minimumUnits, expiryBatch, expectedFeeVersion }` |
+| `POST /v1/transactions/switch` | Build with `{ owner, fromClass, toClass, units, minimumUnits, expiryBatch, expectedFeeVersion }` |
+| `POST /v1/transactions/redeem` | Build with `{ owner, fromClass, units, minimumProceeds, expiryBatch, expectedFeeVersion }` |
 | `POST /v1/transactions/cancel`, `POST /v1/transactions/refund` | Build with `{ owner, requestId }` |
 | `POST /v1/transactions/withdraw` | Build with `{ owner, amount }` |
 | `POST /v1/transactions/submit` | Relay `{ transaction }`, containing signed base64 transaction bytes |
@@ -69,7 +73,28 @@ All fixed-point quantities are decimal integer strings. Prices use USD × 10⁸;
 
 Omitting the publication cursor starts from sequence 0. An empty page preserves the cursor. SSE events contain the publication and its sequence; the server sends a heartbeat every 15 seconds. Transaction request bodies are limited to 8 KiB.
 
-Errors include `NO_PUBLICATION`, `PUBLICATION_NOT_FOUND`, `UNKNOWN_ASSET`, `UNKNOWN_CLASS`, `UNKNOWN_WALLET`, `INVALID_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `INTERNAL_ERROR`, `NOT_LIVE`, `TRANSACTION_REJECTED` and `TRANSACTION_NOT_FOUND`. Builders on the fixture return HTTP 409 `NOT_LIVE`; a rejected simulation returns HTTP 422 `TRANSACTION_REJECTED`.
+Errors include `NO_PUBLICATION`, `PUBLICATION_NOT_FOUND`, `UNKNOWN_ASSET`, `UNKNOWN_CLASS`, `UNKNOWN_WALLET`, `INVALID_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `INTERNAL_ERROR`, `NOT_LIVE`, `TRANSACTION_REJECTED`, `TRANSACTION_NOT_FOUND`, `RATE_LIMITED` and `FEE_CHANGED`. Builders and quotes on the fixture return HTTP 409 `NOT_LIVE`; a rejected simulation returns HTTP 422 `TRANSACTION_REJECTED`; a fee version that no longer matches the pool returns HTTP 409 `FEE_CHANGED`.
+
+## Real-time stream
+
+`GET /v1/stream` keeps one connection open and pushes three event types:
+
+| Event | Sent | Data |
+|---|---|---|
+| `publication` | each new publication, after any missed since the cursor | `{ sequence, publication }`; the event id is the sequence |
+| `status` | on connect, then whenever anything except the clock changes: new publication, missed cutoffs, paused or halted, execution, reconciliation or fee terms | the same object as `status` in every response |
+| `portfolio` | with `?wallet=`, on connect and whenever that wallet's positions, requests or receipts change | `{ owner, portfolio }`; `portfolio` is `null` for a wallet with nothing on chain |
+
+Browsers reconnect by themselves, three seconds after a drop, sending the last publication id. The server then resumes publications from there and repeats the current status and portfolio. Status is checked every 5 seconds and right after each publication. A wallet's portfolio is read after each publication and every 15 seconds, once per wallet however many connections watch it. Each client may hold 8 streams, an instance 500 and 200 distinct wallets. Over those limits the response is HTTP 429 `RATE_LIMITED` with `Retry-After`.
+
+```ts
+const stream = new EventSource(`${baseUrl}/v1/stream?wallet=${owner}`);
+stream.addEventListener("publication", (e) => onPublication(JSON.parse(e.data)));
+stream.addEventListener("status", (e) => onStatus(JSON.parse(e.data)));
+stream.addEventListener("portfolio", (e) => onPortfolio(JSON.parse(e.data)));
+```
+
+Server-side code can use `createCoxApiClient(...).subscribe({ after, wallet }, onEvent)`, which delivers typed `CoxStreamEvent`s and does not reconnect. `GET /v1/publications/stream` remains for publication-only consumers.
 
 ## Wallet transaction flow
 
@@ -82,13 +107,26 @@ Builders simulate before returning a version 0 transaction. The program assigns 
 
 Submission verifies signatures, restricts instructions to the supported COX request operations plus associated-token and compute-budget programs, and relays the signed bytes unchanged. Redemption creates a payable; withdrawal is a separate wallet action. The devnet collateral is a test token, not real USDC.
 
+## Trading fees
+
+Pools migrated to `COX/FEES/V1` charge `min(floor(gross × bps / 10000), cap)` in collateral base units on each successful deposit, switch or redemption. Withdrawals, refunds, cancellations and failed or expired requests pay nothing. The API reports values read from the program; it never calculates a fee itself.
+
+- `status.fees` gives the policy, whether the pool is migrated, the active terms `{ version, bps, cap }`, any scheduled terms with their `activationCutoff`, and committed fees. A scheduled change takes effect only when a publication at or after that cutoff finalizes.
+- A quote simulates the program's own fee quote at finalized commitment and returns `gross`, `fee`, `net`, the estimated `mintedUnits` or `proceeds`, `feeTerms` and `observedSequence`. Nothing is signed or charged, but the simulation needs the wallet to exist on chain. A quote is an estimate; the accepted publication fixes the result.
+- On a migrated pool, builders require `expectedFeeVersion`, which is the quote's `feeTerms.version`. They build `deposit_with_fee`, `switch_with_fee` or `redeem_with_fee`, carrying that version, and return the locked `feeTerms`. Minimum units and minimum proceeds apply after the fee.
+- If the version changed, the builder returns `FEE_CHANGED`, and so does submission, which compares the signed version with the pool before relaying. The program also refuses a mismatch before reserving anything. Ask for a fresh quote and rebuild.
+- Each request reports the `feeTerms` locked when it was submitted. Requests submitted before migration show version 0 and stay fee-free. A committed receipt reports `gross` and the `fee` charged; `gross` is `null` for requests submitted before migration.
+- Publications whose state is `COX/STATE/V2` report `ledger.fees` (committed fees), `flows.fees` (fees from that batch) and `fees` (terms after the publication). Earlier publications report `"0"` and `fees: null`.
+
+`fixtures/cox-fee-examples.json` holds example responses for a migrated pool, produced by this code over the compiled fee-upgrade accounts in `packages/cox/fixtures/fee-accounts.json`. A test fails if the code's output drifts from it; regenerate with `pnpm exec vitest run -u`.
+
 ## Live state and history
 
-The source reads finalized program accounts through [the COX client](../../packages/cox-client/README.md). Staged position and request changes remain hidden until commitment. Vault reconciliation compares token balance with active + pending + payable + residual; a surplus remains covered until a financial instruction records it as residual.
+The source reads finalized program accounts through [the COX client](../../packages/cox-client/README.md). Staged position and request changes remain hidden until commitment. Vault reconciliation compares token balance with active + pending + payable + residual + committed fees; a surplus remains covered until a financial instruction records it as residual. Fees staged by an unfinished batch are not counted.
 
 Publications are stored in an append-only `publications-<pool>.jsonl` log, bound to the program and pool. A partial final line is discarded after a crash. Signed submissions use `submissions-<pool>.json`. Preserve both files across deployments.
 
-**History limitation:** the current indexer requests successive sequences from on-chain readers. The program reuses its latest publication and batch accounts, so a sequence overwritten before indexing cannot be recovered by this service from chain alone. Complete restart and gap recovery require an external publication-history source; that recovery is not implemented here.
+The program keeps only the latest publication on chain. Earlier sequences come from the publisher's archive (`COX_PUBLICATION_ARCHIVE` or `COX_PUBLICATION_ARCHIVE_GCS`). Each record is checked against its content hash, account hash, decoded state and predecessor chain before it is logged, for both legacy and fee-aware publications. Without an archive, the indexer refuses to skip a gap.
 
 Live `gross`, `benchmarkGross` and `transferFactor` fields are `null` because they are not stored on chain. `ledger.refundable` is also `null`: the pool combines refundable deposits with pending funds, while individual portfolios expose the split. `status.monitor` is `null`; an archive consistency check is not a publication verification.
 

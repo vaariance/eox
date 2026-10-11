@@ -702,6 +702,13 @@ another agent needs to know.
 - **Rules for agents:** Devnet USDC is still devnet: no real value. Pool 0's history stays in its own bucket prefix.
 - **Refs:** commits `ae7bc2b`, `ef3f6cd`.
 
+### 2026-10-11 · Joel (Claude Code) · RPC failover on refused access
+
+- **Area:** `apps/rpc-proxy`, `apps/signer/src/rpc.ts`, `apps/app-api/src/cox/rpc.ts`.
+- **What:** Before pool 1's origin, the live API saw upstream `403 "Your IP or provider is blocked from this endpoint"` responses until 10:08 UTC, which neither the Worker nor the services failed over on. The Worker and both services' in-process failover now also move to the next RPC on HTTP 401, 403 and 408, as well as 429 and 5xx; other 4xx still pass through. `wrangler.toml` now declares Peter's custom domain `cox-rpc-proxy.variance.space`, so redeploys keep it; Peter's current upstreams (Ankr, then public devnet) were not changed. Deployed: Worker version `12d8410b`, signer `eox-signer-00008-wcq` (signing the publisher's traffic, none refused), public live API `cox-app-api-live-00003-rb2` (pool 1 publications 0 to 29 without gaps), VM live API at `e848856`.
+- **Rules for agents:** A 401 or 403 from an RPC means the provider refused us, not that the request was wrong; fail over rather than surface it.
+- **Refs:** commits up to `e848856`.
+
 ### 2026-10-11 · Godwin (Claude Code) · Swap page uses @cox/client/swap
 
 - **Area:** `apps/web`.
@@ -757,6 +764,35 @@ another agent needs to know.
 - **Rules for agents:** Cost and gain or loss are a web-app calculation, not a figure from the program or the app API. Candles are built from one value per publication, so they are not exchange OHLC. The 1W and 1M ranges show at most 24 hours.
 - **Open:** Joel: a compact history route (for example one value per class and asset per publication, or pre-grouped bars) so the app can show a week or a month without downloading every publication; and a deposited basis in the portfolio.
 - **Refs:** `apps/web/README.md`.
+
+### 2026-10-11 · Joel (Claude Code) · Signer and live API prepared for the fee upgrade (not deployed)
+
+- **Area:** `apps/signer`, `packages/app-api`, `apps/app-api`; branch `feat/cox-fees` (`main` plus `dev` at `09d7332`).
+- **What:** At Peter's request (fee-upgrade email, 2026-10-11), Joel's side is ready for `COX/FEES/V1`.
+  - **Signer:** accepts request schema 1 and 2 and refuses any other request layout. The runtime allowlist is still only publish, evaluate, safety, seal_evaluation, execute and finalize. Tests confirm that the fee IDL keeps their discriminators and account order, and that fee administration, treasury withdrawal and user trades are refused.
+  - **API reads:** status and publications report active and scheduled fee terms and committed fees. Batch fees come from `COX/STATE/V2`. The flow identity subtracts batch fees, and vault reconciliation adds committed fees.
+  - **Requests:** each request reports its locked fee terms, and its receipt reports `gross` and the `fee` charged.
+  - **Trades:** new `POST /v1/quotes/{deposit,switch,redeem}`. Builders require `expectedFeeVersion` on a migrated pool and build the `*_with_fee` instructions. A mismatch returns 409 `FEE_CHANGED` from both the builder and submission, before anything is relayed.
+  - **Godwin's fixture:** `apps/app-api/fixtures/cox-fee-examples.json` holds real responses over Peter's compiled fee accounts.
+  - **Verification:** 31 signer tests and 43 app API tests pass. A read-only run against live pool 1 (still legacy, sequence 232) decoded every account and quoted a zero fee through the legacy path.
+- **Rules for agents:** Do not deploy these to the signer or either live API before Peter's approval and the program upgrade sequence. Never compute a fee in the API or UI; show the quote's and receipt's values. Pass a quote's `feeTerms.version` as `expectedFeeVersion` and requote on `FEE_CHANGED`.
+- **Open:** Godwin: fee display from `quote`, `UnsignedTransaction.feeTerms` and `receipt.fee`, and the monitor's `COX/STATE/V2` and `COX/RECEIPTS/V2` support. Peter: merge approval for `feat/cox-fees` and the deployment window.
+- **Refs:** `apps/app-api/README.md` (Trading fees), commits `7e68c67`..`0716a0a`.
+
+### 2026-10-11 · Joel (Claude Code) · Fee-ready signer and live APIs deployed (fees not active)
+
+- **Area:** `main` at `a1ba138`; Cloud Run `eox-signer`, `cox-app-api-live`, `cox-app-api`; dev VM.
+- **What:** With Peter's approval, `feat/cox-fees` was fast-forwarded into `main` and deployed. This supersedes the "not deployed" status in Joel's earlier 2026-10-11 entry "Signer and live API prepared for the fee upgrade".
+  - **Deployed:** signer `eox-signer-00010-z8g` (image `signer:a1ba138`; `00009-lmr` is the same image), public live API `cox-app-api-live-00004-9sf`, public fixture API `cox-app-api-00002-nkj` (image `cox-app-api:a1ba138`), and both VM app APIs at `a1ba138`.
+  - **Verified:** the publisher's traffic is signed with HTTP 200 and nothing refused. Pool 1 publications 0 to 272 are served with no gaps, status is fresh and the vault is covered. A live deposit quote returns fee 0 at version 0. Pool 1 is still unmigrated (`status.fees.migrated: false`).
+- **Rules for agents:** The program upgrade, pool 1 migration and fee scheduling are Peter's steps and have not happened. After the migration, check that `status.fees.migrated` turns `true`, the reconciliation covers the vault, and publishing continues.
+- **Refs:** commits `7e68c67`..`a1ba138`.
+
+### 2026-10-11 · Joel (Claude Code) · Pool 1 fee migration verified on the live APIs
+
+- **Area:** Cloud Run `cox-app-api-live`, dev VM `cox-app-api-live`, `eox-signer`.
+- **What:** After Peter migrated pool 1, both live APIs report `status.fees.migrated: true` under policy `COX/FEES/V1`. The active terms are version 0 (no fee). Version 1 (2 bps, cap 2,000,000) is scheduled for cutoff 1791738000 (17:00 UTC). Publication 304 is the first `COX/STATE/V2` state, and it chains to the last V1 publication. Batches 306 to 308 were missed during the pause. Publications 0 to 310 are served without gaps, status is fresh and the vault is covered (13,998,590, committed fees 0). Every signing request in the last hour returned 200 on `eox-signer-00010-z8g`, with nothing refused.
+- **Open:** After 17:00 UTC, check that version 1 becomes active once a qualifying publication finalizes. Then a devnet wallet trade must show matching quoted, charged and receipted fees, and the committed fees must appear in the vault reconciliation.
 
 ### 2026-10-11 · Peter (Codex) · Relative service domains
 

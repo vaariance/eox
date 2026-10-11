@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { loadSignerConfig } from "../src/config.js";
@@ -65,4 +66,29 @@ test("is enabled, accepts a well-formed publish and refuses one aimed at another
   assert.equal(cox.enabled, true);
   checkSolanaPolicy("oracle-operator", binding, publish(pool), operator);
   assert.throws(() => checkSolanaPolicy("oracle-operator", binding, publish(Keypair.generate().publicKey), operator), (e) => e instanceof PolicyRejection && e.code === "TARGET_NOT_BOUND");
+});
+
+test("refuses fee administration, treasury withdrawal and user trades", () => {
+  for (const name of ["migrate_pool", "schedule_fees", "cancel_fees", "withdraw_fees", "deposit_with_fee", "switch_with_fee", "redeem_with_fee", "quote_request_with_fee", "deposit", "withdraw"]) {
+    const instruction = new TransactionInstruction({ programId: program, keys: [{ pubkey: operator, isSigner: true, isWritable: true }, { pubkey: registry, isSigner: false, isWritable: true }, { pubkey: pool, isSigner: false, isWritable: true }], data: Buffer.from(discriminator(name), "hex") });
+    const message = new TransactionMessage({ payerKey: operator, recentBlockhash: "11111111111111111111111111111111", instructions: [instruction] }).compileToV0Message();
+    assert.throws(() => checkSolanaPolicy("oracle-operator", binding, new VersionedTransaction(message), operator), (e) => e instanceof PolicyRejection, name);
+  }
+});
+
+test("the fee upgrade IDL keeps every bound runtime instruction's discriminator and account order", () => {
+  const idl = JSON.parse(readFileSync(new URL("../../../packages/cox/idl/cox.json", import.meta.url), "utf8")) as { instructions: { name: string; discriminator: number[]; accounts: { name: string }[] }[] };
+  const expected: Record<string, string[]> = {
+    publish: ["payer", "runtime", "registry", "pool", "methodology", "batch", "vault", "system_program"],
+    evaluate: ["registry", "pool", "batch", "request", "position", "vault"],
+    safety: ["registry", "pool", "batch", "request", "position", "vault"],
+    seal_evaluation: ["registry", "pool", "batch", "vault"],
+    execute: ["registry", "pool", "batch", "request", "position", "vault"],
+    finalize: ["payer", "registry", "pool", "batch", "methodology", "publication", "vault", "system_program"],
+  };
+  for (const name of ["publish", "evaluate", "safety", "seal_evaluation", "execute", "finalize"]) {
+    const entry = idl.instructions.find((i) => i.name === name)!;
+    assert.equal(Buffer.from(entry.discriminator).toString("hex"), discriminator(name), name);
+    assert.deepEqual(entry.accounts.map((a) => a.name), expected[name], name);
+  }
 });

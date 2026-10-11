@@ -1,6 +1,9 @@
 import { Connection, type Commitment } from "@solana/web3.js";
 
 const REQUEST_TIMEOUT_MS = 15_000;
+const UPSTREAM_REFUSED = new Set([401, 403, 408, 429]);
+
+export const failsOver = (status: number): boolean => UPSTREAM_REFUSED.has(status) || status >= 500;
 
 export function parseRpcUrls(text: string | undefined, name: string): string[] {
   const urls = (text ?? "").split(/\s+/).filter(Boolean);
@@ -29,7 +32,7 @@ export function failoverFetch(urls: readonly string[], onFailover?: (from: strin
       let reason: string;
       try {
         const response = await fetch(urls[index]!, { ...init, signal });
-        if (response.status !== 429 && response.status < 500) {
+        if (!failsOver(response.status)) {
           if (index !== current) onFailover?.(rpcHost(urls[current]!), rpcHost(urls[index]!), "previous endpoint failed");
           current = index;
           return response;

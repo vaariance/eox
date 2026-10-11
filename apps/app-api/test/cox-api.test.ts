@@ -61,7 +61,8 @@ describe("cox.app-api/v1 on the fixture", () => {
     expect(data.identity).toMatchObject({ sequence: 3, batch: 4, predecessorSequence: 2, predecessorBatch: 2, missedBatches: [3], cutoff: NOW - 25 });
     expect(data.references.map((r) => r.reference)).toEqual(["132765957446763", "71489361702103"]);
     expect(data.classes.map((c) => [c.classId, c.fixed?.backing, c.final.backing])).toEqual([["SYNA", "113", "113"], ["SYNB", "24", "24"], ["CRYPTO", "17", "17"]]);
-    expect(data.ledger).toEqual({ active: "154", pending: "70", refundable: "70", payable: "11", residual: "5", vault: "240" });
+    expect(data.ledger).toEqual({ active: "154", pending: "70", refundable: "70", payable: "11", residual: "5", fees: "0", vault: "240" });
+    expect(data.fees).toBeNull();
     const origin = await client.publication(0);
     expect(origin.data.identity).toMatchObject({ sequence: 0, batch: 0, predecessorSequence: null });
     expect(origin.data.benchmark).toBe("100000000000000");

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import anchor, { type Idl, type Program } from "@coral-xyz/anchor";
 import type { Batch as BatchAccount, checkedPublication, Methodology as MethodologyAccount } from "@cox/client";
 import type { Connection } from "@solana/web3.js";
-import { CRYPTO_CLASS, type ClassState, type FallbackStep, type PriceVenue, type Publication, type VenueSymbols } from "@eox/app-api";
+import { COX_FEE_POLICY, CRYPTO_CLASS, type ClassState, type FallbackStep, type FeeConfiguration, type PriceVenue, type Publication, type VenueSymbols } from "@eox/app-api";
 
 const VENUES: readonly PriceVenue[] = ["kraken", "coinbase", "bybit"];
 const ASSET_ID = /^[A-Z0-9]{1,12}$/;
@@ -84,10 +84,32 @@ export interface PublicationContext {
   finalization: { transaction: string | null; slot: number | null };
 }
 
+type FeeFields = {
+  feeVersion: Integer | bigint;
+  feeBps: number;
+  feeCap: Integer | bigint;
+  feePending: boolean;
+  feePendingVersion: Integer | bigint;
+  feePendingBps: number;
+  feePendingCap: Integer | bigint;
+  feePendingCutoff: Integer | bigint;
+};
+
+export function feeConfiguration(fields: FeeFields, migrated: boolean): FeeConfiguration {
+  return {
+    policy: migrated ? COX_FEE_POLICY : null,
+    active: { version: text(fields.feeVersion), bps: fields.feeBps, cap: text(fields.feeCap) },
+    scheduled: fields.feePending
+      ? { version: text(fields.feePendingVersion), bps: fields.feePendingBps, cap: text(fields.feePendingCap), activationCutoff: Number(text(fields.feePendingCutoff)) }
+      : null,
+  };
+}
+
 export function batchOf(publication: ChainPublication, batch: BatchAccount | null): BatchAccount | null {
   if (!batch || batch.phase !== 2) return null;
   if (text(batch.batchId) !== text(publication.state.batch) || text(batch.sequence) !== text(publication.state.sequence)) return null;
   if (hex(batch.snapshotDigest) !== hex(publication.state.snapshot)) throw new Error("PublicationBatchMismatch");
+  if (text(batch.fees) !== text(publication.state.feeState?.batchFees ?? 0n)) throw new Error("PublicationBatchFeeMismatch");
   return batch;
 }
 
@@ -102,16 +124,19 @@ export function toPublication(publication: ChainPublication, batch: BatchAccount
   const scheduled = Number(state.batch);
   const missedBatches: number[] = [];
   if (context.predecessorBatch !== null) for (let b = context.predecessorBatch + 1; b < scheduled; b += 1) missedBatches.push(b);
+  const feeState = state.feeState ?? null;
+  const committedFees = feeState?.fees ?? 0n;
+  const batchFees = feeState?.batchFees ?? 0n;
   let flows: { acceptedDeposits: string; newPayable: string; transferResidual: string; flowResidual: string } | null = null;
   if (batch) {
     const fixedTotal = batch.fixed.reduce((sum, c) => sum + BigInt(c.backing.toString()), 0n);
     const accepted = BigInt(batch.acceptedDeposits.toString());
     const newPayable = BigInt(batch.newPayable.toString());
-    const flowResidual = fixedTotal + accepted - newPayable - state.active;
+    const flowResidual = fixedTotal + accepted - newPayable - batchFees - state.active;
     if (flowResidual < 0n) throw new Error("PublicationFlowMismatch");
     flows = { acceptedDeposits: text(accepted), newPayable: text(newPayable), transferResidual: text(batch.transferResidual), flowResidual: text(flowResidual) };
   }
-  const vault = state.active + state.pending + state.payable + state.residual;
+  const vault = state.active + state.pending + state.payable + state.residual + committedFees;
   return {
     identity: {
       program: context.program,
@@ -156,10 +181,12 @@ export function toPublication(publication: ChainPublication, batch: BatchAccount
       newPayable: flows?.newPayable ?? null,
       transferResidual: flows?.transferResidual ?? null,
       flowResidual: flows?.flowResidual ?? null,
+      fees: text(batchFees),
       executed: state.executed,
       rejected: state.rejected,
     },
-    ledger: { active: text(state.active), pending: text(state.pending), refundable: null, payable: text(state.payable), residual: text(state.residual), vault: text(vault) },
+    ledger: { active: text(state.active), pending: text(state.pending), refundable: null, payable: text(state.payable), residual: text(state.residual), fees: text(committedFees), vault: text(vault) },
+    fees: feeState ? feeConfiguration(feeState, true) : null,
     receiptRoot: hex(state.receiptRoot),
   };
 }

@@ -1,5 +1,5 @@
 import type { Program } from "@coral-xyz/anchor";
-import { CoxInstructions, decodeAccount, type OwnerKeys, type Pool } from "@cox/client";
+import { CoxInstructions, CoxSimulations, decodeAccount, type OwnerKeys, type Pool } from "@cox/client";
 import {
   PublicKey,
   SystemProgram,
@@ -11,9 +11,15 @@ import {
 import {
   batchFor,
   type DepositInput,
+  type DepositQuoteInput,
+  type FeeTerms,
   type RedeemInput,
+  type RedeemQuoteInput,
   type RequestActionInput,
+  type ScheduledFeeTerms,
   type SwitchInput,
+  type SwitchQuoteInput,
+  type TradeQuote,
   type TransactionOperation,
   type UnsignedTransaction,
   type WithdrawInput,
@@ -26,8 +32,16 @@ const U128_MAX = (1n << 128n) - 1n;
 const INTEGER = /^(0|[1-9][0-9]{0,38})$/;
 const OWNER = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_EXPIRY_BATCHES = 10_080;
+const NO_CLASS = 255;
+const FEE_VERSION_CHANGED = /FeeVersionChanged|"Custom":6038\b/;
 
 export class TransactionInputError extends Error {}
+
+export class FeeChangedError extends Error {
+  constructor() {
+    super("the pool's fee terms changed; request a fresh quote before signing");
+  }
+}
 
 export class TransactionRejectedError extends Error {
   constructor(
@@ -69,6 +83,13 @@ function integer(value: unknown, name: string, max: bigint, positive: boolean): 
   if (parsed > max || (positive && parsed === 0n)) throw new TransactionInputError(`${name} is out of range`);
   return parsed;
 }
+
+export const feeTerms = (pool: Pool): FeeTerms => ({ version: pool.feeVersion.toString(), bps: pool.feeBps, cap: pool.feeCap.toString() });
+
+export const scheduledFees = (pool: Pool): ScheduledFeeTerms | null =>
+  pool.feePending ? { version: pool.feePendingVersion.toString(), bps: pool.feePendingBps, cap: pool.feePendingCap.toString(), activationCutoff: Number(pool.feePendingCutoff.toString()) } : null;
+
+const migrated = (pool: Pool): boolean => pool.schemaVersion === 2;
 
 export function associatedTokenAddress(wallet: PublicKey, mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync([wallet.toBuffer(), TOKEN_PROGRAM.toBuffer(), mint.toBuffer()], ASSOCIATED_TOKEN_PROGRAM)[0];
@@ -113,14 +134,29 @@ export class CoxTransactions {
     return { target, expiry: BigInt(value) };
   }
 
-  private async pool(): Promise<Pool> {
-    const info = await this.context.connection.getAccountInfo(this.context.pool, "confirmed");
+  private async pool(commitment: "confirmed" | "finalized" = "confirmed"): Promise<Pool> {
+    const info = await this.context.connection.getAccountInfo(this.context.pool, commitment);
     if (!info) throw new TransactionInputError("the pool does not exist");
     return decodeAccount(this.context.program, "pool", info);
   }
 
-  private async submission(wallet: PublicKey): Promise<{ keys: OwnerKeys; nonce: bigint }> {
-    const nonce = BigInt((await this.pool()).nextRequestNonce.toString());
+  async feeVersion(): Promise<bigint> {
+    return BigInt((await this.pool()).feeVersion.toString());
+  }
+
+  private expectedFee(pool: Pool, value: unknown): bigint | null {
+    const current = BigInt(pool.feeVersion.toString());
+    if (value === undefined) {
+      if (migrated(pool)) throw new TransactionInputError("expectedFeeVersion is required: quote the trade first and pass its feeTerms.version");
+      return null;
+    }
+    const expected = integer(value, "expectedFeeVersion", U64_MAX, false);
+    if (expected !== current) throw new FeeChangedError();
+    return migrated(pool) ? expected : null;
+  }
+
+  private submission(pool: Pool, wallet: PublicKey): { keys: OwnerKeys; nonce: bigint } {
+    const nonce = BigInt(pool.nextRequestNonce.toString());
     const pdas = this.instructions.pdas;
     return {
       nonce,
@@ -141,12 +177,14 @@ export class CoxTransactions {
     const amount = integer(input.amount, "amount", U64_MAX, true);
     const minimumUnits = integer(input.minimumUnits, "minimumUnits", U128_MAX, false);
     const { target, expiry } = this.expiry(input.expiryBatch);
-    const { keys, nonce } = await this.submission(wallet);
+    const pool = await this.pool();
+    const fee = this.expectedFee(pool, input.expectedFeeVersion);
+    const { keys, nonce } = this.submission(pool, wallet);
     return this.finish({
       operation: "deposit",
       owner: wallet,
-      instructions: [this.instructions.deposit(keys, to, amount, minimumUnits, expiry)],
-      details: { requestId: keys.request.toBase58(), nonce: nonce.toString(), targetBatch: target, expiryBatch: Number(expiry), toClass: this.context.classes[to]!, amount: amount.toString(), minimumUnits: minimumUnits.toString() },
+      instructions: [fee === null ? this.instructions.deposit(keys, to, amount, minimumUnits, expiry) : this.instructions.depositWithFee(keys, to, amount, minimumUnits, expiry, fee)],
+      details: { requestId: keys.request.toBase58(), nonce: nonce.toString(), targetBatch: target, expiryBatch: Number(expiry), toClass: this.context.classes[to]!, amount: amount.toString(), minimumUnits: minimumUnits.toString(), feeTerms: feeTerms(pool) },
     });
   }
 
@@ -158,12 +196,17 @@ export class CoxTransactions {
     const units = integer(input.units, "units", U128_MAX, true);
     const minimumUnits = integer(input.minimumUnits, "minimumUnits", U128_MAX, false);
     const { target, expiry } = this.expiry(input.expiryBatch);
-    const { keys, nonce } = await this.submission(wallet);
+    const pool = await this.pool();
+    const fee = this.expectedFee(pool, input.expectedFeeVersion);
+    const { keys, nonce } = this.submission(pool, wallet);
     return this.finish({
       operation: "switch",
       owner: wallet,
-      instructions: [createTokenAccountIdempotent(wallet, wallet, this.context.mint), this.instructions.switch(keys, from, to, units, minimumUnits, expiry)],
-      details: { requestId: keys.request.toBase58(), nonce: nonce.toString(), targetBatch: target, expiryBatch: Number(expiry), fromClass: this.context.classes[from]!, toClass: this.context.classes[to]!, units: units.toString(), minimumUnits: minimumUnits.toString() },
+      instructions: [
+        createTokenAccountIdempotent(wallet, wallet, this.context.mint),
+        fee === null ? this.instructions.switch(keys, from, to, units, minimumUnits, expiry) : this.instructions.switchWithFee(keys, from, to, units, minimumUnits, expiry, fee),
+      ],
+      details: { requestId: keys.request.toBase58(), nonce: nonce.toString(), targetBatch: target, expiryBatch: Number(expiry), fromClass: this.context.classes[from]!, toClass: this.context.classes[to]!, units: units.toString(), minimumUnits: minimumUnits.toString(), feeTerms: feeTerms(pool) },
     });
   }
 
@@ -173,13 +216,84 @@ export class CoxTransactions {
     const units = integer(input.units, "units", U128_MAX, true);
     const minimumProceeds = integer(input.minimumProceeds, "minimumProceeds", U64_MAX, false);
     const { target, expiry } = this.expiry(input.expiryBatch);
-    const { keys, nonce } = await this.submission(wallet);
+    const pool = await this.pool();
+    const fee = this.expectedFee(pool, input.expectedFeeVersion);
+    const { keys, nonce } = this.submission(pool, wallet);
     return this.finish({
       operation: "redeem",
       owner: wallet,
-      instructions: [createTokenAccountIdempotent(wallet, wallet, this.context.mint), this.instructions.redeem(keys, from, units, minimumProceeds, expiry)],
-      details: { requestId: keys.request.toBase58(), nonce: nonce.toString(), targetBatch: target, expiryBatch: Number(expiry), fromClass: this.context.classes[from]!, units: units.toString(), minimumProceeds: minimumProceeds.toString() },
+      instructions: [
+        createTokenAccountIdempotent(wallet, wallet, this.context.mint),
+        fee === null ? this.instructions.redeem(keys, from, units, minimumProceeds, expiry) : this.instructions.redeemWithFee(keys, from, units, minimumProceeds, expiry, fee),
+      ],
+      details: { requestId: keys.request.toBase58(), nonce: nonce.toString(), targetBatch: target, expiryBatch: Number(expiry), fromClass: this.context.classes[from]!, units: units.toString(), minimumProceeds: minimumProceeds.toString(), feeTerms: feeTerms(pool) },
     });
+  }
+
+  async quoteDeposit(input: DepositQuoteInput): Promise<TradeQuote> {
+    const wallet = owner(input.owner);
+    const to = this.classIndex(input.toClass, "toClass");
+    const amount = integer(input.amount, "amount", U64_MAX, true);
+    return this.quote(wallet, "deposit", NO_CLASS, to, amount, 0n);
+  }
+
+  async quoteSwitch(input: SwitchQuoteInput): Promise<TradeQuote> {
+    const wallet = owner(input.owner);
+    const from = this.classIndex(input.fromClass, "fromClass");
+    const to = this.classIndex(input.toClass, "toClass");
+    if (from === to) throw new TransactionInputError("fromClass and toClass must differ");
+    const units = integer(input.units, "units", U128_MAX, true);
+    return this.quote(wallet, "switch", from, to, 0n, units);
+  }
+
+  async quoteRedeem(input: RedeemQuoteInput): Promise<TradeQuote> {
+    const wallet = owner(input.owner);
+    const from = this.classIndex(input.fromClass, "fromClass");
+    const units = integer(input.units, "units", U128_MAX, true);
+    return this.quote(wallet, "redeem", from, NO_CLASS, 0n, units);
+  }
+
+  private async quote(wallet: PublicKey, operation: TradeQuote["operation"], from: number, to: number, amount: bigint, units: bigint): Promise<TradeQuote> {
+    const pool = await this.pool("finalized");
+    const code = operation === "deposit" ? 0 : operation === "switch" ? 1 : 2;
+    const simulations = new CoxSimulations(this.context.program, wallet);
+    let read: { sequence: { toString(): string }; minted: { toString(): string }; proceeds: { toString(): string } };
+    let gross: bigint;
+    let fee = 0n;
+    try {
+      if (migrated(pool)) {
+        const result = await simulations.quoteWithFee(this.context.pool, code, from, to, amount, units, BigInt(pool.feeVersion.toString()));
+        if (result.feeVersion.toString() !== pool.feeVersion.toString()) throw new FeeChangedError();
+        read = result;
+        gross = BigInt(result.gross.toString());
+        fee = BigInt(result.fee.toString());
+      } else {
+        read = await simulations.quote(this.context.pool, code, from, to, amount, units);
+        gross = operation === "deposit" ? amount : BigInt(read.proceeds.toString());
+      }
+    } catch (error) {
+      if (error instanceof FeeChangedError) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (FEE_VERSION_CHANGED.test(message)) throw new FeeChangedError();
+      throw new TransactionRejectedError(`quote simulation failed: ${message}`, []);
+    }
+    if (read.sequence.toString() !== pool.sequence.toString()) throw new TransactionRejectedError("the pool advanced while quoting; quote again", []);
+    return {
+      operation,
+      fromClass: from === NO_CLASS ? null : this.context.classes[from]!,
+      toClass: to === NO_CLASS ? null : this.context.classes[to]!,
+      amount: operation === "deposit" ? amount.toString() : null,
+      units: operation === "deposit" ? null : units.toString(),
+      gross: gross.toString(),
+      fee: fee.toString(),
+      net: (gross - fee).toString(),
+      mintedUnits: operation === "redeem" ? null : read.minted.toString(),
+      proceeds: operation === "redeem" ? read.proceeds.toString() : null,
+      feeTerms: feeTerms(pool),
+      scheduledFees: scheduledFees(pool),
+      observedSequence: Number(read.sequence.toString()),
+      estimate: true,
+    };
   }
 
   private async existingRequest(input: RequestActionInput): Promise<{ wallet: PublicKey; request: PublicKey; nonce: string }> {
@@ -250,6 +364,7 @@ export class CoxTransactions {
     if (simulation.value.err) {
       const logs = simulation.value.logs ?? [];
       const reason = logs.find((line) => line.includes("Error Message:")) ?? JSON.stringify(simulation.value.err);
+      if (logs.some((line) => line.includes("FeeVersionChanged"))) throw new FeeChangedError();
       throw new TransactionRejectedError(reason, logs);
     }
     return {
@@ -268,6 +383,7 @@ export class CoxTransactions {
       units: null,
       minimumUnits: null,
       minimumProceeds: null,
+      feeTerms: null,
       ...built.details,
     };
   }
