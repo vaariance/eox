@@ -725,3 +725,11 @@ another agent needs to know.
 - **Rules for agents:** Do not use `@cox/client/swap` for the benchmark until it is fixed: its `CRYPTO_CLASS` is 0, which is the first asset's class (BTC), while `packages/cox/SPEC.md` §3, the program (`h.push(SCALE)` last) and the app API put CRYPTO at index N (30). Its `DEVNET_TEST_COLLATERAL` is also pool 0's mint. An empty class mints one unit per collateral base unit, so the app estimates an empty class at 10^-6 USDC per unit.
 - **Open:** Peter: fix `CRYPTO_CLASS` and its tests in `packages/cox-client/src/swap.ts` (he confirmed to Godwin that CRYPTO is the last index). No request has been signed by a real wallet yet.
 - **Refs:** `apps/web/README.md` (Swap page), commits `d1e605f`..`0d6bf73`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app: swap for CRYPTO, then buy and sell assets with CRYPTO
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's direction, and matching `product.md` version 14, USDC enters and leaves only on the Swap page (deposit into CRYPTO, redeem from CRYPTO). Asset pages now offer Buy (switch CRYPTO → asset) and Sell (switch asset → CRYPTO) and no longer take USDC directly; the CRYPTO page links to Swap. The first real request went through the deployed app on pool 1: Godwin's wallet deposited 10 USDC into CRYPTO (class 30), filled, vault and ledger both 10 USDC. Units are displayed at 10^(12 + collateral decimals) quanta per unit, so 10 USDC reads as 10 CRYPTO and a fresh class has unit value 1; requests are still sent in exact quanta.
+- **Rules for agents:** The displayed unit is a web-app convention only; the API, the program and `packages/cox` still count units at 10^12. The app presents CRYPTO as what the user pays with, but it is the CRYPTO claim class: its value in USDC can change once other classes hold backing.
+- **Open:** A switch (Buy or Sell) has not been signed by a real wallet yet.
+- **Refs:** `apps/web/README.md` (Swap, buy and sell), the three commits before this entry.
