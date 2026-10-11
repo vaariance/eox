@@ -6,6 +6,11 @@ the first upstream in `UPSTREAM_URLS` and moves to the next on a network error,
 a 15 s timeout, HTTP 429 or 5xx. A client error (4xx other than 429) is returned
 as it is. Responses are never cached.
 
+Deployed at `https://cox-rpc-proxy.anyaogupeter601.workers.dev` (Cloudflare
+account `f1e022c6d9e3a80eeb1bd8b7e4b28385`, pinned in `wrangler.toml`). Upstreams
+are Helius devnet, then public devnet. Tokens: one for the signer, one for the
+live app API.
+
 Access: `POST https://cox-rpc-proxy.<account>.workers.dev/<token>` with
 `content-type: application/json`. `<token>` is one of `ACCESS_TOKENS` (32 to
 128 characters of `A-Za-z0-9_-`, compared in constant time); give each client

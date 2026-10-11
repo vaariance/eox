@@ -561,6 +561,21 @@ another agent needs to know.
 - **Open:** Peter: push the upgraded IDL and `@cox/client` (schema 2 batch and publication at fixed seeds). The indexer still derives one publication account per sequence and must move to the reusable account plus a history source before the first publication. Instruction account order is assumed unchanged from the released IDL.
 - **Refs:** `apps/app-api/README.md` (The live source), `deploy/dev/README.md`, commits `d635d69`..`f3ac916`.
 
+### 2026-10-11 · Joel (Claude Code) · Solana RPC through a Cloudflare Worker proxy
+
+- **Area:** new `apps/rpc-proxy`; `apps/signer`, `apps/app-api` (RPC failover), GCP Secret Manager, `deploy/dev`.
+- **What:** At Peter's request each developer runs their own RPC proxy. Joel's is Cloudflare Worker `cox-rpc-proxy` at `https://cox-rpc-proxy.anyaogupeter601.workers.dev`. It forwards JSON-RPC unchanged to Helius devnet, then public devnet, moving on after a network error, 15 s timeout, 429 or 5xx. Callers need a per-client token in the path, and only the read, simulate and send methods the services use are forwarded. The signer (`SIGNER_SOLANA_RPC_URLS`, Secret Manager `solana-devnet-rpc-urls`, revision `eox-signer-00006-7qh`) and the live app API (`COX_RPC_URLS` in `/opt/eox/cox-app-api-live.env`, root 600) list the proxy first and public devnet directly second. They fail over in process and check every URL's genesis at start-up. The Helius key lives only in the Worker's secrets; the secret version that held it was disabled. Verified: genesis and pool 0 read through the proxy, 401 without a token, 403 for other methods, and the signer still enforces the pool 0 binding.
+- **Rules for agents:** Never commit or log an RPC URL with a key or token; log hosts only. Each service gets its own proxy token. Do not point another developer's service at this proxy; they run their own.
+- **Open:** Peter: rotate the Helius key that was shared in chat, then update the Worker's `UPSTREAM_URLS` secret.
+- **Refs:** `apps/rpc-proxy/README.md`, `apps/signer/README.md`, `apps/app-api/README.md`.
+
+### 2026-10-11 · Joel (Claude Code) · RPC proxy: no key rotation, Peter has a token
+
+- **Area:** `apps/rpc-proxy` (Worker secret `ACCESS_TOKENS`).
+- **What:** Joel decided the Helius key is not rotated; this closes the open item in the 2026-10-11 "Solana RPC through a Cloudflare Worker proxy" entry. At Joel's request Peter got his own proxy token (a third entry in `ACCESS_TOKENS`, alongside the signer's and the live app API's), handed to him privately.
+- **Rules for agents:** This replaces that entry's rule against pointing another developer's service at the proxy: Peter may use it with his own token. Revoke a client by re-putting `ACCESS_TOKENS` without its token; never share one token between clients.
+- **Refs:** `apps/rpc-proxy/README.md`.
+
 ### 2026-10-11 · Godwin (Claude Code) · Monitor running on the dev VM as its own service
 
 - **Area:** `apps/cox-monitor` (new `deploy/`), dev VM `eox-dev`. Nothing in `deploy/dev` changed.
