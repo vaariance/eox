@@ -787,3 +787,9 @@ another agent needs to know.
   - **Verified:** the publisher's traffic is signed with HTTP 200 and nothing refused. Pool 1 publications 0 to 272 are served with no gaps, status is fresh and the vault is covered. A live deposit quote returns fee 0 at version 0. Pool 1 is still unmigrated (`status.fees.migrated: false`).
 - **Rules for agents:** The program upgrade, pool 1 migration and fee scheduling are Peter's steps and have not happened. After the migration, check that `status.fees.migrated` turns `true`, the reconciliation covers the vault, and publishing continues.
 - **Refs:** commits `7e68c67`..`a1ba138`.
+
+### 2026-10-11 · Joel (Claude Code) · Pool 1 fee migration verified on the live APIs
+
+- **Area:** Cloud Run `cox-app-api-live`, dev VM `cox-app-api-live`, `eox-signer`.
+- **What:** After Peter migrated pool 1, both live APIs report `status.fees.migrated: true` under policy `COX/FEES/V1`. The active terms are version 0 (no fee). Version 1 (2 bps, cap 2,000,000) is scheduled for cutoff 1791738000 (17:00 UTC). Publication 304 is the first `COX/STATE/V2` state, and it chains to the last V1 publication. Batches 306 to 308 were missed during the pause. Publications 0 to 310 are served without gaps, status is fresh and the vault is covered (13,998,590, committed fees 0). Every signing request in the last hour returned 200 on `eox-signer-00010-z8g`, with nothing refused.
+- **Open:** After 17:00 UTC, check that version 1 becomes active once a qualifying publication finalizes. Then a devnet wallet trade must show matching quoted, charged and receipted fees, and the committed fees must appear in the vault reconciliation.
