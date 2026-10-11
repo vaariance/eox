@@ -87,7 +87,7 @@ export default async function MarketsPage() {
                   <th scope="row" className="px-4 py-3 text-left font-normal">
                     <Link href={`/assets/${asset.assetId}`} className="flex items-baseline gap-2">
                       <span className="font-medium text-ink">{asset.assetId}</span>
-                      <span className="text-xs text-muted">{asset.name}</span>
+                      {asset.name !== asset.assetId && <span className="text-xs text-muted">{asset.name}</span>}
                     </Link>
                   </th>
                   <td className="num px-4 py-3 text-right">{formatPrice(latest(priceSeries([current], asset.assetId)))}</td>
