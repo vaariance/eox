@@ -154,19 +154,16 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{bad ? "Order not placed" : "Order placed"}</p>
               <p className="mt-0.5 text-sm">{describe}</p>
-              <p className={`mt-1 text-xs ${bad ? "text-down" : "text-muted"}`}>
-                {phase.submission.state === "failed"
-                  ? `Refused: ${phase.submission.error ?? "no reason given"}`
-                  : phase.submission.state === "expired"
-                    ? "It was not picked up in time. Nothing moved."
-                    : phase.built.targetBatch
-                      ? `Fills in batch #${formatWhole(phase.built.targetBatch.batch)}, which closes at ${formatUtcTime(phase.built.targetBatch.cutoff)}.`
-                      : "It fills at the next publication."}
-              </p>
-              <p className="mt-2 flex gap-4 text-xs">
-                <Link href="/portfolio" onClick={() => setToast(false)} className="font-medium text-accent underline">View portfolio</Link>
-                <a href={`https://explorer.solana.com/tx/${phase.submission.signature}?cluster=devnet`} target="_blank" rel="noreferrer" className="text-muted underline">View transaction</a>
-              </p>
+              {bad && (
+                <p className="mt-1 text-xs text-down">
+                  {phase.submission.state === "failed" ? `Refused: ${phase.submission.error ?? "no reason given"}` : "It was not picked up in time. Nothing moved."}
+                </p>
+              )}
+              {!bad && (
+                <p className="mt-2 text-xs">
+                  <Link href="/portfolio" onClick={() => setToast(false)} className="font-medium text-accent underline">View portfolio</Link>
+                </p>
+              )}
             </div>
             <button type="button" aria-label="Dismiss" onClick={() => setToast(false)} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-ink">
               <X size={16} aria-hidden="true" />
