@@ -399,3 +399,19 @@ another agent needs to know.
 - **Rules for agents:** This is the maths only. The monitor does not yet read publications, fetch archived snapshots, re-fetch venues or serve verdicts, so do not describe a monitor as running. The rounding order was learned from Peter's `vectors.ts` before SPEC.md was available, so agreement with the vectors is not a fully blind second derivation. A change to `vectors.json` fails `pnpm --filter @eox/cox-monitor test`.
 - **Open:** Peter: vectors for the SPEC §3 receipt root and state digest; the monitor will not implement either without bytes to check against. Joel: the archiver's provisional price and snapshot digest layout differs from SPEC §3 (`COX/WIRE/V1`), so the monitor would report his current digests as mismatches. The live half of G2 waits on P3.
 - **Refs:** commits `1699666`..`fca926b`, `463f29a`; `packages/cox/SPEC.md` §3–6.
+
+### 2026-10-10 · Peter (Codex) · P3 compiled COX program and integration artifacts
+
+- **Area:** `packages/cox`, `packages/cox-client`.
+- **What:** Implemented the Anchor 0.31.1 program with P2 math, real SPL custody, future-publication reservations, persistent evaluation/safety/preparation cursors and atomic lazy finalization. Final compiled SBF passes 15 lifecycle/custody tests; the generated-IDL client passes nine tests. Thirty-price publication measures 1,122 bytes (1,218 with separate payer) and 520,154 compute units. Integration files include actual account fixtures, receipt/state vectors and prepared signer allowlist.
+- **Rules for agents:** Use SPEC v0.3's actual ABI appendix and generated IDL. P1 price hashes remain authoritative; Joel's provisional archive layout differs as documented in INTEGRATION.md. Only publish needs runtime authority on chain; the prepared service allowlist includes permissionless batch cranks for fee sponsorship. No local KMS role key exists. The reserved program identity is not proof of deployment; keep the live pool inactive.
+- **Open:** Peter's commit approval, integration onto `origin/main`, devnet deployment funding and verified deployed build. P4 worker and live activation remain separate. Local timing is not blockchain throughput.
+- **Refs:** `packages/cox/results/p3-verification.md`, `packages/cox/INTEGRATION.md`, `packages/cox/deploy/README.md`, `packages/cox/P3-PLAN.md`.
+
+### 2026-10-10 · Peter (Codex) · Verified Peter-owned EOX cleanup prepared
+
+- **Area:** `packages/oracle`, `apps/oracle-worker`, root package scripts.
+- **What:** After compiled COX replacement verification, removed the retired EOX program, receiver/protocol modules and fixtures, proposal worker and obsolete tests/entry points. Narrowed the old Rust workspace. Retained economic Rust tests pass (24), worker tests pass (14) and worker type checking passes. Cleanup remains uncommitted and must be a separate change from COX implementation.
+- **Rules for agents:** Preserve Joel's legacy reference reader/IDL and economic fixture generator dependencies, methodology facts/readiness and the complete worker journal/retry/transport closure until P4 replaces it. Preserve papers, ignored sealed research and `eox-archive`. Do not modify another owner's callers to force deletion. The old deployed program is abandoned in place.
+- **Open:** Recheck legacy callers after integration with `origin/main`; retire remaining carry-over only when replacements land.
+- **Refs:** `packages/cox/research/deletion-audit.md`, `packages/cox/INTEGRATION.md`; supersedes the P2 deletion inventory's retired caller descriptions.

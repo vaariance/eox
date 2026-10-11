@@ -1,0 +1,134 @@
+import { readFileSync } from "node:fs";
+import assert from "node:assert/strict";
+import test from "node:test";
+import anchor, { type Idl } from "@coral-xyz/anchor";
+import { ComputeBudgetProgram, Connection, PublicKey, Transaction, type AccountInfo, type VersionedTransaction } from "@solana/web3.js";
+import { CoxInstructions } from "../src/builders.ts";
+import { CoxReader, committedPosition, committedRequest, decodeAccount } from "../src/readers.ts";
+import { discriminator } from "../src/wire.ts";
+import type { Accounts } from "../src/accounts.ts";
+import { CoxSimulations } from "../src/simulations.ts";
+
+interface Fixture { name: keyof Accounts; address: string; owner: string; dataHex: string }
+const idl = JSON.parse(readFileSync(new URL("../../cox/idl/cox.json", import.meta.url), "utf8")) as Idl;
+const fixtures = JSON.parse(readFileSync(new URL("../../cox/fixtures/accounts.json", import.meta.url), "utf8")) as { programAddress: string; accounts: Fixture[] };
+const info = (value: Fixture): AccountInfo<Buffer> => ({ owner: new PublicKey(value.owner), data: Buffer.from(value.dataHex, "hex"), executable: false, lamports: 100000000, rentEpoch: 0 });
+const connection = { getAccountInfo: async (key: PublicKey) => {
+  const value = fixtures.accounts.find(value => value.address === key.toBase58());
+  return value ? info(value) : null;
+} } as Connection;
+const program = new anchor.Program(idl, { connection });
+const reader = new CoxReader(program);
+const builder = new CoxInstructions(program);
+const fixture = <K extends keyof Accounts>(name: K) => {
+  const value = fixtures.accounts.find(value => value.name === name);
+  assert.ok(value, `Missing ${name} SBF fixture`);
+  return { key: new PublicKey(value.address), account: decodeAccount(program, name, info(value)), info: info(value) };
+};
+
+test("actual SBF account bytes decode with the generated Anchor IDL", () => {
+  assert.equal(program.programId.toBase58(), fixtures.programAddress);
+  for (const name of ["registry", "methodology", "pool", "position", "request", "batch", "publication"] as const) {
+    const value = fixture(name);
+    assert.equal(value.account.schemaVersion, 1);
+    assert.throws(() => decodeAccount(program, name, { ...value.info, owner: PublicKey.default }), /AccountOwnerMismatch/);
+    const damaged = Buffer.from(value.info.data); damaged[0] ^= 255;
+    assert.throws(() => decodeAccount(program, name, { ...value.info, data: damaged }));
+  }
+});
+test("checked readers validate live account identities and publication preimage", async () => {
+  const { account: pool } = fixture("pool");
+  const id = BigInt(pool.poolId.toString());
+  await reader.registry();
+  await reader.pool(id);
+  await reader.methodology(pool.methodology);
+  const { account: position } = fixture("position");
+  await reader.position(id, position.owner);
+  const { account: request } = fixture("request");
+  await reader.request(id, BigInt(request.nonce.toString()));
+  const { account: batch } = fixture("batch");
+  await reader.batch(id, BigInt(batch.batchId.toString()));
+  const { account: publication } = fixture("publication");
+  const value = await reader.publication(id, BigInt(publication.sequence.toString()));
+  assert.equal(value.state.sequence.toString(), publication.sequence.toString());
+});
+test("staged credits remain unavailable until global finalization and apply once", () => {
+  const { account: pool } = fixture("pool");
+  const { account: position } = fixture("position");
+  const zero = new anchor.BN(0), one = new anchor.BN(1);
+  const staged = { ...position, appliedSequence: pool.sequence, staged: true, stagedSequence: pool.sequence.add(one), stagedBurns: position.classes.map(() => zero), stagedMints: position.classes.map(() => one), stagedUnlocks: position.classes.map(() => zero), stagedPayable: one, stagedRefundable: one };
+  assert.equal(committedPosition(staged, pool), staged);
+  const committed = committedPosition(staged, { ...pool, sequence: staged.stagedSequence });
+  assert.equal(committed.payable.toString(), position.payable.add(one).toString());
+  assert.equal(committed.classes[0]!.units.toString(), position.classes[0]!.units.add(one).toString());
+  assert.equal(committedPosition(committed, { ...pool, sequence: staged.stagedSequence }), committed);
+  assert.throws(() => committedPosition({ ...position, appliedSequence: pool.sequence.add(one) }, pool), /InconsistentRead/);
+  const { account: request } = fixture("request");
+  const stagedRequest = { ...request, status: 0, applied: true, boundSequence: pool.sequence.add(one), receiptStatus: 4 };
+  assert.equal(committedRequest(stagedRequest, pool).status, 0);
+  assert.equal(committedRequest(stagedRequest, { ...pool, sequence: stagedRequest.boundSequence }).status, 7);
+});
+test("every unsigned builder uses actual IDL account flags and instruction bytes", () => {
+  const { key: pool, account: state } = fixture("pool");
+  const { key: position, account: ownerState } = fixture("position");
+  const { key: request } = fixture("request");
+  const { key: batch } = fixture("batch");
+  const owner = ownerState.owner, vault = state.vault, methodology = state.methodology;
+  const userToken = PublicKey.default;
+  const keys = { owner, pool, vault, position, request, userToken };
+  const process = { pool, vault, position, request, batch };
+  const digest = Buffer.alloc(32, 1);
+  const instructions = [
+    builder.initializeRegistry(owner, PublicKey.default, owner), builder.registerMethodology(owner, digest, 100, 0n), builder.uploadMethodology(owner, digest, 0, Buffer.from([1, 2])),
+    builder.sealMethodology(owner, digest, { version: "test", roster: [0, 1], origin: 1800000000n, bybit: false, feedCheckDigest: digest }), builder.initializePool(owner, methodology, state.collateralMint, 0n),
+    builder.deposit(keys, 0, 1n, 0n, 99n), builder.switch(keys, 0, 1, 1n, 0n, 99n), builder.redeem(keys, 0, 1n, 0n, 99n),
+    builder.cancel({ owner, pool, vault, position, request }), builder.expire({ authority: owner, pool, vault, position, request }), builder.refund(keys), builder.withdraw({ owner, pool, vault, position, userToken }, 1n),
+    builder.publish({ pool, vault, payer: owner, runtime: owner, methodology }, 1n, 1n, digest, [{ priceE8: 1n, venue: 0, step: 1, candleStart: 1800000000n, tradeAgeMinutes: 0 }], digest, 1800000060n),
+    builder.evaluate(process), builder.safety(process), builder.sealEvaluation({ pool, vault, batch }), builder.execute(process), builder.finalize({ pool, vault, batch, methodology, payer: owner }, 1n),
+    builder.materializePosition({ pool, vault, position }), builder.readReference(pool, 0), builder.readPosition(pool, owner), builder.quoteRequest(pool, 0, 255, 0, 1n, 0n),
+    builder.pause(owner), builder.unpause(owner), builder.rotateRuntime(owner, PublicKey.default, 99n)
+  ];
+  for (const instruction of instructions) {
+    const decoded = new anchor.BorshInstructionCoder(program.idl).decode(instruction.data);
+    assert.ok(decoded);
+    const definition = program.idl.instructions.find(value => value.name === decoded.name)!;
+    assert.deepEqual([...instruction.data.subarray(0, 8)], definition.discriminator);
+    assert.equal(instruction.keys.length, definition.accounts.length);
+    instruction.keys.forEach((key, index) => {
+      const account = definition.accounts[index]!;
+      assert.ok(!("accounts" in account));
+      assert.equal(key.isSigner, account.signer ?? false); assert.equal(key.isWritable, account.writable ?? false);
+    });
+  }
+  assert.equal(instructions[12]!.data.subarray(0, 8).toString("hex"), discriminator("global", "publish").toString("hex"));
+});
+test("read simulations stay unsigned and reject return data from another program", async () => {
+  const { key: pool } = fixture("pool");
+  const { account: position } = fixture("position");
+  let wrongProgram = false;
+  const simulationConnection = {
+    getLatestBlockhash: async () => ({ blockhash: PublicKey.default.toBase58(), lastValidBlockHeight: 100 }),
+    simulateTransaction: async (transaction: VersionedTransaction, config: { sigVerify: boolean }) => {
+      assert.equal(config.sigVerify, false);
+      assert.ok(transaction.signatures.every(signature => signature.every(byte => byte === 0)));
+      const quote = { sequence: new anchor.BN(1), minted: new anchor.BN(2), proceeds: new anchor.BN(3) };
+      return { value: { err: null, returnData: { programId: wrongProgram ? PublicKey.default.toBase58() : program.programId.toBase58(), data: [program.coder.types.encode("quoteRead", quote).toString("base64"), "base64"] } } };
+    }
+  } as unknown as Connection;
+  const simulations = new CoxSimulations(new anchor.Program(idl, { connection: simulationConnection }), position.owner);
+  assert.equal((await simulations.quote(pool, 0, 255, 0, 1n, 0n)).minted.toString(), "2");
+  wrongProgram = true;
+  await assert.rejects(() => simulations.quote(pool, 0, 255, 0, 1n, 0n), /InvalidSimulationReturnData/);
+});
+test("thirty-price publication fits a legacy packet with a separate payer", () => {
+  const { key: pool, account: state } = fixture("pool");
+  const { account: registry } = fixture("registry");
+  const { account: position } = fixture("position");
+  assert.ok(!registry.runtime.equals(position.owner));
+  const prices = Array.from({ length: 30 }, () => ({ priceE8: 100000000n, venue: 0 as const, step: 1 as const, candleStart: 1800000000n, tradeAgeMinutes: 0 }));
+  const instruction = builder.publish({ pool, vault: state.vault, methodology: state.methodology, payer: position.owner, runtime: registry.runtime }, 1n, 1n, Buffer.alloc(32), prices, Buffer.alloc(32), 1800000060n);
+  const transaction = new Transaction({ feePayer: position.owner, recentBlockhash: PublicKey.default.toBase58() }).add(
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 1400000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 0n }), instruction);
+  assert.equal(instruction.data.length, 700);
+  assert.equal(transaction.serialize({ requireAllSignatures: false, verifySignatures: false }).length, 1218);
+});

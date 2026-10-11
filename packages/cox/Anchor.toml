@@ -1,0 +1,16 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = true
+
+[programs.localnet]
+cox = "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF"
+
+[programs.devnet]
+cox = "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF"
+
+[provider]
+cluster = "Devnet"
+wallet = "../../.cox/keys/cox-admin-keypair.json"

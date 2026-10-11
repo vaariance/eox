@@ -7,6 +7,7 @@ docs/
 /packages/methodology/research/
 .anchor/
 .oracle/
+.cox/
 test-ledger/
 *-keypair.json
 AGENTS.local.md

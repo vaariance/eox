@@ -6,8 +6,6 @@ Country labels are illustrative. Every supplied artifact digest verifies against
 
 - `baseline.json`: US, JP, GB, NG; four indicator slots each; all indices 100.
 - `us-improves.json`: US first indicator increases; fixed baseline remains 100.
-- `confidence-decay.json`: identical economics, evaluated 60 days later.
-- `contested.json`: one unsuccessful challenge retained against US evidence.
 
 Slots exercise identity, difference, fractional change, and target normalization.
 Every country has a unique series per slot. All quality ratings begin at 10,000
@@ -24,3 +22,6 @@ publication times or pretend these fixture timestamps came from real sources.
 JSON integer fields use the Rust fixed-point representation. Integrations must
 preserve integer precision; the valid Rust range exceeds JavaScript's safe-number
 range. The fixture numbers themselves are within that range.
+
+Only the two scenarios used by Joel's existing fixture API remain. Removed
+EOX challenge and protocol fixtures are recoverable from `eox-archive`.

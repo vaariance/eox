@@ -1,7 +1,14 @@
-# COX calculation engine — P2
+# COX calculation engine and Solana program
 
-Devnet test mechanism `COX/TRANSFER/MVP-0`. This workspace has no Solana
-program, publisher, venue connection, live collateral or deployment.
+Devnet test mechanism `COX/TRANSFER/MVP-0`. The P2 engine now powers the P3
+Anchor program in `programs/cox`. The compiled program passes local custody
+and lifecycle tests; devnet deployment is pending. No live pool is active.
+The continuous publisher belongs to P4.
+
+See [P3 verification](results/p3-verification.md), the
+[integration handoff](INTEGRATION.md), [client](../cox-client/README.md) and
+[deployment instructions](deploy/README.md) for the actual ABI and release
+artifacts. The sections below describe the calculation engine.
 
 `cox-math` implements checked reference, transfer, fixed-value flow and custody
 arithmetic. `cox` is its strict JSON CLI. P1's nine arithmetic and three wire
@@ -100,6 +107,8 @@ scope remain essential; production residual and minimum-order policy remain open
 
 [Deletion audit](research/deletion-audit.md) records Peter's candidates. Product
 section 8 step 10 places those deletions after P3, when reusable contract and
-publisher patterns have replacements. Current Joel/Godwin imports still need
-them. No old EOX component is called by this COX math workspace. No EOX code or
-archived evidence was deleted as part of P2.
+publisher patterns have replacements. P2 made no deletions. After compiled P3 replacement verification, the retired
+Peter-owned program and lifecycle were removed in the working tree, while
+Joel’s live readers/economic math and P4 transport carry-over remain. No old
+EOX component is called by the COX program. Papers and sealed research remain
+preserved.

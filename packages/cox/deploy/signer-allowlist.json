@@ -1,0 +1,52 @@
+{
+  "schema": "cox.signer-allowlist/v1",
+  "network": "solana-devnet",
+  "status": "prepared-not-bound",
+  "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+  "role": "oracle-operator",
+  "publicKey": "GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6",
+  "instructions": [
+    {
+      "name": "publish",
+      "discriminatorHex": "81b1b6a0b8e0db05"
+    },
+    {
+      "name": "evaluate",
+      "discriminatorHex": "b3d38eb76c6814d6"
+    },
+    {
+      "name": "safety",
+      "discriminatorHex": "00980e338855a9cd"
+    },
+    {
+      "name": "seal_evaluation",
+      "discriminatorHex": "b0a00549cafec750"
+    },
+    {
+      "name": "execute",
+      "discriminatorHex": "82ddf29a0dc1bd1d"
+    },
+    {
+      "name": "finalize",
+      "discriminatorHex": "ab3dda387f730cd9"
+    }
+  ],
+  "policyRequirements": [
+    "Bind to the verified deployed program and explicit devnet environment before enabling signing",
+    "Decode every instruction and verify registry, approved pool, sealed methodology, batch PDA and exact classic SPL vault where present",
+    "Require the existing oracle-operator public key as publish runtime signer; allow it to fee-sponsor only these permissionless cranks for approved pool batches",
+    "For each crank verify queue cursor, request and position PDA linkage against approved pool state; never accept arbitrary accounts",
+    "Allow only reviewed compute-budget unit limits and priority fees; runtime transactions require no heap-frame instruction",
+    "Exclude admin, upgrade, token transfer, wallet trade and arbitrary instructions",
+    "Preserve signer request-id idempotency and role separation"
+  ],
+  "measurement": {
+    "publishComputeUnits": 520154,
+    "publishBytesRuntimePays": 1122,
+    "publishBytesSeparatePayer": 1218,
+    "testedComputeUnitLimit": 1400000,
+    "testedPriorityFeeMicroLamports": 1,
+    "runtimeHeapBytes": 32768,
+    "note": "These local measured values inform a reviewed signer configuration; they do not enable or modify the deployed signing service."
+  }
+}
