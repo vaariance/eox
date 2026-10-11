@@ -17,6 +17,7 @@ export function StatusBanner({ status, origin }: { status: CoxStatus; origin: Co
   const state = states[status.state];
   const mismatch = status.monitor?.verdict === "mismatch";
 
+  if (status.state === "fresh" && !mismatch && origin !== "fixture") return null;
   return (
     <div className="border-b border-line bg-bg">
       <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-1 px-4 pt-2 text-xs text-muted sm:px-6">
