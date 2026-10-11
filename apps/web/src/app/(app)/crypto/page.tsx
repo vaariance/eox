@@ -1,14 +1,18 @@
+import { Activity, Layers, Users } from "lucide-react";
 import Link from "next/link";
 import { AssetChart } from "@/components/asset-chart";
 import { Change } from "@/components/change";
+import { CoinIcon } from "@/components/coin-icon";
 import { FirstPublication } from "@/components/first-publication";
 import { MyPosition } from "@/components/my-position";
 import { PriceSource } from "@/components/price-source";
+import { Figure, StatCard } from "@/components/stat-card";
 import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
-import { formatAmount } from "@/lib/format";
+import { direction, formatAmount } from "@/lib/format";
 import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceOf, priceSeries } from "@/lib/view";
 
 const HOUR = 3600;
+const SPARK = 60;
 const EMPTY = "—";
 
 export default async function CryptoPage() {
@@ -28,40 +32,41 @@ export default async function CryptoPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-title font-semibold tracking-tight">CRYPTO</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          The shared benchmark every asset is measured against. This is {crypto.label}: equal weights, applied again at every publication. It is a pilot list, not the whole crypto market.
-        </p>
-      </div>
+      <h1 className="font-display text-title font-semibold tracking-tight">$CRYPTO</h1>
 
       {!current && <FirstPublication status={status} />}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="flex items-center justify-between text-xs text-muted">
-            <span>CRYPTO level</span>
-            {current && <span className="flex items-center gap-1">1h <Change ratio={changeSince(level, HOUR)} /></span>}
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatCard
+          icon={Activity}
+          title="$CRYPTO level"
+          aside="starts at 100"
+          value={current ? <Figure text={formatAmount(latest(level), 4)} /> : EMPTY}
+          change={current ? changeSince(level, HOUR) : null}
+          caption="last hour"
+          spark={current ? { points: level.slice(-SPARK), tone: direction(changeSince(level, HOUR)) } : null}
+        />
+        <StatCard icon={Users} title="Members" value={<Figure text={String(members.length)} />} caption={`each weighted 1/${members.length}`}>
+          <div className="mt-3 flex">
+            {members.slice(0, 9).map((member) => (
+              <span key={member.id} className="-ml-1.5 rounded-full ring-2 ring-surface first:ml-0">
+                <CoinIcon id={member.id} size={22} />
+              </span>
+            ))}
           </div>
-          <div className="num mt-2 text-2xl">{current ? formatAmount(latest(level), 4) : EMPTY}</div>
-          <div className="mt-1 text-xs text-muted">Starts at 100</div>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">Members</div>
-          <div className="num mt-2 text-2xl">{members.length}</div>
-          <div className="mt-1 text-xs text-muted">Each weighted 1/{members.length}</div>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">Class unit value</div>
-          <div className="num mt-2 text-2xl">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</div>
-          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} USDC backing</div>
-        </div>
+        </StatCard>
+        <StatCard
+          icon={Layers}
+          title="Class unit value"
+          value={claim.unitValue === null ? "n/a" : <Figure text={formatAmount(claim.unitValue, 6)} />}
+          caption={`${formatAmount(claim.backing)} USDC backing`}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-6">
           {current ? (
-            <AssetChart series={[{ id: "level", label: "CRYPTO level", points: level, digits: 4, baseline: 100 }]} />
+            <AssetChart series={[{ id: "level", label: "$CRYPTO level", points: level, digits: 4, baseline: 100 }]} />
           ) : (
             <section className="flex h-80 items-center justify-center rounded-card border border-line bg-surface p-4 text-sm text-muted shadow-card">
               The chart starts with the first publication.
@@ -102,11 +107,8 @@ export default async function CryptoPage() {
         <div className="flex flex-col gap-6">
           <MyPosition classId={CRYPTO_CLASS} unitValue={claim.unitValue} decimals={decimals} />
           <Link href="/swap" className="flex h-11 items-center justify-center rounded-pill bg-accent text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90">
-            Swap USDC and CRYPTO
+            Swap USDC and $CRYPTO
           </Link>
-          <p className="px-1 text-xs text-muted">
-            CRYPTO is what you pay with on Relative. Swap USDC for it, then use it to buy any asset from the Markets page.
-          </p>
         </div>
       </div>
     </div>

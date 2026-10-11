@@ -1,18 +1,20 @@
-import { ChevronRight } from "lucide-react";
+import { Activity, ChevronRight, DollarSign, Layers } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AssetChart } from "@/components/asset-chart";
-import { Change } from "@/components/change";
+import { CoinIcon } from "@/components/coin-icon";
 import { FirstPublication } from "@/components/first-publication";
 import { MyPosition } from "@/components/my-position";
 import { PriceSource } from "@/components/price-source";
 import { RequestList } from "@/components/request-list";
+import { Figure, StatCard } from "@/components/stat-card";
 import { TradeForm } from "@/components/trade-form";
-import { getAssets, getCrypto, getDeployment, getPublications, getStatus } from "@/lib/data";
-import { formatAmount, formatChange, formatPrice } from "@/lib/format";
+import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
+import { direction, formatAmount, formatPrice } from "@/lib/format";
 import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceOf, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
+const SPARK = 60;
 const EMPTY = "—";
 
 function NoChart() {
@@ -25,7 +27,7 @@ function NoChart() {
 
 export default async function AssetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [assets, crypto, deployment, publications, status] = await Promise.all([getAssets(), getCrypto(), getDeployment(), getPublications(), getStatus()]);
+  const [assets, deployment, publications, status] = await Promise.all([getAssets(), getDeployment(), getPublications(), getStatus()]);
   const asset = assets.find((item) => item.assetId === id);
   if (!asset) notFound();
 
@@ -39,10 +41,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   const reference = referenceSeries(publications, asset.assetId);
   const level = levelSeries(publications);
   const priceHour = current ? changeSince(price, HOUR) : 0;
-  const cryptoHour = current ? changeSince(level, HOUR) : 0;
   const referenceHour = current ? changeSince(reference, HOUR) : 0;
-  const verb = (ratio: number) => (ratio >= 0 ? "rose" : "fell");
-  const size = (ratio: number) => formatChange(Math.abs(ratio)).slice(1);
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,41 +51,39 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
         <span className="text-ink">{asset.assetId}</span>
       </nav>
 
-      <div>
-        <h1 className="font-display text-title font-semibold tracking-tight">
-          {asset.assetId} <span className="text-base font-normal text-muted">{asset.name !== asset.assetId && `${asset.name} `}against {crypto.label}</span>
-        </h1>
-        {current && (
-          <p className="mt-1 text-sm text-muted">
-            Last hour: {asset.assetId} {verb(priceHour)} {size(priceHour)}, CRYPTO {verb(cryptoHour)} {size(cryptoHour)}, so the reference {verb(referenceHour)} {size(referenceHour)}.
-          </p>
-        )}
-      </div>
+      <h1 className="flex items-center gap-3 font-display text-title font-semibold tracking-tight">
+        <CoinIcon id={asset.assetId} size={36} />
+        {asset.assetId}
+        {asset.name !== asset.assetId && <span className="text-base font-normal text-muted">{asset.name}</span>}
+      </h1>
 
       {!current && <FirstPublication status={status} />}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="flex items-center justify-between text-xs text-muted">
-            <span>Price (USD)</span>
-            {current && <span className="flex items-center gap-1">1h <Change ratio={priceHour} /></span>}
-          </div>
-          <div className="num mt-2 text-2xl">{current ? formatPrice(latest(price)) : EMPTY}</div>
-          <div className="mt-1 text-xs text-muted">{current ? <PriceSource price={priceOf(current, asset.assetId)} detailed /> : "No price published yet"}</div>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="flex items-center justify-between text-xs text-muted">
-            <span>Relative reference</span>
-            {current && <span className="flex items-center gap-1">1h <Change ratio={referenceHour} /></span>}
-          </div>
-          <div className="num mt-2 text-2xl">{current ? formatAmount(latest(reference), 4) : EMPTY}</div>
-          <div className="mt-1 text-xs text-muted">Against CRYPTO, starts at 100</div>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">Class unit value</div>
-          <div className="num mt-2 text-2xl">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</div>
-          <div className="mt-1 text-xs text-muted">{formatAmount(claim.backing)} USDC backing</div>
-        </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatCard
+          icon={DollarSign}
+          title="Price"
+          aside="USD"
+          value={current ? <Figure text={formatPrice(latest(price))} /> : EMPTY}
+          change={current ? priceHour : null}
+          caption={current ? <PriceSource price={priceOf(current, asset.assetId)} detailed /> : "No price published yet"}
+          spark={current ? { points: price.slice(-SPARK), tone: direction(priceHour) } : null}
+        />
+        <StatCard
+          icon={Activity}
+          title="Relative reference"
+          aside="starts at 100"
+          value={current ? <Figure text={formatAmount(latest(reference), 4)} /> : EMPTY}
+          change={current ? referenceHour : null}
+          caption="last hour"
+          spark={current ? { points: reference.slice(-SPARK), tone: direction(referenceHour) } : null}
+        />
+        <StatCard
+          icon={Layers}
+          title="Class unit value"
+          value={claim.unitValue === null ? "n/a" : <Figure text={formatAmount(claim.unitValue, 6)} />}
+          caption={`${formatAmount(claim.backing)} USDC backing`}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -96,7 +93,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
               series={[
                 { id: "reference", label: "Relative reference", points: reference, digits: 4, baseline: 100 },
                 { id: "price", label: "Price", points: price, digits: latest(price) >= 1 ? 2 : latest(price) >= 0.01 ? 4 : 6 },
-                { id: "crypto", label: "CRYPTO", points: level, digits: 4, baseline: 100 },
+                { id: "crypto", label: "$CRYPTO", points: level, digits: 4, baseline: 100 },
               ]}
             />
           ) : (
