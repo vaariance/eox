@@ -1,11 +1,12 @@
 # COX P1 mechanism and protocol specification
 
-Version 0.2 · 10 October 2026 · **Draft for review; devnet test collateral only**
+Version 0.3 · 10 October 2026 · **P3 implementation ABI; devnet test collateral only**
 
 Authority: SYSTEM.md v2.4, product.md v12 and COX Paper 3 v0.1. This document
-fills in P1 implementation details; it does not change SYSTEM.md or claim
+records P1 rules and the P3 implementation ABI; it does not change SYSTEM.md or claim
 sign-off. All `MVP-0` outputs are test-mechanism claim values, not promised
-reference returns. P2 must implement and verify these rules in Rust before P3.
+reference returns. P2's Rust crate supplies the calculations; compiled-program
+verification and deployment evidence are separate P3 deliverables.
 
 ## 1. Deliverables and activation boundary
 
@@ -417,3 +418,120 @@ adversarial simulations; P3 IDL, transaction sizing, state-root materialization
 and concurrency proofs; deployment/signer bindings. SYSTEM sign-off and real
 collateral remain separate gates. No EOX deletion, deployment, commit or push
 is part of this P1 draft.
+
+## 11. P3 implementation ABI and safety additions
+
+This section supersedes the draft account/instruction implementation details
+in sections 8–9 where they differ. It preserves the canonical methodology,
+price, snapshot, receipt-root and state-digest encodings in section 3 and the
+P2 arithmetic order. The compiled Anchor-generated `idl/cox.json` describes
+the actual account field order, instruction arguments and account metas.
+Program source is `programs/cox/src/lib.rs`; client artifacts are in
+`../cox-client`. Prepared deployment identities are in `deploy/devnet.json`.
+These files do not assert deployment or live-pool activation by their presence.
+
+### Bounded registration and execution
+
+`register_methodology(digest,length,activation_batch)` creates the manifest
+account. `upload_methodology(offset,bytes)` appends at the exact next offset,
+up to 700 bytes per upload and 8,192 canonical bytes total.
+`seal_methodology(config)` reconstructs the typed canonical manifest, checks
+exact byte equality and its SHA-256, then seals it. No parser guesses the
+meaning of arbitrary caller JSON. The typed configuration contains version,
+canonical roster indices, origin, Bybit policy and feed-check digest. A local
+synthetic fixture is not a real seven-day report or approval to activate a
+live pool.
+
+Active backing plus pending collateral is initially capped at 10^11 base
+units, and each class at 10^24 unit quanta. Every request reserves tokens or
+unlocked units at submission. Withdrawal of already committed payables and
+submission of future requests remain possible while the current batch is
+being prepared. No staged credit can fund either operation.
+
+The persistent execution phases are:
+
+| Phase code | Work and completion rule |
+| --- | --- |
+| 0 | Evaluate closed-queue requests at the fixed publication valuation. |
+| 3 | Safety pass computes aggregate accepted burns and incoming mints. Seal the pass; if a destination becomes blocked, repeat with that entire incoming class excluded. |
+| 1 | Prepare per-position deltas and permanent request receipts in queue order. |
+| 2 | Committed; finalization has activated the global state and position-version effects. |
+
+`evaluate`, `safety` and `execute` each process the next queue slot.
+The closed queue span must fit u32; transaction cranks process one slot each.
+`seal_evaluation` transitions a completed evaluation or safety pass. A new
+publication cannot replace unfinished work, and no phase has a fill deadline.
+The safety loop is monotonic: once blocked in that batch, a destination stays
+blocked. All incoming requests to an over-capacity class receive the same
+rejection, independent of processing order. Repeating the pass accounts for
+switch burns that disappear when another destination is rejected.
+
+An individually unsafe request is rejected and its reservation returned.
+`SafetyRejected` is receipt status 4 and terminal request status 7, appended
+without changing existing codes. `CapacityExceeded` is appended after the
+existing error list. Malformed instructions still fail immediately. Snapshot
+reference or revaluation failure rejects the snapshot before acceptance;
+ordinary unsafe requests cannot force the accepted batch to reprice or abort.
+
+### Actual account additions and receipt storage
+
+All accounts retain schema version 1 and their draft PDA seeds. The actual
+IDL includes these additions to the draft fields:
+
+| Account | Added fields or implementation changes |
+| --- | --- |
+| Registry | `max_accepted_batch:u64`, `active_batches:u64`; rotation must be later than every accepted batch and waits until no batch is executing. |
+| Methodology | `expected_length:u32`, `roster:vec<u8>`, `origin:u64`, `bybit:bool` after the draft fields. |
+| Pool | `initialized:bool`, `queue_start:u64`, `stage_batch:u64`, `stage_closed_end:u64` after the draft fields. |
+| Position | `staged:bool`, `staged_sequence:u64`, burn/mint/unlock vectors, staged payable and refundable deltas after committed fields. |
+| Request | `evaluated:bool`, bound batch/sequence, receipt status, minted/proceeds and `applied:bool` after the draft fields. |
+| Batch | Explicit sequence, queue-start/next-queue-start, incoming/blocked vectors, phase and safety-pass flag; use IDL for their exact positions. |
+| Publication | Pool, sequence, batch, state/snapshot/manifest digests, complete state-preimage bytes, prices and commit time; use IDL for exact serialization. |
+
+There is no `StagePage` account in this implementation. Each immutable request
+PDA holds its staged receipt and bound sequence. The position holds aggregate
+deltas for that sequence. Finalization activates them through the global
+committed sequence; subsequent instructions materialize those deltas once
+before spending, while readers show the same committed view without writing.
+A staged request status must not be presented as filled before that sequence
+is committed.
+
+The batch's internal `staged_root` is a different implementation commitment
+from the draft section 8 page-root proposal. It starts at
+`SHA256(str("COX/STAGE/V1"))` and folds each prepared receipt as
+`SHA256(previous_staged_root || request_pubkey32 || new_receipt_root32)`.
+It does not claim the draft `COX/STAGE-PAGE/V1` hash. The public receipt root
+and state digest retain the exact section 3 encodings and golden vectors.
+Executed counts filled receipts; rejected counts rejected receipts. Cancelled
+tombstones contribute to neither count nor root.
+
+Methodology, roster and origin remain fixed for a pool. Creating and sealing
+another methodology does not migrate a live pool; a changed configuration
+requires a new pool. This implementation deliberately provides no in-place
+`activate_methodology` instruction. Runtime rotation is prospective and does
+not rewrite publication history. Read-only reference/position presentation
+is provided by checked account readers rather than a separate stored quote
+scalar. The price of a future publication is unknown, so any preview is an
+estimate and cannot make a queued trade spendable.
+
+### Integration verification
+
+`fixtures/state-vectors.json` supplies full receipt/state bytes and hashes,
+including the appended safety status. Generated account fixtures and the IDL
+are checked together by the client tests. The runtime signer allowlist is
+`deploy/signer-allowlist.json`; the privileged instruction is `publish`.
+Permissionless cranks do not require the runtime key on chain. The service
+allowlist also permits runtime fee sponsorship of `evaluate`, `safety`,
+`seal_evaluation`, `execute` and `finalize` for approved pool batches. Admin,
+upgrade and user financial instructions are excluded. The unsigned `read_reference`, `read_position` and
+`quote_request` builders expose the program's simulated return-data readers.
+`read_position` includes committed lazy deltas; a quote uses committed class
+backing/units and does not predict the next publication's execution value.
+Registry initialization additionally requires the
+actual program upgrade authority and verified upgradeable-loader program-data
+account; a random first caller cannot select the admin or runtime identity.
+`INTEGRATION.md` records the archive-byte mismatch
+Joel must correct, the monitor handoff and the legacy callers retained until
+their replacements land. Local test results, build measurements and the
+deployment manifest must provide the evidence of completion; this ABI section
+does not substitute for those results.

@@ -1,28 +1,52 @@
-import { CircleCheck } from "lucide-react";
+import type { CoxOrigin, CoxStatus, SystemState } from "@eox/app-api";
+import { CircleAlert, CircleCheck, CirclePause } from "lucide-react";
 import { formatUtcTime, formatWhole } from "@/lib/format";
-import { publication } from "@/lib/sample";
 import { Countdown } from "./countdown";
 
-export function StatusBanner() {
+const states: Record<SystemState, { label: string; tone: string; Icon: typeof CircleCheck }> = {
+  fresh: { label: "Fresh", tone: "text-up", Icon: CircleCheck },
+  delayed: { label: "Delayed", tone: "text-warn", Icon: CircleAlert },
+  incident: { label: "Incident", tone: "text-warn", Icon: CircleAlert },
+  halted: { label: "Halted", tone: "text-down", Icon: CirclePause },
+  paused: { label: "Paused", tone: "text-down", Icon: CirclePause },
+};
+
+const verdicts = { match: "matches", mismatch: "mismatch", pending: "checking" };
+
+export function StatusBanner({ status, origin }: { status: CoxStatus; origin: CoxOrigin }) {
+  const state = states[status.state];
+  const mismatch = status.monitor?.verdict === "mismatch";
+
   return (
     <div className="border-b border-line bg-bg">
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 text-xs text-muted sm:px-6">
-        <span className="flex items-center gap-1.5 text-up">
-          <CircleCheck size={14} aria-hidden="true" />
-          Fresh
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-1 px-4 pt-2 text-xs text-muted sm:px-6">
+        <span className={`flex items-center gap-1.5 ${state.tone}`}>
+          <state.Icon size={14} aria-hidden="true" />
+          {state.label}
         </span>
-        <span>
-          Publication <span className="num text-ink">#{formatWhole(publication.sequence)}</span> at{" "}
-          <span className="num text-ink">{formatUtcTime(publication.cutoff)}</span>
+        {status.latestSequence === null || status.latestBatch === null ? (
+          <span>No publication yet</span>
+        ) : (
+          <span>
+            Publication <span className="num text-ink">#{formatWhole(status.latestSequence)}</span> for batch{" "}
+            <span className="num text-ink">#{formatWhole(status.latestBatch)}</span>
+            {status.latestCutoff !== null && <span className="num"> ({formatUtcTime(status.latestCutoff)})</span>}
+          </span>
+        )}
+        {status.executing && <span className="text-warn">Filling the accepted batch</span>}
+        {status.currentBatch && (
+          <span>
+            Batch <span className="num text-ink">#{formatWhole(status.currentBatch.batch)}</span> closes in <span className="text-ink"><Countdown /></span>
+          </span>
+        )}
+        <span className={mismatch ? "text-down" : undefined}>
+          Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{status.monitor ? verdicts[status.monitor.verdict] : "no verdict yet"}</span>
         </span>
-        <span>
-          Next cutoff in <span className="text-ink"><Countdown /></span>
-        </span>
-        <span>
-          Monitor: <span className="text-ink">matches</span>
-        </span>
-        <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Sample data, not from the API</span>
+        {origin === "fixture" && <span className="ml-auto rounded-pill bg-surface-2 px-2 py-0.5 text-ink">Fixture data: synthetic assets, not market prices</span>}
       </div>
+      <p className="mx-auto w-full max-w-7xl px-4 pb-2 pt-1 text-xs text-muted sm:px-6">
+        Solana devnet · Test collateral (tUSDC has no real value) · MVP-0 is a test mechanism · Prices attested by the operator from exchange data
+      </p>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatAmount, formatUtcTime } from "@/lib/format";
-import type { Point } from "@/lib/sample";
+import type { Point } from "@/lib/view";
 
 const HEIGHT = 320;
 const PAD = { top: 16, right: 72, bottom: 28, left: 8 };

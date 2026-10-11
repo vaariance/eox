@@ -536,7 +536,7 @@ pub fn price_bytes(price: &Price) -> Result<Vec<u8>> {
         || !price.asset_id.bytes().all(|b| b.is_ascii_uppercase())
         || price.price_e8 == 0
         || price.trade_age_minutes > 30
-        || !price.candle_start.is_multiple_of(60)
+        || price.candle_start % 60 != 0
         || (price.step != 4 && price.trade_age_minutes != 0)
         || !matches!((price.venue, price.step), (0, 1) | (0, 4) | (1, 2) | (2, 3))
     {
@@ -554,7 +554,7 @@ pub fn price_bytes(price: &Price) -> Result<Vec<u8>> {
 }
 pub fn snapshot_bytes(cutoff: u64, prices: &[Price], roster: &[String]) -> Result<Vec<u8>> {
     if cutoff == 0
-        || !cutoff.is_multiple_of(60)
+        || cutoff % 60 != 0
         || prices.len() != roster.len()
         || !(2..=30).contains(&roster.len())
         || roster.iter().collect::<HashSet<_>>().len() != roster.len()

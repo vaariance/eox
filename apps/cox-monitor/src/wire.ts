@@ -16,7 +16,7 @@ export interface WirePrice {
 const U64_MAX = (1n << 64n) - 1n;
 const VENUE_FOR_STEP: Record<number, number> = { 1: VENUE_CODES.kraken, 2: VENUE_CODES.coinbase, 3: VENUE_CODES.bybit, 4: VENUE_CODES.kraken };
 
-function unsigned(value: bigint, bytes: number): Buffer {
+export function unsigned(value: bigint, bytes: number): Buffer {
   if (value < 0n || value >= 1n << BigInt(bytes * 8)) fail("IntegerOutOfRange");
   const out = Buffer.alloc(bytes);
   let rest = value;
@@ -27,7 +27,7 @@ function unsigned(value: bigint, bytes: number): Buffer {
   return out;
 }
 
-function text(value: string): Buffer {
+export function text(value: string): Buffer {
   const encoded = Buffer.from(value, "utf8");
   return Buffer.concat([unsigned(BigInt(encoded.length), 4), encoded]);
 }

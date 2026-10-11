@@ -1,11 +1,14 @@
 "use client";
 
+import { ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NetworkSwitcher } from "./network-switcher";
 import { WalletButton } from "./wallet-button";
 
 const links = [
   { href: "/", label: "Markets" },
+  { href: "/swap", label: "Swap" },
   { href: "/crypto", label: "CRYPTO" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/publications", label: "Publications" },
@@ -19,6 +22,21 @@ function isCurrent(pathname: string, href: string): boolean {
 function NavLinks({ pathname }: { pathname: string }) {
   return links.map((link) => {
     const current = isCurrent(pathname, link.href);
+    if (link.href === "/swap") {
+      return (
+        <Link
+          key={link.href}
+          href={link.href}
+          aria-current={current ? "page" : undefined}
+          className={`flex h-10 shrink-0 items-center gap-1.5 rounded-pill border border-accent px-4 text-sm font-medium transition-colors duration-150 ${
+            current ? "bg-accent text-accent-ink" : "text-accent hover:bg-accent hover:text-accent-ink"
+          }`}
+        >
+          <ArrowLeftRight size={15} aria-hidden="true" />
+          {link.label}
+        </Link>
+      );
+    }
     return (
       <Link
         key={link.href}
@@ -47,8 +65,7 @@ export function TopBar() {
           <NavLinks pathname={pathname} />
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <span className="hidden rounded-pill border border-line px-2 py-1 text-xs text-muted lg:inline">Solana devnet</span>
-          <span className="hidden rounded-pill border border-warn px-2 py-1 text-xs text-warn sm:inline">Test collateral · MVP-0</span>
+          <NetworkSwitcher />
           <WalletButton />
         </div>
       </div>

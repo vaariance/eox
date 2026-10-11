@@ -1,0 +1,1804 @@
+#![allow(unexpected_cfgs)]
+
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use cox_math as math;
+use serde_json::json;
+
+declare_id!("G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF");
+pub const COLLATERAL_LIMIT: u64 = 100_000_000_000;
+pub const UNIT_LIMIT: u128 = 1_000_000_000_000_000_000_000_000;
+pub const MANIFEST_LIMIT: usize = 8192;
+pub const IDS: [&str; 30] = [
+    "BTC", "ETH", "SOL", "XRP", "BNB", "TRX", "AVAX", "DOT", "NEAR", "SUI", "APT", "UNI", "ARB",
+    "OP", "INJ", "AAVE", "ZEC", "STRK", "HYPE", "TAO", "WLD", "ONDO", "ENA", "ZRO", "FET", "JUP",
+    "AERO", "RENDER", "TIA", "W",
+];
+
+#[program]
+pub mod cox {
+    use super::*;
+    pub fn initialize_registry(ctx: Context<InitializeRegistry>, runtime: Pubkey) -> Result<()> {
+        require!(
+            runtime != ctx.accounts.admin.key()
+                && runtime != Pubkey::default()
+                && runtime != ctx.accounts.upgrade_authority.key()
+                && ctx.accounts.admin.key() != ctx.accounts.upgrade_authority.key(),
+            CoxError::InvalidAuthority
+        );
+        require!(
+            ctx.accounts.program_data.upgrade_authority_address
+                == Some(ctx.accounts.upgrade_authority.key()),
+            CoxError::Unauthorized
+        );
+        let data = ctx.accounts.program_account.try_borrow_data()?;
+        require!(
+            data.len() >= 36
+                && data[..4] == 2u32.to_le_bytes()
+                && data[4..36] == ctx.accounts.program_data.key().to_bytes(),
+            CoxError::InvalidAuthority
+        );
+        let r = &mut ctx.accounts.registry;
+        r.schema_version = 1;
+        r.bump = ctx.bumps.registry;
+        r.admin = ctx.accounts.admin.key();
+        r.runtime = runtime;
+        Ok(())
+    }
+    pub fn register_methodology(
+        ctx: Context<RegisterMethodology>,
+        digest: [u8; 32],
+        length: u32,
+        activation_batch: u64,
+    ) -> Result<()> {
+        require!(
+            length > 0 && length as usize <= MANIFEST_LIMIT,
+            CoxError::InvalidManifest
+        );
+        let m = &mut ctx.accounts.methodology;
+        m.schema_version = 1;
+        m.bump = ctx.bumps.methodology;
+        m.digest = digest;
+        m.expected_length = length;
+        m.activation_batch = activation_batch;
+        Ok(())
+    }
+    pub fn upload_methodology(
+        ctx: Context<ManageMethodology>,
+        offset: u32,
+        bytes: Vec<u8>,
+    ) -> Result<()> {
+        let m = &mut ctx.accounts.methodology;
+        require!(
+            !m.sealed
+                && bytes.len() <= 700
+                && offset as usize == m.canonical.len()
+                && m.canonical.len() + bytes.len() <= m.expected_length as usize,
+            CoxError::InvalidManifest
+        );
+        m.canonical.extend(bytes);
+        Ok(())
+    }
+    pub fn seal_methodology(ctx: Context<ManageMethodology>, config: ManifestConfig) -> Result<()> {
+        let m = &mut ctx.accounts.methodology;
+        require!(
+            !m.sealed && m.canonical.len() == m.expected_length as usize,
+            CoxError::InvalidManifest
+        );
+        let canonical = canonical_manifest(&config, ctx.accounts.registry.runtime)?;
+        require!(
+            canonical == m.canonical && math::artifact_digest(&canonical) == m.digest,
+            CoxError::InvalidManifest
+        );
+        m.roster = config.roster;
+        m.origin = config.origin;
+        m.bybit = config.bybit;
+        m.sealed = true;
+        Ok(())
+    }
+    pub fn initialize_pool(ctx: Context<InitializePool>, pool_id: u64) -> Result<()> {
+        require!(ctx.accounts.methodology.sealed, CoxError::UnsealedManifest);
+        require!(ctx.accounts.mint.decimals == 6, CoxError::InvalidCollateral);
+        require!(
+            pool_id == ctx.accounts.registry.next_pool_id,
+            CoxError::Replay
+        );
+        let p = &mut ctx.accounts.pool;
+        p.schema_version = 1;
+        p.bump = ctx.bumps.pool;
+        p.pool_id = pool_id;
+        p.registry = ctx.accounts.registry.key();
+        p.methodology = ctx.accounts.methodology.key();
+        p.collateral_mint = ctx.accounts.mint.key();
+        p.vault = ctx.accounts.vault.key();
+        p.origin = ctx.accounts.methodology.origin;
+        let n = ctx.accounts.methodology.roster.len();
+        p.classes = vec![Class::default(); n + 1];
+        p.benchmark = 100 * math::SCALE;
+        p.references = vec![100 * math::SCALE; n + 1];
+        ctx.accounts.registry.next_pool_id = add(ctx.accounts.registry.next_pool_id, 1)?;
+        reconcile(p, &ctx.accounts.vault)?;
+        Ok(())
+    }
+    pub fn deposit(
+        ctx: Context<Submit>,
+        to: u8,
+        amount: u64,
+        minimum_units: u128,
+        expiry: u64,
+    ) -> Result<()> {
+        submit(
+            ctx,
+            Submission {
+                op: 0,
+                from: 255,
+                to,
+                amount,
+                units: 0,
+                min_units: minimum_units,
+                min_proceeds: 0,
+                expiry,
+            },
+        )
+    }
+    pub fn switch(
+        ctx: Context<Submit>,
+        from: u8,
+        to: u8,
+        units: u128,
+        minimum_units: u128,
+        expiry: u64,
+    ) -> Result<()> {
+        submit(
+            ctx,
+            Submission {
+                op: 1,
+                from,
+                to,
+                amount: 0,
+                units,
+                min_units: minimum_units,
+                min_proceeds: 0,
+                expiry,
+            },
+        )
+    }
+    pub fn redeem(
+        ctx: Context<Submit>,
+        from: u8,
+        units: u128,
+        minimum_proceeds: u64,
+        expiry: u64,
+    ) -> Result<()> {
+        submit(
+            ctx,
+            Submission {
+                op: 2,
+                from,
+                to: 255,
+                amount: 0,
+                units,
+                min_units: 0,
+                min_proceeds: minimum_proceeds,
+                expiry,
+            },
+        )
+    }
+    pub fn cancel(ctx: Context<ManageRequest>) -> Result<()> {
+        require_keys_eq!(
+            ctx.accounts.request.owner,
+            ctx.accounts.authority.key(),
+            CoxError::Unauthorized
+        );
+        release_request(ctx, false)
+    }
+    pub fn expire(ctx: Context<ManageRequest>) -> Result<()> {
+        release_request(ctx, true)
+    }
+    pub fn refund(ctx: Context<Refund>) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        materialize(&mut ctx.accounts.position, p)?;
+        let r = &mut ctx.accounts.request;
+        refresh_request(r, p);
+        require!(
+            r.operation == 0 && matches!(r.status, 2 | 3 | 4 | 5 | 7),
+            CoxError::NotRefundable
+        );
+        let value = r.amount;
+        require!(
+            ctx.accounts.position.refundable >= value,
+            CoxError::NotRefundable
+        );
+        ctx.accounts.position.refundable = sub(ctx.accounts.position.refundable, value)?;
+        p.pending = sub(p.pending, value)?;
+        r.status = 6;
+        transfer_out(
+            p,
+            &ctx.accounts.vault,
+            &ctx.accounts.user_token,
+            &ctx.accounts.token_program,
+            value,
+        )?;
+        emit!(DepositRefunded {
+            pool: p.key(),
+            request: r.key(),
+            amount: value
+        });
+        ctx.accounts.vault.reload()?;
+        reconcile(p, &ctx.accounts.vault)?;
+        Ok(())
+    }
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(!halted(p, now()?)?, CoxError::Halted);
+        materialize(&mut ctx.accounts.position, p)?;
+        require!(
+            amount > 0 && ctx.accounts.position.payable >= amount,
+            CoxError::InsufficientPayable
+        );
+        ctx.accounts.position.payable = sub(ctx.accounts.position.payable, amount)?;
+        p.payable = sub(p.payable, amount)?;
+        transfer_out(
+            p,
+            &ctx.accounts.vault,
+            &ctx.accounts.user_token,
+            &ctx.accounts.token_program,
+            amount,
+        )?;
+        emit!(WithdrawalPaid {
+            pool: p.key(),
+            owner: ctx.accounts.owner.key(),
+            amount
+        });
+        ctx.accounts.vault.reload()?;
+        reconcile(p, &ctx.accounts.vault)?;
+        Ok(())
+    }
+    pub fn publish(
+        ctx: Context<Publish>,
+        batch_id: u64,
+        sequence: u64,
+        predecessor: [u8; 32],
+        prices: Vec<PriceWire>,
+        snapshot: [u8; 32],
+        archive_time: u64,
+    ) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(!ctx.accounts.registry.paused, CoxError::Paused);
+        require!(p.stage.is_none(), CoxError::BatchBusy);
+        let t = now()?;
+        let cutoff = add(
+            p.origin,
+            batch_id
+                .checked_mul(60)
+                .ok_or(CoxError::ArithmeticOverflow)?,
+        )?;
+        require!(t >= cutoff, CoxError::TooEarly);
+        require!(t <= add(cutoff, 55)?, CoxError::CommitDeadlinePassed);
+        require!(
+            archive_time >= cutoff && archive_time <= t && archive_time <= add(cutoff, 30)?,
+            CoxError::ArchiveDeadlinePassed
+        );
+        require!(
+            ctx.accounts.methodology.activation_batch <= batch_id,
+            CoxError::UnsealedManifest
+        );
+        if p.initialized {
+            require!(
+                batch_id > p.last_batch
+                    && sequence == add(p.sequence, 1)?
+                    && predecessor == p.state_digest,
+                CoxError::WrongPredecessor
+            );
+        } else {
+            require!(
+                batch_id == 0 && sequence == 0 && predecessor == [0; 32],
+                CoxError::InvalidOrigin
+            );
+        }
+        let r = &mut ctx.accounts.registry;
+        if let Some(next) = r.pending_runtime {
+            if batch_id >= r.runtime_effective_batch {
+                r.runtime = next;
+                r.pending_runtime = None;
+            }
+        }
+        require_keys_eq!(
+            r.runtime,
+            ctx.accounts.runtime.key(),
+            CoxError::Unauthorized
+        );
+        let m = &ctx.accounts.methodology;
+        require!(prices.len() == m.roster.len(), CoxError::InvalidRoster);
+        let full = prices
+            .iter()
+            .zip(&m.roster)
+            .map(|(w, i)| {
+                let id = IDS[*i as usize];
+                require!(
+                    !(w.venue == 1 && matches!(id, "TRX" | "JUP"))
+                        && !(w.venue == 2 && (!m.bybit || matches!(id, "ZEC" | "TAO"))),
+                    CoxError::InvalidVenueStep
+                );
+                Ok(math::Price {
+                    asset_id: id.into(),
+                    venue: w.venue,
+                    step: w.step,
+                    candle_start: w.candle_start,
+                    price_e8: w.price_e8,
+                    trade_age_minutes: w.trade_age_minutes,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let roster = m
+            .roster
+            .iter()
+            .map(|i| IDS[*i as usize].to_string())
+            .collect::<Vec<_>>();
+        let computed = math::artifact_digest(
+            &math::snapshot_bytes(cutoff, &full, &roster)
+                .map_err(|_| error!(CoxError::InvalidPrice))?,
+        );
+        require!(snapshot == computed, CoxError::InvalidSnapshotDigest);
+        let current = prices.iter().map(|x| x.price_e8).collect::<Vec<_>>();
+        let (benchmark, references, fixed, transfer_residual) = if p.initialized {
+            let reference = mm(math::reference(
+                &p.last_prices,
+                &current,
+                &p.origin_prices,
+                p.benchmark,
+            ))?;
+            let revaluation = mm(math::revalue(&to_math(&p.classes), &reference.h))?;
+            let mut references = reference.relative;
+            references.push(100 * math::SCALE);
+            (
+                reference.benchmark,
+                references,
+                from_math(&revaluation.classes),
+                revaluation.residual,
+            )
+        } else {
+            (
+                100 * math::SCALE,
+                vec![100 * math::SCALE; prices.len() + 1],
+                p.classes.clone(),
+                0,
+            )
+        };
+        let b = &mut ctx.accounts.batch;
+        b.schema_version = 1;
+        b.bump = ctx.bumps.batch;
+        b.pool = p.key();
+        b.batch_id = batch_id;
+        b.sequence = sequence;
+        b.cutoff = cutoff;
+        b.predecessor_sequence = p.sequence;
+        b.predecessor_digest = p.state_digest;
+        b.snapshot_digest = snapshot;
+        b.prices = prices;
+        b.benchmark = benchmark;
+        b.references = references;
+        b.fixed = fixed;
+        let n = p.classes.len();
+        b.burns = vec![0; n];
+        b.mints = vec![0; n];
+        b.incoming = vec![0; n];
+        b.blocked = vec![false; n];
+        b.transfer_residual = transfer_residual;
+        b.closed_queue_end = p.next_request_nonce;
+        b.queue_start = p.queue_start;
+        b.cursor = p.queue_start;
+        b.next_queue_start = p.next_request_nonce;
+        b.receipt_root = mm(math::digest("COX/RECEIPTS/V1", &[]))?;
+        b.staged_root = mm(math::digest("COX/STAGE/V1", &[]))?;
+        b.accepted_at = t;
+        r.max_accepted_batch = r.max_accepted_batch.max(batch_id);
+        r.active_batches = add(r.active_batches, 1)?;
+        emit!(BatchAccepted {
+            pool: p.key(),
+            batch: batch_id,
+            snapshot
+        });
+        p.stage = Some(b.key());
+        p.stage_batch = batch_id;
+        p.stage_closed_end = b.closed_queue_end;
+        require!(
+            b.closed_queue_end - b.queue_start <= u32::MAX as u64,
+            CoxError::CapacityExceeded
+        );
+        Ok(())
+    }
+    pub fn evaluate(ctx: Context<Process>) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(!ctx.accounts.registry.paused, CoxError::Paused);
+        let b = &mut ctx.accounts.batch;
+        require!(
+            b.phase == 0 && b.cursor < b.closed_queue_end,
+            CoxError::BatchIncomplete
+        );
+        let r = &mut ctx.accounts.request;
+        require!(r.nonce == b.cursor, CoxError::Replay);
+        refresh_request(r, p);
+        if r.status == 0 && r.target_batch <= b.batch_id {
+            r.bound_batch = b.batch_id;
+            r.bound_sequence = b.sequence;
+            r.evaluated = true;
+            let request = math::Request {
+                id: r.key().to_string(),
+                expiry: r.expiry_batch,
+                operation: operation(r),
+            };
+            match math::batch(&to_math(&b.fixed), &[request], b.batch_id) {
+                Ok(result) => {
+                    let receipt = &result.receipts[0];
+                    r.receipt_status = match receipt.outcome {
+                        math::Outcome::Filled => 0,
+                        math::Outcome::ConditionFailed => 1,
+                        math::Outcome::Expired => 2,
+                        math::Outcome::ZeroValueClass => 3,
+                    };
+                    r.minted = receipt.minted;
+                    r.proceeds = receipt.proceeds;
+                    if r.receipt_status == 0 && r.to != 255 {
+                        let i = r.to as usize;
+                        match b.incoming[i].checked_add(r.minted) {
+                            Some(total) => b.incoming[i] = total,
+                            None => b.blocked[i] = true,
+                        };
+                    }
+                }
+                Err(_) => {
+                    r.receipt_status = 4;
+                    r.minted = 0;
+                    r.proceeds = 0;
+                }
+            }
+        } else if r.status == 0 {
+            b.next_queue_start = b.next_queue_start.min(r.nonce);
+        }
+        b.cursor = add(b.cursor, 1)?;
+        Ok(())
+    }
+    pub fn safety(ctx: Context<Process>) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(!ctx.accounts.registry.paused, CoxError::Paused);
+        let b = &mut ctx.accounts.batch;
+        require!(
+            b.phase == 3 && b.cursor < b.closed_queue_end,
+            CoxError::BatchIncomplete
+        );
+        let r = &ctx.accounts.request;
+        require!(r.nonce == b.cursor, CoxError::Replay);
+        if r.evaluated
+            && !r.applied
+            && r.bound_sequence == b.sequence
+            && r.bound_batch == b.batch_id
+            && r.receipt_status == 0
+            && (r.to == 255 || !b.blocked[r.to as usize])
+        {
+            if r.from != 255 {
+                let i = r.from as usize;
+                b.burns[i] = addu(b.burns[i], r.units)?;
+            }
+            if r.to != 255 {
+                let i = r.to as usize;
+                if let Some(sum) = b.mints[i].checked_add(r.minted) {
+                    b.mints[i] = sum;
+                } else {
+                    b.blocked[i] = true;
+                    b.safety_changed = true;
+                }
+            }
+        }
+        b.cursor = add(b.cursor, 1)?;
+        Ok(())
+    }
+    pub fn seal_evaluation(ctx: Context<BatchOnly>) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(!ctx.accounts.registry.paused, CoxError::Paused);
+        let b = &mut ctx.accounts.batch;
+        require!(
+            (b.phase == 0 || b.phase == 3) && b.cursor == b.closed_queue_end,
+            CoxError::BatchIncomplete
+        );
+        if b.phase == 0 {
+            b.phase = 3;
+            b.cursor = b.queue_start;
+            b.burns.fill(0);
+            b.mints.fill(0);
+            return Ok(());
+        }
+        let mut changed = b.safety_changed;
+        for i in 0..b.fixed.len() {
+            let units = b.fixed[i]
+                .units
+                .checked_sub(b.burns[i])
+                .and_then(|u| u.checked_add(b.mints[i]));
+            if units.is_none_or(|u| u > UNIT_LIMIT) && !b.blocked[i] {
+                b.blocked[i] = true;
+                changed = true;
+            }
+        }
+        b.burns.fill(0);
+        b.mints.fill(0);
+        b.cursor = b.queue_start;
+        b.safety_changed = false;
+        b.phase = if changed { 3 } else { 1 };
+        Ok(())
+    }
+    pub fn execute(ctx: Context<Process>) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(!ctx.accounts.registry.paused, CoxError::Paused);
+        let b = &mut ctx.accounts.batch;
+        require!(
+            b.phase == 1 && b.cursor < b.closed_queue_end,
+            CoxError::BatchIncomplete
+        );
+        let r = &mut ctx.accounts.request;
+        require!(r.nonce == b.cursor, CoxError::Replay);
+        if r.evaluated
+            && !r.applied
+            && r.bound_sequence == b.sequence
+            && r.bound_batch == b.batch_id
+        {
+            let position = &mut ctx.accounts.position;
+            require_keys_eq!(position.owner, r.owner, CoxError::InvalidAccount);
+            materialize(position, p)?;
+            if position.staged {
+                require!(position.staged_sequence == b.sequence, CoxError::BatchBusy);
+            } else {
+                position.staged = true;
+                position.staged_sequence = b.sequence;
+                position.staged_burns = vec![0; p.classes.len()];
+                position.staged_mints = vec![0; p.classes.len()];
+                position.staged_unlocks = vec![0; p.classes.len()];
+            }
+            if r.receipt_status == 0 && r.to != 255 && b.blocked[r.to as usize] {
+                r.receipt_status = 4;
+                r.minted = 0;
+                r.proceeds = 0;
+            }
+            if r.from != 255 {
+                let i = r.from as usize;
+                position.staged_unlocks[i] = addu(position.staged_unlocks[i], r.units)?;
+            }
+            if r.receipt_status == 0 {
+                if r.from != 255 {
+                    let i = r.from as usize;
+                    b.burns[i] = addu(b.burns[i], r.units)?;
+                    position.staged_burns[i] = addu(position.staged_burns[i], r.units)?;
+                } else {
+                    b.accepted_deposits = add(b.accepted_deposits, r.amount)?;
+                }
+                if r.to != 255 {
+                    let i = r.to as usize;
+                    b.mints[i] = addu(b.mints[i], r.minted)?;
+                    position.staged_mints[i] = addu(position.staged_mints[i], r.minted)?;
+                } else {
+                    b.new_payable = add(b.new_payable, r.proceeds)?;
+                    position.staged_payable = add(position.staged_payable, r.proceeds)?;
+                }
+                b.executed = b
+                    .executed
+                    .checked_add(1)
+                    .ok_or(CoxError::ArithmeticOverflow)?;
+            } else {
+                if r.operation == 0 {
+                    position.staged_refundable = add(position.staged_refundable, r.amount)?;
+                }
+                b.rejected = b
+                    .rejected
+                    .checked_add(1)
+                    .ok_or(CoxError::ArithmeticOverflow)?;
+            }
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(&b.receipt_root);
+            bytes.extend_from_slice(r.key().as_ref());
+            bytes.push(r.receipt_status);
+            bytes.extend_from_slice(&r.minted.to_le_bytes());
+            bytes.extend_from_slice(&r.proceeds.to_le_bytes());
+            b.receipt_root = math::artifact_digest(&bytes);
+            let mut staged = Vec::new();
+            staged.extend_from_slice(&b.staged_root);
+            staged.extend_from_slice(r.key().as_ref());
+            staged.extend_from_slice(&b.receipt_root);
+            b.staged_root = math::artifact_digest(&staged);
+            r.applied = true;
+        }
+        b.cursor = add(b.cursor, 1)?;
+        Ok(())
+    }
+    pub fn finalize(ctx: Context<Finalize>) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(!ctx.accounts.registry.paused, CoxError::Paused);
+        let b = &mut ctx.accounts.batch;
+        require!(
+            b.phase == 1 && b.cursor == b.closed_queue_end,
+            CoxError::BatchIncomplete
+        );
+        require!(
+            p.sequence == b.predecessor_sequence && p.state_digest == b.predecessor_digest,
+            CoxError::WrongPredecessor
+        );
+        let mut classes = Vec::new();
+        for i in 0..b.fixed.len() {
+            let c = &b.fixed[i];
+            let units = addu(
+                c.units
+                    .checked_sub(b.burns[i])
+                    .ok_or(CoxError::ArithmeticOverflow)?,
+                b.mints[i],
+            )?;
+            require!(units <= UNIT_LIMIT, CoxError::CapacityExceeded);
+            let backing = if c.units == 0 {
+                units / (math::SCALE as u128)
+            } else {
+                units
+                    .checked_mul(c.backing as u128)
+                    .ok_or(CoxError::ArithmeticOverflow)?
+                    .checked_div(c.units)
+                    .ok_or(CoxError::ArithmeticOverflow)?
+            };
+            classes.push(Class {
+                backing: u64::try_from(backing).map_err(|_| CoxError::ArithmeticOverflow)?,
+                units,
+            });
+        }
+        mm(math::validate_classes(&to_math(&classes)))?;
+        let fixed_total = total(&b.fixed)?;
+        let active = total(&classes)?;
+        let flow = sub(
+            sub(add(fixed_total, b.accepted_deposits)?, b.new_payable)?,
+            active,
+        )?;
+        let before = p.classes.clone();
+        p.active = active;
+        p.pending = sub(p.pending, b.accepted_deposits)?;
+        p.payable = add(p.payable, b.new_payable)?;
+        p.residual = add(p.residual, add(b.transfer_residual, flow)?)?;
+        let current = b.prices.iter().map(|x| x.price_e8).collect::<Vec<_>>();
+        if !p.initialized {
+            p.origin_prices = current.clone();
+        }
+        p.last_prices = current;
+        p.benchmark = b.benchmark;
+        p.references = b.references.clone();
+        p.classes = classes;
+        p.last_batch = b.batch_id;
+        p.sequence = b.sequence;
+        p.initialized = true;
+        p.stage = None;
+        p.queue_start = b.next_queue_start;
+        ctx.accounts.registry.active_batches = sub(ctx.accounts.registry.active_batches, 1)?;
+        let state = state_bytes(
+            &crate::ID,
+            &p.key(),
+            p,
+            &before,
+            b,
+            &ctx.accounts.methodology.digest,
+        )?;
+        p.state_digest = math::artifact_digest(&state);
+        b.phase = 2;
+        let publication = &mut ctx.accounts.publication;
+        publication.schema_version = 1;
+        publication.bump = ctx.bumps.publication;
+        publication.pool = p.key();
+        publication.sequence = p.sequence;
+        publication.batch = b.batch_id;
+        publication.state_digest = p.state_digest;
+        publication.snapshot_digest = b.snapshot_digest;
+        publication.manifest_digest = ctx.accounts.methodology.digest;
+        publication.state_preimage = state;
+        publication.prices = b.prices.clone();
+        publication.committed_at = now()?;
+        emit!(PublicationCommitted {
+            pool: p.key(),
+            sequence: p.sequence,
+            batch: b.batch_id,
+            state_digest: p.state_digest,
+            snapshot: b.snapshot_digest,
+            manifest: ctx.accounts.methodology.digest
+        });
+        reconcile(p, &ctx.accounts.vault)?;
+        Ok(())
+    }
+    pub fn read_reference(ctx: Context<ReadPool>, class: u8) -> Result<ReferenceRead> {
+        let p = &ctx.accounts.pool;
+        require!(
+            p.schema_version == 1 && p.initialized && (class as usize) < p.classes.len(),
+            CoxError::InvalidAccount
+        );
+        let c = &p.classes[class as usize];
+        Ok(ReferenceRead {
+            sequence: p.sequence,
+            batch: p.last_batch,
+            cutoff: add(
+                p.origin,
+                p.last_batch
+                    .checked_mul(60)
+                    .ok_or(CoxError::ArithmeticOverflow)?,
+            )?,
+            reference: p.references[class as usize],
+            backing: c.backing,
+            units: c.units,
+            state_digest: p.state_digest,
+        })
+    }
+    pub fn read_position(ctx: Context<ReadPosition>, owner: Pubkey) -> Result<PositionRead> {
+        let p = &ctx.accounts.pool;
+        let position = &ctx.accounts.position;
+        require_keys_eq!(position.owner, owner, CoxError::Unauthorized);
+        let mut classes = position.classes.clone();
+        let mut payable = position.payable;
+        let mut refundable = position.refundable;
+        if position.staged && p.initialized && position.staged_sequence <= p.sequence {
+            for (i, c) in classes.iter_mut().enumerate() {
+                c.units = addu(
+                    c.units
+                        .checked_sub(position.staged_burns[i])
+                        .ok_or(CoxError::ArithmeticOverflow)?,
+                    position.staged_mints[i],
+                )?;
+                c.locked = c
+                    .locked
+                    .checked_sub(position.staged_unlocks[i])
+                    .ok_or(CoxError::ArithmeticOverflow)?;
+            }
+            payable = add(payable, position.staged_payable)?;
+            refundable = add(refundable, position.staged_refundable)?;
+        }
+        Ok(PositionRead {
+            sequence: p.sequence,
+            classes,
+            payable,
+            refundable,
+        })
+    }
+    pub fn quote_request(
+        ctx: Context<ReadPool>,
+        operation: u8,
+        from: u8,
+        to: u8,
+        amount: u64,
+        units: u128,
+    ) -> Result<QuoteRead> {
+        let p = &ctx.accounts.pool;
+        require!(operation <= 2 && p.initialized, CoxError::InvalidRequest);
+        let operation = match operation {
+            0 => math::Operation::Deposit {
+                to: to as usize,
+                amount,
+                min_units: 0,
+            },
+            1 => math::Operation::Switch {
+                from: from as usize,
+                to: to as usize,
+                units,
+                min_units: 0,
+            },
+            _ => math::Operation::Redeem {
+                from: from as usize,
+                units,
+                min_proceeds: 0,
+            },
+        };
+        let result = mm(math::batch(
+            &to_math(&p.classes),
+            &[math::Request {
+                id: "quote".into(),
+                expiry: u64::MAX,
+                operation,
+            }],
+            p.last_batch,
+        ))?;
+        Ok(QuoteRead {
+            sequence: p.sequence,
+            minted: result.receipts[0].minted,
+            proceeds: result.receipts[0].proceeds,
+        })
+    }
+    pub fn materialize_position(ctx: Context<MaterializePosition>) -> Result<()> {
+        reconcile(&mut ctx.accounts.pool, &ctx.accounts.vault)?;
+        materialize(&mut ctx.accounts.position, &ctx.accounts.pool)
+    }
+    pub fn pause(ctx: Context<Admin>) -> Result<()> {
+        ctx.accounts.registry.paused = true;
+        emit!(PauseChanged {
+            registry: ctx.accounts.registry.key(),
+            paused: true
+        });
+        Ok(())
+    }
+    pub fn unpause(ctx: Context<Admin>) -> Result<()> {
+        ctx.accounts.registry.paused = false;
+        emit!(PauseChanged {
+            registry: ctx.accounts.registry.key(),
+            paused: false
+        });
+        Ok(())
+    }
+    pub fn rotate_runtime(
+        ctx: Context<Admin>,
+        new_runtime: Pubkey,
+        effective_batch: u64,
+    ) -> Result<()> {
+        require!(
+            new_runtime != ctx.accounts.registry.admin
+                && new_runtime != Pubkey::default()
+                && effective_batch > ctx.accounts.registry.max_accepted_batch
+                && ctx.accounts.registry.active_batches == 0,
+            CoxError::InvalidAuthority
+        );
+        ctx.accounts.registry.pending_runtime = Some(new_runtime);
+        ctx.accounts.registry.runtime_effective_batch = effective_batch;
+        emit!(RuntimeScheduled {
+            registry: ctx.accounts.registry.key(),
+            key: new_runtime,
+            effective_batch
+        });
+        Ok(())
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ManifestConfig {
+    pub version: String,
+    pub roster: Vec<u8>,
+    pub origin: u64,
+    pub bybit: bool,
+    pub feed_check_digest: [u8; 32],
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct Class {
+    pub backing: u64,
+    pub units: u128,
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct PositionClass {
+    pub units: u128,
+    pub locked: u128,
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct PriceWire {
+    pub price_e8: u64,
+    pub venue: u8,
+    pub step: u8,
+    pub candle_start: u64,
+    pub trade_age_minutes: u16,
+}
+#[account]
+pub struct Registry {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub admin: Pubkey,
+    pub runtime: Pubkey,
+    pub pending_runtime: Option<Pubkey>,
+    pub runtime_effective_batch: u64,
+    pub paused: bool,
+    pub next_pool_id: u64,
+    pub max_accepted_batch: u64,
+    pub active_batches: u64,
+}
+#[account]
+pub struct Methodology {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub digest: [u8; 32],
+    pub canonical: Vec<u8>,
+    pub sealed: bool,
+    pub activation_batch: u64,
+    pub expected_length: u32,
+    pub roster: Vec<u8>,
+    pub origin: u64,
+    pub bybit: bool,
+}
+#[account]
+pub struct Pool {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub pool_id: u64,
+    pub registry: Pubkey,
+    pub methodology: Pubkey,
+    pub collateral_mint: Pubkey,
+    pub vault: Pubkey,
+    pub origin: u64,
+    pub last_batch: u64,
+    pub sequence: u64,
+    pub state_digest: [u8; 32],
+    pub benchmark: i128,
+    pub origin_prices: Vec<u64>,
+    pub last_prices: Vec<u64>,
+    pub references: Vec<i128>,
+    pub classes: Vec<Class>,
+    pub active: u64,
+    pub pending: u64,
+    pub payable: u64,
+    pub residual: u64,
+    pub next_request_nonce: u64,
+    pub stage: Option<Pubkey>,
+    pub initialized: bool,
+    pub queue_start: u64,
+    pub stage_batch: u64,
+    pub stage_closed_end: u64,
+}
+#[account]
+pub struct Position {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub pool: Pubkey,
+    pub owner: Pubkey,
+    pub applied_sequence: u64,
+    pub classes: Vec<PositionClass>,
+    pub payable: u64,
+    pub refundable: u64,
+    pub staged: bool,
+    pub staged_sequence: u64,
+    pub staged_burns: Vec<u128>,
+    pub staged_mints: Vec<u128>,
+    pub staged_unlocks: Vec<u128>,
+    pub staged_payable: u64,
+    pub staged_refundable: u64,
+}
+#[account]
+pub struct Request {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub pool: Pubkey,
+    pub owner: Pubkey,
+    pub nonce: u64,
+    pub target_batch: u64,
+    pub expiry_batch: u64,
+    pub operation: u8,
+    pub from: u8,
+    pub to: u8,
+    pub amount: u64,
+    pub units: u128,
+    pub minimum_units: u128,
+    pub minimum_proceeds: u64,
+    pub status: u8,
+    pub eligible_batch: u64,
+    pub evaluated: bool,
+    pub bound_batch: u64,
+    pub bound_sequence: u64,
+    pub receipt_status: u8,
+    pub minted: u128,
+    pub proceeds: u64,
+    pub applied: bool,
+}
+#[account]
+pub struct Batch {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub pool: Pubkey,
+    pub batch_id: u64,
+    pub sequence: u64,
+    pub cutoff: u64,
+    pub predecessor_sequence: u64,
+    pub predecessor_digest: [u8; 32],
+    pub snapshot_digest: [u8; 32],
+    pub prices: Vec<PriceWire>,
+    pub benchmark: i128,
+    pub references: Vec<i128>,
+    pub fixed: Vec<Class>,
+    pub burns: Vec<u128>,
+    pub mints: Vec<u128>,
+    pub incoming: Vec<u128>,
+    pub blocked: Vec<bool>,
+    pub accepted_deposits: u64,
+    pub new_payable: u64,
+    pub transfer_residual: u64,
+    pub executed: u32,
+    pub rejected: u32,
+    pub closed_queue_end: u64,
+    pub queue_start: u64,
+    pub cursor: u64,
+    pub next_queue_start: u64,
+    pub staged_root: [u8; 32],
+    pub receipt_root: [u8; 32],
+    pub accepted_at: u64,
+    pub phase: u8,
+    pub safety_changed: bool,
+}
+#[account]
+pub struct Publication {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub pool: Pubkey,
+    pub sequence: u64,
+    pub batch: u64,
+    pub state_digest: [u8; 32],
+    pub snapshot_digest: [u8; 32],
+    pub manifest_digest: [u8; 32],
+    pub state_preimage: Vec<u8>,
+    pub prices: Vec<PriceWire>,
+    pub committed_at: u64,
+}
+
+#[derive(Accounts)]
+pub struct InitializeRegistry<'info> {
+    pub upgrade_authority: Signer<'info>,
+    #[account(executable,address=crate::ID,owner=anchor_lang::solana_program::bpf_loader_upgradeable::ID)]
+    pub program_account: UncheckedAccount<'info>,
+    #[account(seeds=[crate::ID.as_ref()],bump,seeds::program=anchor_lang::solana_program::bpf_loader_upgradeable::ID)]
+    pub program_data: Account<'info, ProgramData>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    #[account(init,payer=admin,space=160,seeds=[b"registry"],bump)]
+    pub registry: Account<'info, Registry>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+#[instruction(digest:[u8;32])]
+pub struct RegisterMethodology<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump,has_one=admin)]
+    pub registry: Account<'info, Registry>,
+    #[account(init,payer=admin,space=MANIFEST_LIMIT+160,seeds=[b"methodology",digest.as_ref()],bump)]
+    pub methodology: Account<'info, Methodology>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct ManageMethodology<'info> {
+    pub admin: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump,has_one=admin)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"methodology",methodology.digest.as_ref()],bump=methodology.bump)]
+    pub methodology: Account<'info, Methodology>,
+}
+#[derive(Accounts)]
+#[instruction(pool_id:u64)]
+pub struct InitializePool<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    #[account(mut,seeds=[b"registry"],bump=registry.bump,has_one=admin)]
+    pub registry: Account<'info, Registry>,
+    #[account(seeds=[b"methodology",methodology.digest.as_ref()],bump=methodology.bump)]
+    pub methodology: Account<'info, Methodology>,
+    #[account(init,payer=admin,space=4096,seeds=[b"pool",pool_id.to_le_bytes().as_ref()],bump)]
+    pub pool: Account<'info, Pool>,
+    pub mint: Account<'info, Mint>,
+    #[account(init,payer=admin,seeds=[b"vault",pool.key().as_ref()],bump,token::mint=mint,token::authority=pool)]
+    pub vault: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct Submit<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault)]
+    pub pool: Account<'info, Pool>,
+    #[account(init_if_needed,payer=owner,space=4096,seeds=[b"position",pool.key().as_ref(),owner.key().as_ref()],bump)]
+    pub position: Account<'info, Position>,
+    #[account(init,payer=owner,space=320,seeds=[b"request",pool.key().as_ref(),pool.next_request_nonce.to_le_bytes().as_ref()],bump)]
+    pub request: Account<'info, Request>,
+    #[account(mut,token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(mut,token::authority=owner,token::mint=pool.collateral_mint)]
+    pub user_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct ManageRequest<'info> {
+    pub authority: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault)]
+    pub pool: Account<'info, Pool>,
+    #[account(mut,seeds=[b"request",pool.key().as_ref(),request.nonce.to_le_bytes().as_ref()],bump=request.bump,has_one=pool)]
+    pub request: Account<'info, Request>,
+    #[account(mut,seeds=[b"position",pool.key().as_ref(),request.owner.as_ref()],bump=position.bump,has_one=pool,constraint=position.owner==request.owner @ CoxError::InvalidAccount)]
+    pub position: Account<'info, Position>,
+    #[account(token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+}
+#[derive(Accounts)]
+pub struct Refund<'info> {
+    pub owner: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault)]
+    pub pool: Account<'info, Pool>,
+    #[account(mut,seeds=[b"request",pool.key().as_ref(),request.nonce.to_le_bytes().as_ref()],bump=request.bump,has_one=pool,has_one=owner)]
+    pub request: Account<'info, Request>,
+    #[account(mut,seeds=[b"position",pool.key().as_ref(),owner.key().as_ref()],bump=position.bump,has_one=pool,has_one=owner)]
+    pub position: Account<'info, Position>,
+    #[account(mut,token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(mut,token::authority=owner,token::mint=pool.collateral_mint)]
+    pub user_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    pub owner: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault)]
+    pub pool: Account<'info, Pool>,
+    #[account(mut,seeds=[b"position",pool.key().as_ref(),owner.key().as_ref()],bump=position.bump,has_one=pool,has_one=owner)]
+    pub position: Account<'info, Position>,
+    #[account(mut,token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(mut,token::authority=owner,token::mint=pool.collateral_mint)]
+    pub user_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+#[derive(Accounts)]
+#[instruction(batch_id:u64)]
+pub struct Publish<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub runtime: Signer<'info>,
+    #[account(mut,seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,has_one=methodology)]
+    pub pool: Account<'info, Pool>,
+    #[account(seeds=[b"methodology",methodology.digest.as_ref()],bump=methodology.bump)]
+    pub methodology: Account<'info, Methodology>,
+    #[account(init,payer=payer,space=8192,seeds=[b"batch",pool.key().as_ref(),batch_id.to_le_bytes().as_ref()],bump)]
+    pub batch: Account<'info, Batch>,
+    #[account(token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct Process<'info> {
+    #[account(seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
+    pub pool: Box<Account<'info, Pool>>,
+    #[account(mut,seeds=[b"batch",pool.key().as_ref(),batch.batch_id.to_le_bytes().as_ref()],bump=batch.bump,has_one=pool)]
+    pub batch: Box<Account<'info, Batch>>,
+    #[account(mut,seeds=[b"request",pool.key().as_ref(),request.nonce.to_le_bytes().as_ref()],bump=request.bump,has_one=pool)]
+    pub request: Account<'info, Request>,
+    #[account(mut,seeds=[b"position",pool.key().as_ref(),request.owner.as_ref()],bump=position.bump,has_one=pool)]
+    pub position: Box<Account<'info, Position>>,
+    #[account(token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+}
+#[derive(Accounts)]
+pub struct BatchOnly<'info> {
+    #[account(seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
+    pub pool: Account<'info, Pool>,
+    #[account(mut,seeds=[b"batch",pool.key().as_ref(),batch.batch_id.to_le_bytes().as_ref()],bump=batch.bump,has_one=pool)]
+    pub batch: Account<'info, Batch>,
+    #[account(token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+}
+#[derive(Accounts)]
+pub struct Finalize<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut,seeds=[b"registry"],bump=registry.bump)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,has_one=methodology,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
+    pub pool: Box<Account<'info, Pool>>,
+    #[account(mut,seeds=[b"batch",pool.key().as_ref(),batch.batch_id.to_le_bytes().as_ref()],bump=batch.bump,has_one=pool)]
+    pub batch: Box<Account<'info, Batch>>,
+    #[account(seeds=[b"methodology",methodology.digest.as_ref()],bump=methodology.bump)]
+    pub methodology: Account<'info, Methodology>,
+    #[account(init,payer=payer,space=8192,seeds=[b"publication",pool.key().as_ref(),batch.sequence.to_le_bytes().as_ref()],bump)]
+    pub publication: Box<Account<'info, Publication>>,
+    #[account(token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct MaterializePosition<'info> {
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=vault)]
+    pub pool: Account<'info, Pool>,
+    #[account(mut,seeds=[b"position",pool.key().as_ref(),position.owner.as_ref()],bump=position.bump,has_one=pool)]
+    pub position: Account<'info, Position>,
+    #[account(token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+}
+#[derive(Accounts)]
+pub struct Admin<'info> {
+    pub admin: Signer<'info>,
+    #[account(mut,seeds=[b"registry"],bump=registry.bump,has_one=admin)]
+    pub registry: Account<'info, Registry>,
+}
+
+pub fn canonical_manifest(c: &ManifestConfig, runtime: Pubkey) -> Result<Vec<u8>> {
+    require!(
+        !c.version.is_empty()
+            && c.version.len() <= 64
+            && c.version
+                .bytes()
+                .all(|x| x.is_ascii_alphanumeric() || matches!(x, b'.' | b'_' | b'-')),
+        CoxError::InvalidManifest
+    );
+    require!(
+        (2..=30).contains(&c.roster.len())
+            && c.roster.iter().all(|i| (*i as usize) < IDS.len())
+            && c.roster.windows(2).all(|w| w[0] < w[1]),
+        CoxError::InvalidRoster
+    );
+    require!(
+        c.origin > 0 && c.origin % 60 == 0 && c.feed_check_digest != [0; 32],
+        CoxError::InvalidOrigin
+    );
+    let feed = c
+        .feed_check_digest
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
+    let assets = c
+        .roster
+        .iter()
+        .map(|i| {
+            let id = IDS[*i as usize];
+            let rest = match id {
+                "BTC" => "XXBTZUSD".into(),
+                "ETH" => "XETHZUSD".into(),
+                "XRP" => "XXRPZUSD".into(),
+                "ZEC" => "XZECZUSD".into(),
+                _ => format!("{id}USD"),
+            };
+            json!([
+                id,
+                format!("{id}/USD"),
+                rest,
+                if matches!(id, "TRX" | "JUP") {
+                    None
+                } else {
+                    Some(format!("{id}-USD"))
+                },
+                if matches!(id, "ZEC" | "TAO") {
+                    None
+                } else {
+                    Some(format!("{id}USDT"))
+                },
+                "1",
+                c.roster.len().to_string()
+            ])
+        })
+        .collect::<Vec<_>>();
+    serde_json::to_vec(&json!([
+        "COX/METHODOLOGY/V1",
+        c.version,
+        "sealed",
+        feed,
+        assets,
+        ["USD", "100000000"],
+        ["COMMON_ORIGIN_SNAPSHOT", c.origin, "100000000000000"],
+        [
+            "UTC_CLOSED_MINUTE",
+            60,
+            "COX/PRICE-FALLBACK/V1",
+            c.bybit,
+            ["USDT/USD", "USDTZUSD", "USDT-USD"],
+            "COX/USDT-USD/V1",
+            "HALF_AWAY",
+            30
+        ],
+        [
+            60,
+            30,
+            55,
+            "SNAPSHOT_ACCEPTANCE_ONLY",
+            "NO_FILL_DEADLINE",
+            60,
+            "EXECUTION_CAPACITY_TARGET_SECONDS",
+            3,
+            60,
+            "REBALANCE_FREEZE"
+        ],
+        ["solana-devnet", "oracle-operator", runtime.to_string()],
+        ["COX/TRANSFER/MVP-0", "TEST_COLLATERAL_ONLY", "0"],
+        [
+            "1000000000000",
+            "i128-checked",
+            "HALF_AWAY",
+            "u64",
+            "u128",
+            "1000000000000",
+            "FLOOR_USER",
+            "FLOOR_AGGREGATE_CLASS",
+            "POOL_RESIDUAL_NO_DISTRIBUTION"
+        ],
+        ["COX/ACCOUNTING/V1", "COX/BATCH/ASYNC/V1", "COX/WIRE/V1"]
+    ]))
+    .map_err(|_| error!(CoxError::InvalidManifest))
+}
+fn now() -> Result<u64> {
+    u64::try_from(Clock::get()?.unix_timestamp).map_err(|_| error!(CoxError::InvalidOrigin))
+}
+fn add(a: u64, b: u64) -> Result<u64> {
+    a.checked_add(b)
+        .ok_or_else(|| error!(CoxError::ArithmeticOverflow))
+}
+fn sub(a: u64, b: u64) -> Result<u64> {
+    a.checked_sub(b)
+        .ok_or_else(|| error!(CoxError::ArithmeticOverflow))
+}
+fn addu(a: u128, b: u128) -> Result<u128> {
+    a.checked_add(b)
+        .ok_or_else(|| error!(CoxError::ArithmeticOverflow))
+}
+fn mm<T>(r: math::Result<T>) -> Result<T> {
+    r.map_err(|_| error!(CoxError::ArithmeticOverflow))
+}
+fn total(c: &[Class]) -> Result<u64> {
+    c.iter().try_fold(0, |a, c| add(a, c.backing))
+}
+fn to_math(c: &[Class]) -> Vec<math::Class> {
+    c.iter()
+        .map(|c| math::Class {
+            backing: c.backing,
+            units: c.units,
+        })
+        .collect()
+}
+fn from_math(c: &[math::Class]) -> Vec<Class> {
+    c.iter()
+        .map(|c| Class {
+            backing: c.backing,
+            units: c.units,
+        })
+        .collect()
+}
+fn halted(p: &Pool, t: u64) -> Result<bool> {
+    Ok(p.initialized
+        && t.saturating_sub(add(
+            p.origin,
+            p.last_batch
+                .checked_mul(60)
+                .ok_or(CoxError::ArithmeticOverflow)?,
+        )?) >= 3600)
+}
+fn reconcile(p: &mut Pool, v: &TokenAccount) -> Result<()> {
+    require!(p.schema_version == 1, CoxError::InvalidAccount);
+    let expected = add(add(p.active, p.pending)?, add(p.payable, p.residual)?)?;
+    require!(v.amount >= expected, CoxError::VaultMismatch);
+    p.residual = add(p.residual, v.amount - expected)?;
+    require!(p.active == total(&p.classes)?, CoxError::VaultMismatch);
+    Ok(())
+}
+fn materialize(position: &mut Position, p: &Pool) -> Result<()> {
+    if !position.staged {
+        return Ok(());
+    }
+    if !p.initialized || position.staged_sequence > p.sequence {
+        return Ok(());
+    }
+    if p.stage.is_some() && position.staged_sequence == p.sequence + 1 {
+        return Ok(());
+    }
+    for i in 0..position.classes.len() {
+        let c = &mut position.classes[i];
+        c.units = addu(
+            c.units
+                .checked_sub(position.staged_burns[i])
+                .ok_or(CoxError::ArithmeticOverflow)?,
+            position.staged_mints[i],
+        )?;
+        c.locked = c
+            .locked
+            .checked_sub(position.staged_unlocks[i])
+            .ok_or(CoxError::ArithmeticOverflow)?;
+        require!(c.locked <= c.units, CoxError::InsufficientUnlockedUnits);
+    }
+    position.payable = add(position.payable, position.staged_payable)?;
+    position.refundable = add(position.refundable, position.staged_refundable)?;
+    position.applied_sequence = position.staged_sequence;
+    position.staged = false;
+    position.staged_payable = 0;
+    position.staged_refundable = 0;
+    position.staged_burns.clear();
+    position.staged_mints.clear();
+    position.staged_unlocks.clear();
+    Ok(())
+}
+fn refresh_request(r: &mut Request, p: &Pool) {
+    if r.status == 0 && r.applied && p.initialized && r.bound_sequence <= p.sequence {
+        r.status = match r.receipt_status {
+            0 => 1,
+            1 => 2,
+            2 => 3,
+            3 => 4,
+            _ => 7,
+        };
+    }
+}
+fn operation(r: &Request) -> math::Operation {
+    match r.operation {
+        0 => math::Operation::Deposit {
+            to: r.to as usize,
+            amount: r.amount,
+            min_units: r.minimum_units,
+        },
+        1 => math::Operation::Switch {
+            from: r.from as usize,
+            to: r.to as usize,
+            units: r.units,
+            min_units: r.minimum_units,
+        },
+        _ => math::Operation::Redeem {
+            from: r.from as usize,
+            units: r.units,
+            min_proceeds: r.minimum_proceeds,
+        },
+    }
+}
+struct Submission {
+    op: u8,
+    from: u8,
+    to: u8,
+    amount: u64,
+    units: u128,
+    min_units: u128,
+    min_proceeds: u64,
+    expiry: u64,
+}
+fn submit(ctx: Context<Submit>, submission: Submission) -> Result<()> {
+    let Submission {
+        op,
+        from,
+        to,
+        amount,
+        units,
+        min_units,
+        min_proceeds,
+        expiry,
+    } = submission;
+    let p = &mut ctx.accounts.pool;
+    reconcile(p, &ctx.accounts.vault)?;
+    let t = now()?;
+    require!(p.initialized, CoxError::InvalidOrigin);
+    require!(!ctx.accounts.registry.paused, CoxError::Paused);
+    require!(!halted(p, t)?, CoxError::Halted);
+    let n = p.classes.len();
+    require!(
+        (from == 255 || (from as usize) < n) && (to == 255 || (to as usize) < n) && from != to,
+        CoxError::InvalidRequest
+    );
+    require!(
+        (op == 0 && amount > 0 && from == 255) || (op != 0 && units > 0 && units <= UNIT_LIMIT),
+        CoxError::InvalidRequest
+    );
+    let target = add(
+        t.checked_sub(p.origin).ok_or(CoxError::InvalidOrigin)? / 60,
+        1,
+    )?
+    .max(add(p.last_batch, 1)?);
+    let target = if p.stage.is_some() {
+        target.max(add(p.stage_batch, 1)?)
+    } else {
+        target
+    };
+    require!(expiry >= target, CoxError::InvalidExpiry);
+    let pos = &mut ctx.accounts.position;
+    if pos.schema_version == 0 {
+        pos.schema_version = 1;
+        pos.bump = ctx.bumps.position;
+        pos.pool = p.key();
+        pos.owner = ctx.accounts.owner.key();
+        pos.classes = vec![PositionClass::default(); n];
+    }
+    require_keys_eq!(pos.owner, ctx.accounts.owner.key(), CoxError::Unauthorized);
+    materialize(pos, p)?;
+    if op == 0 {
+        require!(
+            add(add(p.active, p.pending)?, amount)? <= COLLATERAL_LIMIT,
+            CoxError::CapacityExceeded
+        );
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.user_token.to_account_info(),
+                    to: ctx.accounts.vault.to_account_info(),
+                    authority: ctx.accounts.owner.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+        p.pending = add(p.pending, amount)?;
+    } else {
+        let c = &mut pos.classes[from as usize];
+        require!(
+            c.units
+                .checked_sub(c.locked)
+                .is_some_and(|free| free >= units),
+            CoxError::InsufficientUnlockedUnits
+        );
+        c.locked = addu(c.locked, units)?;
+    }
+    let r = &mut ctx.accounts.request;
+    r.schema_version = 1;
+    r.bump = ctx.bumps.request;
+    r.pool = p.key();
+    r.owner = ctx.accounts.owner.key();
+    r.nonce = p.next_request_nonce;
+    r.target_batch = target;
+    r.eligible_batch = target;
+    r.expiry_batch = expiry;
+    r.operation = op;
+    r.from = from;
+    r.to = to;
+    r.amount = amount;
+    r.units = units;
+    r.minimum_units = min_units;
+    r.minimum_proceeds = min_proceeds;
+    emit!(RequestQueued {
+        pool: p.key(),
+        request: r.key(),
+        owner: r.owner,
+        target_batch: target,
+        expiry,
+        operation: op
+    });
+    p.next_request_nonce = add(p.next_request_nonce, 1)?;
+    ctx.accounts.vault.reload()?;
+    reconcile(p, &ctx.accounts.vault)?;
+    Ok(())
+}
+fn release_request(ctx: Context<ManageRequest>, expire: bool) -> Result<()> {
+    let p = &mut ctx.accounts.pool;
+    reconcile(p, &ctx.accounts.vault)?;
+    let t = now()?;
+    let r = &mut ctx.accounts.request;
+    refresh_request(r, p);
+    require!(r.status == 0, CoxError::AlreadyProcessed);
+    require!(
+        !r.evaluated || r.bound_sequence <= p.sequence,
+        CoxError::CancellationClosed
+    );
+    if p.stage.is_some() {
+        require!(
+            r.nonce >= p.stage_closed_end || r.target_batch > p.stage_batch,
+            CoxError::CancellationClosed
+        );
+    }
+    let current = t.saturating_sub(p.origin) / 60;
+    if expire {
+        require!(current > r.expiry_batch, CoxError::InvalidExpiry);
+    } else {
+        let rolled = if p.last_batch >= r.target_batch {
+            add(p.last_batch, 1)?
+        } else {
+            r.target_batch
+        };
+        let cutoff = add(
+            p.origin,
+            rolled.checked_mul(60).ok_or(CoxError::ArithmeticOverflow)?,
+        )?;
+        require!(
+            t < cutoff || halted(p, t)? || ctx.accounts.registry.paused,
+            CoxError::CancellationClosed
+        );
+    }
+    materialize(&mut ctx.accounts.position, p)?;
+    if r.operation == 0 {
+        ctx.accounts.position.refundable = add(ctx.accounts.position.refundable, r.amount)?;
+    } else {
+        let c = &mut ctx.accounts.position.classes[r.from as usize];
+        c.locked = c
+            .locked
+            .checked_sub(r.units)
+            .ok_or(CoxError::ArithmeticOverflow)?;
+    }
+    r.status = if expire { 3 } else { 5 };
+    if expire {
+        emit!(RequestRejected {
+            pool: p.key(),
+            request: r.key(),
+            status: 3
+        });
+    } else {
+        emit!(RequestCancelled {
+            pool: p.key(),
+            request: r.key()
+        });
+    }
+    Ok(())
+}
+fn transfer_out<'info>(
+    p: &Account<'info, Pool>,
+    vault: &Account<'info, TokenAccount>,
+    destination: &Account<'info, TokenAccount>,
+    program: &Program<'info, Token>,
+    amount: u64,
+) -> Result<()> {
+    let id = p.pool_id.to_le_bytes();
+    let bump = [p.bump];
+    let seeds: &[&[u8]] = &[b"pool", &id, &bump];
+    token::transfer(
+        CpiContext::new_with_signer(
+            program.to_account_info(),
+            Transfer {
+                from: vault.to_account_info(),
+                to: destination.to_account_info(),
+                authority: p.to_account_info(),
+            },
+            &[seeds],
+        ),
+        amount,
+    )
+}
+pub fn state_bytes(
+    program: &Pubkey,
+    pool: &Pubkey,
+    p: &Pool,
+    before: &[Class],
+    b: &Batch,
+    manifest: &[u8; 32],
+) -> Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    "COX/STATE/V1".to_string().serialize(&mut bytes)?;
+    bytes.extend_from_slice(program.as_ref());
+    bytes.extend_from_slice(pool.as_ref());
+    b.sequence.serialize(&mut bytes)?;
+    b.batch_id.serialize(&mut bytes)?;
+    b.cutoff.serialize(&mut bytes)?;
+    bytes.extend_from_slice(&b.predecessor_digest);
+    bytes.extend_from_slice(manifest);
+    bytes.extend_from_slice(&b.snapshot_digest);
+    b.benchmark.serialize(&mut bytes)?;
+    p.last_prices.serialize(&mut bytes)?;
+    p.references.serialize(&mut bytes)?;
+    (before.len() as u32).serialize(&mut bytes)?;
+    for (pre, post) in before.iter().zip(&p.classes) {
+        pre.backing.serialize(&mut bytes)?;
+        pre.units.serialize(&mut bytes)?;
+        post.backing.serialize(&mut bytes)?;
+        post.units.serialize(&mut bytes)?;
+    }
+    b.executed.serialize(&mut bytes)?;
+    b.rejected.serialize(&mut bytes)?;
+    p.active.serialize(&mut bytes)?;
+    p.pending.serialize(&mut bytes)?;
+    p.payable.serialize(&mut bytes)?;
+    p.residual.serialize(&mut bytes)?;
+    bytes.extend_from_slice(&b.receipt_root);
+    Ok(bytes)
+}
+#[error_code]
+pub enum CoxError {
+    Unauthorized,
+    Paused,
+    Halted,
+    InvalidAccount,
+    InvalidManifest,
+    UnsealedManifest,
+    InvalidRoster,
+    InvalidPrice,
+    InvalidVenueStep,
+    InvalidCandle,
+    InvalidSnapshotDigest,
+    TooEarly,
+    CommitDeadlinePassed,
+    ArchiveDeadlinePassed,
+    WrongPredecessor,
+    Replay,
+    BatchBusy,
+    BatchIncomplete,
+    InvalidRequest,
+    InvalidExpiry,
+    CancellationClosed,
+    AlreadyProcessed,
+    InsufficientUnlockedUnits,
+    ConditionFailed,
+    ZeroValueClass,
+    ArithmeticOverflow,
+    ZeroTransferDenominator,
+    InvalidBenchmark,
+    VaultMismatch,
+    InvalidCollateral,
+    InsufficientPayable,
+    NotRefundable,
+    IncompatibleMethodology,
+    InvalidAuthority,
+    InvalidOrigin,
+    CapacityExceeded,
+}
+#[derive(Accounts)]
+pub struct ReadPool<'info> {
+    #[account(seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump)]
+    pub pool: Account<'info, Pool>,
+}
+#[derive(Accounts)]
+pub struct ReadPosition<'info> {
+    #[account(seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump)]
+    pub pool: Account<'info, Pool>,
+    #[account(seeds=[b"position",pool.key().as_ref(),position.owner.as_ref()],bump=position.bump,has_one=pool)]
+    pub position: Account<'info, Position>,
+}
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct ReferenceRead {
+    pub sequence: u64,
+    pub batch: u64,
+    pub cutoff: u64,
+    pub reference: i128,
+    pub backing: u64,
+    pub units: u128,
+    pub state_digest: [u8; 32],
+}
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct PositionRead {
+    pub sequence: u64,
+    pub classes: Vec<PositionClass>,
+    pub payable: u64,
+    pub refundable: u64,
+}
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct QuoteRead {
+    pub sequence: u64,
+    pub minted: u128,
+    pub proceeds: u64,
+}
+#[event]
+pub struct PublicationCommitted {
+    pub pool: Pubkey,
+    pub sequence: u64,
+    pub batch: u64,
+    pub state_digest: [u8; 32],
+    pub snapshot: [u8; 32],
+    pub manifest: [u8; 32],
+}
+#[event]
+pub struct BatchAccepted {
+    pub pool: Pubkey,
+    pub batch: u64,
+    pub snapshot: [u8; 32],
+}
+#[event]
+pub struct RequestQueued {
+    pub pool: Pubkey,
+    pub request: Pubkey,
+    pub owner: Pubkey,
+    pub target_batch: u64,
+    pub expiry: u64,
+    pub operation: u8,
+}
+#[event]
+pub struct DepositRefunded {
+    pub pool: Pubkey,
+    pub request: Pubkey,
+    pub amount: u64,
+}
+#[event]
+pub struct WithdrawalPaid {
+    pub pool: Pubkey,
+    pub owner: Pubkey,
+    pub amount: u64,
+}
+#[event]
+pub struct RequestCancelled {
+    pub pool: Pubkey,
+    pub request: Pubkey,
+}
+#[event]
+pub struct RequestRejected {
+    pub pool: Pubkey,
+    pub request: Pubkey,
+    pub status: u8,
+}
+#[event]
+pub struct PauseChanged {
+    pub registry: Pubkey,
+    pub paused: bool,
+}
+#[event]
+pub struct RuntimeScheduled {
+    pub registry: Pubkey,
+    pub key: Pubkey,
+    pub effective_batch: u64,
+}

@@ -18,9 +18,12 @@ export function WalletButton() {
   const [error, setError] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const available = wallets.filter((item) => item.readyState === WalletReadyState.Installed || item.readyState === WalletReadyState.Loadable);
-  const address = publicKey?.toBase58() ?? null;
+  const address = mounted ? (publicKey?.toBase58() ?? null) : null;
 
   useEffect(() => {
     if (!chosen || wallet?.adapter.name !== chosen || connected || connecting) return;
@@ -78,7 +81,7 @@ export function WalletButton() {
     <>
       <button type="button" onClick={open} className={primary}>
         <Wallet size={16} aria-hidden="true" />
-        {address ? <span className="num">{shortAddress(address)}</span> : connecting ? "Connecting" : "Connect wallet"}
+        {address ? <span className="num">{shortAddress(address)}</span> : mounted && connecting ? "Connecting" : "Connect wallet"}
       </button>
 
       <dialog
@@ -96,7 +99,7 @@ export function WalletButton() {
           </button>
         </div>
 
-        {address ? (
+        {!mounted ? null : address ? (
           <div className="flex flex-col gap-1 p-3">
             <dl className="mb-2 flex flex-col gap-2 px-3 text-sm">
               <div className="flex justify-between"><dt className="text-muted">Wallet</dt><dd>{wallet?.adapter.name}</dd></div>

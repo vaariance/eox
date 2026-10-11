@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Point } from "@/lib/sample";
+import type { Point } from "@/lib/view";
 import { LineChart } from "./line-chart";
 
 interface Series {

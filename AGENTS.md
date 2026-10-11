@@ -441,6 +441,77 @@ another agent needs to know.
 - **Open:** Retiring the EVM signer path and the unused roles (`uma-asserter`, `uma-challenger`, `oracle-checker`, `evm-relayer`, `solana-relayer`) is part of J4, after P3. No exchange Postman collection replaces the EOX one; `@eox/price-feeds` tests use recorded responses instead.
 - **Refs:** commits `0fdf728`..`dd93bf7`.
 
+### 2026-10-10 · Peter (Codex) · P3 compiled COX program and integration artifacts
+
+- **Area:** `packages/cox`, `packages/cox-client`.
+- **What:** Implemented the Anchor 0.31.1 program with P2 math, real SPL custody, future-publication reservations, persistent evaluation/safety/preparation cursors and atomic lazy finalization. Final compiled SBF passes 15 lifecycle/custody tests; the generated-IDL client passes nine tests. Thirty-price publication measures 1,122 bytes (1,218 with separate payer) and 520,154 compute units. Integration files include actual account fixtures, receipt/state vectors and prepared signer allowlist.
+- **Rules for agents:** Use SPEC v0.3's actual ABI appendix and generated IDL. P1 price hashes remain authoritative; Joel's provisional archive layout differs as documented in INTEGRATION.md. Only publish needs runtime authority on chain; the prepared service allowlist includes permissionless batch cranks for fee sponsorship. No local KMS role key exists. The reserved program identity is not proof of deployment; keep the live pool inactive.
+- **Open:** Peter's commit approval, integration onto `origin/main`, devnet deployment funding and verified deployed build. P4 worker and live activation remain separate. Local timing is not blockchain throughput.
+- **Refs:** `packages/cox/results/p3-verification.md`, `packages/cox/INTEGRATION.md`, `packages/cox/deploy/README.md`, `packages/cox/P3-PLAN.md`.
+
+### 2026-10-10 · Peter (Codex) · Verified Peter-owned EOX cleanup prepared
+
+- **Area:** `packages/oracle`, `apps/oracle-worker`, root package scripts.
+- **What:** After compiled COX replacement verification, removed the retired EOX program, receiver/protocol modules and fixtures, proposal worker and obsolete tests/entry points. Narrowed the old Rust workspace. Retained economic Rust tests pass (24), worker tests pass (14) and worker type checking passes. Cleanup remains uncommitted and must be a separate change from COX implementation.
+- **Rules for agents:** Preserve Joel's legacy reference reader/IDL and economic fixture generator dependencies, methodology facts/readiness and the complete worker journal/retry/transport closure until P4 replaces it. Preserve papers, ignored sealed research and `eox-archive`. Do not modify another owner's callers to force deletion. The old deployed program is abandoned in place.
+- **Open:** Recheck legacy callers after integration with `origin/main`; retire remaining carry-over only when replacements land.
+- **Refs:** `packages/cox/research/deletion-audit.md`, `packages/cox/INTEGRATION.md`; supersedes the P2 deletion inventory's retired caller descriptions.
+
+### 2026-10-11 · Peter (Codex) · COX deployment tooling and branch policy
+
+- **Area:** `packages/cox/scripts`, deployment instructions.
+- **What:** Peter explicitly allowed deployment from any branch and requested TypeScript/shell/Rust tooling. `deployment.ts` runs directly with Node.js 24 built-ins; there is no Python deployment helper or remote-main ancestry gate. The helper verifies the exact approved commit/build, network and authority identities.
+- **Rules for agents:** Do not impose a main-branch deployment restriction or introduce Python for this COX workflow. This supersedes the deployment restriction in the 2026-10-06 Data layer state and repo conventions entry and the main-integration prerequisite in the 2026-10-10 P3 entry. Shared-push fetch/rebase rules remain separate.
+- **Refs:** `packages/cox/scripts/deployment.ts`, `packages/cox/deploy/README.md`.
+
+### 2026-10-11 · Peter (Codex) · COX program deployed and verified on devnet
+
+- **Area:** COX program, deployment record and integration handoff.
+- **What:** Following Peter's commit approval and 10 devnet SOL funding, rebuilt commit `70700b74c81c373591e3150ff1573ad61cce1dbf`; all 15 compiled lifecycle/custody and nine client tests passed again. Deployed program `G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF` at finalized slot 509739184. Downloaded executable exactly matches SHA-256 `16a778aa7dd2f3cae0d16577626a1393f02323ea8fb622963b29d63ea851be07`; separate upgrade authority verified. CLI verification now uses the dedicated wallet explicitly instead of requiring a default wallet.
+- **Rules for agents:** Use the verified record and actual IDL/readers/builders/vectors for integration. No registry, methodology, collateral mint or live pool was initialized. Live activation, signer binding and P4 publisher remain separate. Never create a local KMS runtime key. This supersedes the pending-deployment status in the 2026-10-10 P3 entry. Peter's commit `34662df` included implementation and EOX cleanup together, superseding the uncommitted cleanup status in that day's cleanup entry.
+- **Open:** P4 publisher; Joel's authoritative archive-byte correction, feed check and signer binding; Godwin's monitor/UI integration. Legacy readers/math and P4 transport closure remain retained.
+- **Refs:** `packages/cox/deploy/deployed-devnet.json`, `packages/cox/INTEGRATION.md`, `packages/cox/results/p3-verification.md`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app reads cox.app-api/v1; 30 assets, swap page, network switcher
+
+- **Area:** `apps/web`.
+- **What:** Part of `product.md` G3. Every page reads through `apps/web/src/lib/data.ts`, which returns the `@eox/app-api` COX types. With `COX_API_URL` set it reads a `cox.app-api/v1` server; unset, it uses a built-in 30-asset sample that is labelled on every page. Checked against the fixture server (`SYNA`/`SYNB`, four publications, a missed batch, a fixture wallet). Added: each price's venue and trade age, publication and batch numbers shown separately, every request state from SPEC §8, a Swap page that is a front end over deposit, switch and redeem, a network switcher with mainnet listed as not live, and an error page for an unreachable API. Collateral is labelled `tUSDC` (test USDC) with a notice that it has no real value. The production build passes.
+- **Rules for agents:** The web app imports only types from `@eox/app-api`. Importing `createCoxApiClient` at runtime fails under Next.js 16 Turbopack because the package's `.js` specifiers do not resolve to its `.ts` sources, so `data.ts` makes the same calls itself. The app computes no reference; "redeemable, about" is a holder's units times the latest published final class state and is labelled approximate. With `collateralDecimals: null` the app treats base units as whole units. The swap charge is unset (`SWAP_CHARGE_BPS = null` in `src/lib/config.ts`) and shows "Not set yet"; do not present a fee or a mainnet deployment as existing.
+- **Open:** Joel: the portfolio has no deposited basis, so the app cannot show profit and loss; the portfolio of the connected wallet and the request builders wait for J5. Peter: Godwin would like a swap charge and a mainnet option, neither of which is in `product.md` or the deployed program. Peter: `pnpm install --frozen-lockfile` fails on `origin/dev` with no lockfile entry for `@coral-xyz/anchor@0.31.1` (from `packages/cox-client`); a plain install repairs it but rewrites about 140 unrelated lines, so it was left for its owner.
+- **Refs:** `apps/web/README.md`, commits `a174517`..`e6115a6`.
+
+### 2026-10-11 · Godwin (Claude Code) · Monitor receipt root and state digest match the vectors
+
+- **Area:** `apps/cox-monitor`.
+- **What:** Added an independent implementation of the SPEC §3 receipt bytes, folded receipt root and `COX/STATE/V1` state digest. It reproduces every value in `packages/cox/fixtures/state-vectors.json`: the empty root, three receipt encodings, three prefix roots, the state bytes and the state digest. The monitor now has 36 passing tests. It does not import `packages/cox-client`.
+- **Rules for agents:** Receipt status 4 (`SafetyRejected`, SPEC §11) is accepted in the encoding only. The monitor's batch calculation does not model the safety pass or the capacity caps, so it cannot yet reproduce a batch in which a request is safety-rejected or a destination is blocked; do not describe the monitor as covering those. The monitor still does not read publications, fetch archives, re-fetch venues or serve verdicts.
+- **Open:** Peter: arithmetic vectors for the safety pass (an individually unsafe request, a blocked destination, and the repeat after a switch burn disappears), with the exact cap comparisons, so the monitor can reproduce `SafetyRejected` receipts. Joel: `cox.app-api/v1` `ReceiptStatus` has no value for safety-rejected receipts.
+- **Refs:** commits `0d89e7e`, `d104630`; `packages/cox/SPEC.md` §3 and §11.
+
+### 2026-10-11 · Godwin (Claude Code) · Monitor follows the archive and the venues; web app uses the fixture API only
+
+- **Area:** `apps/cox-monitor`, `apps/web`.
+- **What:** More of `product.md` G2. `pnpm --filter @eox/cox-monitor start` follows `/v1/prices/changes` and gives every archived cutoff one verdict (`match`, `mismatch` with findings, `skipped` for digests before `COX/WIRE/V1`, `inadmissible`). It checks each close against its `priceE8`, the `COX/PRICE-FALLBACK/V1` order from the archived attempts, the snapshot digest, every artifact's hash, and that the feed and the cutoff agree. Progress is saved per page and resumes after a restart. Verdicts are served read-only as `cox.monitor/v1` on `127.0.0.1:8792` (`/v1/verdicts/latest`, `/v1/verdicts/:cutoff`, `/v1/verdicts?limit=`, `/healthz`). With `MONITOR_VENUE_CHECK=true` it later re-fetches the candles through `@eox/price-feeds` (Kraken one request per 4 s, Coinbase and Bybit one per second, one bulk request per venue and asset) and sets each verdict's `venues` field. 75 tests pass. For G3, at Joel's request the web app's sample data is deleted: it reads `cox.app-api/v1` through `createCoxApiClient` (default `http://127.0.0.1:8790`) and was checked page by page against `APP_API_SOURCE=cox-fixture`.
+- **Rules for agents:** Every monitor verdict has `scope: "archive"` and is keyed by cutoff, not by publication sequence; it says the archive is consistent with itself and, when `venues` is `confirmed`, with the venues. It is not yet a verdict on a publication, so do not map it to `status.monitor` as if the on-chain values had been recomputed. The venue check has been tested only with constructed candle data, never against a live venue, and the service has not been run on the dev VM. `apps/web` is built with webpack (`next dev --webpack`, `next build --webpack`) because Turbopack cannot resolve the `.js` specifiers in `@eox/app-api`; this supersedes the statement in Godwin's 2026-10-11 "Web app reads cox.app-api/v1" entry that the app imports only types and has a built-in sample.
+- **Open:** Joel: a systemd unit and a `MONITOR_USER_AGENT` contact for `cox-monitor` on the dev VM, and whether `status.monitor` should carry archive verdicts before publications exist. Peter: publications to compare against need a live pool; safety-pass vectors are still needed.
+- **Refs:** `apps/cox-monitor/README.md`, `apps/web/README.md`, commits `5b9f5e9`..`102e54f`, `266fb4c`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web forms build deposit, switch and redeem with @cox/client
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's request the Buy, Switch and Redeem forms now build a real transaction in the browser with `@cox/client` and the released IDL: `CoxReader.pool` for the next request nonce, the position, request and vault PDAs, the owner's associated token account, then `deposit`, `switch` or `redeem`, signed and sent by the connected wallet. Amounts are parsed to exact integers (collateral base units, unit quanta at 10^12) and the expiry is the inclusive batch `target + n − 1`. Nine tests cover planning and instruction encoding, and the browser bundle was checked to produce the same instruction bytes as Node.
+- **Rules for agents:** The submit button is enabled only when `cox.app-api/v1` reports `origin: "live"` with a pool address and collateral decimals, so it is disabled on the fixture. No pool exists on devnet: this path has never sent a transaction, read a real pool or been used with a wallet, so do not describe trading as working. `product.md` J5 assigns unsigned transaction builders to Joel's app API; this does not change that and should be replaced by the API's builders when they exist. Cancel and Withdraw are not wired.
+- **Open:** Joel: whether J5 should take this over or the web app keeps building user transactions itself. Peter: `@cox/client` needs two shims to load in a browser (it imports `node:crypto` in `wire.ts`, and `builders.ts` uses a default import of `@coral-xyz/anchor`, which the browser build does not export); both are worked around in `apps/web/next.config.ts`. A test collateral faucet is needed before any user can buy.
+- **Refs:** `apps/web/README.md` (Sending requests), commits `9bd7616`..`40b307f`.
+
+### 2026-10-11 · Godwin (Claude Code) · In-browser request building removed from the web app
+
+- **Area:** `apps/web`.
+- **What:** Godwin decided the web app should wait for Joel's app API to build user transactions, as `product.md` J5 assigns. Commit `396f93e` reverts the five commits that built `deposit`, `switch` and `redeem` in the browser with `@cox/client`. `apps/web` is back to its state at `d3bb126`: no dependency on `@cox/client` or `@coral-xyz/anchor`, no browser shims, and the Buy, Switch, Redeem, Cancel and Withdraw buttons stay disabled. Supersedes Godwin's 2026-10-11 "Web forms build deposit, switch and redeem with @cox/client" entry, including its question to Joel about who builds transactions: Joel does.
+- **Rules for agents:** Do not add transaction building to `apps/web`. The web app will sign and send whatever unsigned transaction the app API returns. The two notes for Peter in the superseded entry still describe `@cox/client` as it is (a `node:crypto` import and a default import of `@coral-xyz/anchor`), in case another browser consumer appears.
+- **Open:** Joel: J5 builders for deposit, switch, redeem, cancel and withdraw, and the portfolio of the connected wallet. The removed code remains in history at `9bd7616`..`40b307f` if any of it is useful.
+- **Refs:** commit `396f93e`; `product.md` §7.1 J5.
+
 ### 2026-10-11 · Joel (Claude Code) · J4: signer prepared for the COX publisher (disabled until activation)
 
 - **Area:** `apps/signer`, GCP `colosseum-eox` (IAM, Cloud Run `eox-signer`).

@@ -1,0 +1,34 @@
+{
+  "schema": "cox.deployment/v1",
+  "network": "devnet",
+  "rpc": "https://api.devnet.solana.com",
+  "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+  "admin": "4rCo36GY63kyZpCae2ccfhJEk3TLqKMybhT42YhCPp9N",
+  "upgradeAuthority": "4yHCCpEmBvaCKAdfiY2kULM8qFJcDQR4uSrfAT3EWbw5",
+  "runtimeAuthority": "GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6",
+  "anchorVersion": "0.31.1",
+  "sbfToolsVersion": "2.2.1",
+  "livePoolActive": false,
+  "status": "deployed-program-live-pool-inactive",
+  "deployedCommit": "70700b74c81c373591e3150ff1573ad61cce1dbf",
+  "deployedBuildSha256": "16a778aa7dd2f3cae0d16577626a1393f02323ea8fb622963b29d63ea851be07",
+  "deploymentSignature": "3CnheFFaQQn63EzSgUkGioVXnW9bNAawhpwdoD8QpemrydSAaWdghHYCPENkYFgL4LGUo7Xn4cFo5JzzbEbiadHW",
+  "platformToolsVersion": "v1.48",
+  "sbfRustVersion": "rustc 1.84.1-dev",
+  "deployedDumpSha256": "16a778aa7dd2f3cae0d16577626a1393f02323ea8fb622963b29d63ea851be07",
+  "verifiedAt": "2026-10-11T01:41:25.827Z",
+  "programAccount": {
+    "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+    "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "programdataAddress": "9na87Wyc6wMMaVfk2JVf3ReP1XQUbEg38SUi7jh2b6KQ",
+    "authority": "4yHCCpEmBvaCKAdfiY2kULM8qFJcDQR4uSrfAT3EWbw5",
+    "lastDeploySlot": 509739184,
+    "dataLen": 929208,
+    "lamports": 4721255480
+  },
+  "deploymentResponse": {
+    "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+    "signature": "3CnheFFaQQn63EzSgUkGioVXnW9bNAawhpwdoD8QpemrydSAaWdghHYCPENkYFgL4LGUo7Xn4cFo5JzzbEbiadHW"
+  }
+}

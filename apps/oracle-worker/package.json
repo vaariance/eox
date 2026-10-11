@@ -4,16 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./authenticated": "./src/authenticated.ts",
-    "./publication": "./src/publication.ts",
-    "./protocol": "./src/protocol.ts",
     "./references": "./src/references.ts"
   },
   "scripts": {
     "test": "tsx --test test/*.test.ts",
-    "test:cross-language": "EOX_RUST_CLI=../../packages/oracle/target/debug/eox-oracle tsx --test test/cross-language.test.ts",
-    "build": "tsc --noEmit",
-    "oracle": "tsx src/cli.ts"
+    "build": "tsc --noEmit"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
