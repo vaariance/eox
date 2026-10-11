@@ -33,6 +33,85 @@
       "validFrom": 0
     }
   },
-  "callers": {},
-  "bindings": {}
+  "callers": {
+    "cox-publisher@colosseum-eox.iam.gserviceaccount.com": [
+      "oracle-operator"
+    ]
+  },
+  "bindings": {
+    "oracle-operator": {
+      "solana": {
+        "maxComputeUnitPriceMicroLamports": "1000",
+        "maxComputeUnitLimit": "1400000",
+        "programs": [
+          {
+            "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+            "discriminators": [
+              "81b1b6a0b8e0db05",
+              "b3d38eb76c6814d6",
+              "00980e338855a9cd",
+              "b0a00549cafec750",
+              "82ddf29a0dc1bd1d",
+              "ab3dda387f730cd9"
+            ],
+            "instructions": [
+              {
+                "discriminator": "81b1b6a0b8e0db05",
+                "accounts": {
+                  "0": "$signer",
+                  "1": "$signer",
+                  "2": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+                  "3": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "6": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8",
+                  "7": "11111111111111111111111111111111"
+                }
+              },
+              {
+                "discriminator": "b3d38eb76c6814d6",
+                "accounts": {
+                  "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+                  "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "5": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
+                }
+              },
+              {
+                "discriminator": "00980e338855a9cd",
+                "accounts": {
+                  "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+                  "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "5": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
+                }
+              },
+              {
+                "discriminator": "b0a00549cafec750",
+                "accounts": {
+                  "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+                  "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "3": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
+                }
+              },
+              {
+                "discriminator": "82ddf29a0dc1bd1d",
+                "accounts": {
+                  "0": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+                  "1": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "5": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8"
+                }
+              },
+              {
+                "discriminator": "ab3dda387f730cd9",
+                "accounts": {
+                  "0": "$signer",
+                  "1": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+                  "2": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+                  "6": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8",
+                  "7": "11111111111111111111111111111111"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
 }
