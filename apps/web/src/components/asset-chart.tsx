@@ -37,7 +37,7 @@ function Tabs<T extends string | number>({ items, value, onChange, name }: { ite
   );
 }
 
-export function AssetChart({ series }: { series: Series[] }) {
+export function AssetChart({ series, note = "One accepted value per one-minute publication. These are reference values, not trades." }: { series: Series[]; note?: string }) {
   const [selected, setSelected] = useState(series[0].id);
   const [minutes, setMinutes] = useState(240);
   const current = series.find((item) => item.id === selected) ?? series[0];
@@ -49,7 +49,7 @@ export function AssetChart({ series }: { series: Series[] }) {
         <Tabs name="Range" items={ranges.map((range) => ({ key: range.minutes, label: range.label }))} value={minutes} onChange={setMinutes} />
       </div>
       <LineChart points={current.points.slice(-minutes)} baseline={current.baseline} digits={current.digits} label={current.label} />
-      <p className="mt-2 text-xs text-muted">One accepted value per one-minute publication. These are reference values, not trades.</p>
+      <p className="mt-2 text-xs text-muted">{note}</p>
     </section>
   );
 }

@@ -2,6 +2,7 @@
 
 import type { CoxStatus } from "@eox/app-api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { shortAddress } from "@/lib/address";
 import { COLLATERAL } from "@/lib/config";
 import { costBasis, paidFor } from "@/lib/basis";
@@ -14,6 +15,7 @@ import { SendButton } from "./send-button";
 
 export function PortfolioView({ classes, status, decimals }: { classes: ClassView[]; status: CoxStatus; decimals: number }) {
   const { portfolio, owner, live, loading } = useAccount();
+  const router = useRouter();
   const open = useOpenBatch(status.currentBatch);
   const expiryBatch = open.batch ? open.batch.batch + 2 : null;
   const book = costBasis(portfolio?.requests ?? [], decimals);
@@ -97,9 +99,9 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.classId} className="border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-surface-2">
+                <tr key={row.classId} onClick={(event) => !(event.target as HTMLElement).closest("button, a, [role=status]") && router.push(`/portfolio/${row.classId}`)} className="cursor-pointer border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-surface-2">
                   <th scope="row" className="px-4 py-3 text-left font-medium">
-                    <Link href={row.classId === CRYPTO_CLASS ? "/crypto" : `/assets/${row.classId}`}>{row.classId}</Link>
+                    <Link href={`/portfolio/${row.classId}`} className="underline-offset-4 hover:underline">{row.classId}</Link>
                   </th>
                   <td className="num px-4 py-3 text-right">{formatAmount(row.units, 4)}</td>
                   <td className="num px-4 py-3 text-right">{formatAmount(row.locked, 4)}</td>
@@ -111,6 +113,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
                     <span className="inline-flex flex-col items-end gap-1">
                       <SendButton
                         intent={row.free !== null && expiryBatch !== null ? { operation: "redeem", fromClass: row.classId, units: row.free, minimumProceeds: "0", expiryBatch } : null}
+                        describe={`Cash out your ${row.classId} position to ${COLLATERAL.symbol}`}
                         label="Cash out"
                         connectLabel="Cash out"
                         className="h-9 rounded-pill border border-line px-3 text-xs"

@@ -120,3 +120,16 @@ export function unlockedProblem(holdings: readonly Holding[] | null, classId: st
   if (holding.locked > 0) return `Only ${free.toFixed(2)} of your ${classId} units are free. ${holding.locked.toFixed(2)} are locked in another request.`;
   return `You hold ${free.toFixed(2)} ${classId} units.`;
 }
+
+export interface ValuePoint extends Point {
+  sequence: number;
+}
+
+export function unitValueSeries(publications: readonly Publication[], classId: string, decimals: number): ValuePoint[] {
+  return publications.flatMap((publication) => {
+    const valuation = publication.classes.find((item) => item.classId === classId);
+    if (!valuation) return [];
+    const view = classView(valuation, decimals);
+    return view.unitValue === null ? [] : [{ sequence: publication.identity.sequence, cutoff: publication.identity.cutoff, value: view.unitValue }];
+  });
+}
