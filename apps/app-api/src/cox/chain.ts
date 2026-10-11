@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import anchor, { type Idl, type Program } from "@coral-xyz/anchor";
-import type { Batch as BatchAccount, CoxReader, Methodology as MethodologyAccount } from "@cox/client";
+import type { Batch as BatchAccount, checkedPublication, Methodology as MethodologyAccount } from "@cox/client";
 import type { Connection } from "@solana/web3.js";
 import { CRYPTO_CLASS, type ClassState, type FallbackStep, type PriceVenue, type Publication, type VenueSymbols } from "@eox/app-api";
 
@@ -25,7 +25,7 @@ export interface Manifest {
   origin: number;
 }
 
-export type ChainPublication = Awaited<ReturnType<CoxReader["publication"]>>;
+export type ChainPublication = ReturnType<typeof checkedPublication>;
 
 export function loadProgram(connection: Connection, idlPath: string): Program {
   const idl = JSON.parse(readFileSync(idlPath, "utf8")) as Idl;
@@ -84,25 +84,33 @@ export interface PublicationContext {
   finalization: { transaction: string | null; slot: number | null };
 }
 
-export function toPublication(publication: ChainPublication, batch: BatchAccount, context: PublicationContext): Publication {
+export function batchOf(publication: ChainPublication, batch: BatchAccount | null): BatchAccount | null {
+  if (!batch || batch.phase !== 2) return null;
+  if (text(batch.batchId) !== text(publication.state.batch) || text(batch.sequence) !== text(publication.state.sequence)) return null;
+  if (hex(batch.snapshotDigest) !== hex(publication.state.snapshot)) throw new Error("PublicationBatchMismatch");
+  return batch;
+}
+
+export function toPublication(publication: ChainPublication, batch: BatchAccount | null, context: PublicationContext): Publication {
   const { state } = publication;
   const ids = classIds(context.manifest);
   const assetCount = context.manifest.assets.length;
-  if (state.prices.length !== assetCount || state.references.length !== ids.length || state.classes.length !== ids.length || batch.fixed.length !== ids.length) {
+  if (state.prices.length !== assetCount || state.references.length !== ids.length || state.classes.length !== ids.length || (batch && batch.fixed.length !== ids.length)) {
     throw new Error("PublicationShapeMismatch");
-  }
-  if (text(batch.batchId) !== text(state.batch) || text(batch.sequence) !== text(state.sequence) || hex(batch.snapshotDigest) !== hex(state.snapshot)) {
-    throw new Error("PublicationBatchMismatch");
   }
   const sequence = Number(state.sequence);
   const scheduled = Number(state.batch);
   const missedBatches: number[] = [];
   if (context.predecessorBatch !== null) for (let b = context.predecessorBatch + 1; b < scheduled; b += 1) missedBatches.push(b);
-  const fixedTotal = batch.fixed.reduce((sum, c) => sum + BigInt(c.backing.toString()), 0n);
-  const accepted = BigInt(batch.acceptedDeposits.toString());
-  const newPayable = BigInt(batch.newPayable.toString());
-  const flowResidual = fixedTotal + accepted - newPayable - state.active;
-  if (flowResidual < 0n) throw new Error("PublicationFlowMismatch");
+  let flows: { acceptedDeposits: string; newPayable: string; transferResidual: string; flowResidual: string } | null = null;
+  if (batch) {
+    const fixedTotal = batch.fixed.reduce((sum, c) => sum + BigInt(c.backing.toString()), 0n);
+    const accepted = BigInt(batch.acceptedDeposits.toString());
+    const newPayable = BigInt(batch.newPayable.toString());
+    const flowResidual = fixedTotal + accepted - newPayable - state.active;
+    if (flowResidual < 0n) throw new Error("PublicationFlowMismatch");
+    flows = { acceptedDeposits: text(accepted), newPayable: text(newPayable), transferResidual: text(batch.transferResidual), flowResidual: text(flowResidual) };
+  }
   const vault = state.active + state.pending + state.payable + state.residual;
   return {
     identity: {
@@ -133,21 +141,21 @@ export function toPublication(publication: ChainPublication, batch: BatchAccount
     references: context.manifest.assets.map((a, i) => ({ assetId: a.assetId, gross: null, reference: text(state.references[i]!) })),
     classes: ids.map((classId, i) => {
       const c = state.classes[i]!;
-      const fixed = batch.fixed[i]!;
+      const fixed = batch ? batch.fixed[i]! : null;
       return {
         classId,
         classIndex: i,
         transferFactor: null,
         preRevaluation: classState(c.preBacking, c.preUnits),
-        fixed: classState(fixed.backing, fixed.units),
+        fixed: fixed ? classState(fixed.backing, fixed.units) : null,
         final: classState(c.postBacking, c.postUnits),
       };
     }),
     flows: {
-      acceptedDeposits: text(accepted),
-      newPayable: text(newPayable),
-      transferResidual: text(batch.transferResidual),
-      flowResidual: text(flowResidual),
+      acceptedDeposits: flows?.acceptedDeposits ?? null,
+      newPayable: flows?.newPayable ?? null,
+      transferResidual: flows?.transferResidual ?? null,
+      flowResidual: flows?.flowResidual ?? null,
       executed: state.executed,
       rejected: state.rejected,
     },
