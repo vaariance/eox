@@ -1,28 +1,17 @@
 export const SIGNING_SCHEMA_VERSION = "eox.signing/v1";
 
-export const SIGNING_ROLES = [
-  "oracle-operator",
-  "uma-asserter",
-  "uma-challenger",
-  "oracle-checker",
-  "evm-relayer",
-  "solana-relayer",
-] as const;
+export const SIGNING_ROLES = ["oracle-operator"] as const;
 export type SigningRole = (typeof SIGNING_ROLES)[number];
 
+export type SigningChain = "solana";
 export type Chain = "solana" | "evm";
 export type KeyAlgorithm = "ed25519" | "secp256k1";
 export type Environment = "dev" | "testnet" | "mainnet";
 export type KeyState = "pending" | "active" | "retired" | "revoked";
 export type UnixSeconds = number;
 
-export const ROLE_CHAINS: Readonly<Record<SigningRole, Chain>> = {
+export const ROLE_CHAINS: Readonly<Record<SigningRole, SigningChain>> = {
   "oracle-operator": "solana",
-  "uma-asserter": "evm",
-  "uma-challenger": "evm",
-  "oracle-checker": "evm",
-  "evm-relayer": "evm",
-  "solana-relayer": "solana",
 };
 
 export const CHAIN_ALGORITHMS: Readonly<Record<Chain, KeyAlgorithm>> = {
@@ -31,7 +20,7 @@ export const CHAIN_ALGORITHMS: Readonly<Record<Chain, KeyAlgorithm>> = {
 };
 
 export interface KeyDirectoryEntry {
-  role: SigningRole;
+  role: string;
   environment: Environment;
   chain: Chain;
   network: string;
@@ -71,12 +60,7 @@ export interface SignSolanaTransactionRequest extends SignRequestBase {
   transactionBase64: string;
 }
 
-export interface SignEvmTransactionRequest extends SignRequestBase {
-  chain: "evm";
-  unsignedTransactionHex: string;
-}
-
-export type SignRequest = SignSolanaTransactionRequest | SignEvmTransactionRequest;
+export type SignRequest = SignSolanaTransactionRequest;
 
 export type RejectionCode =
   | "UNAUTHENTICATED"
@@ -118,5 +102,4 @@ export interface RemoteSigner {
   getPublicKey(role: SigningRole): Promise<KeyDirectoryEntry>;
   keyDirectory(): Promise<KeyDirectory>;
   signSolanaTransaction(request: Omit<SignSolanaTransactionRequest, "chain">): Promise<SignResult>;
-  signEvmTransaction(request: Omit<SignEvmTransactionRequest, "chain">): Promise<SignResult>;
 }

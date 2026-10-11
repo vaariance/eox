@@ -18,13 +18,14 @@ if (result.decision === "rejected") throw new Error(`${result.code}: ${result.re
 
 ## Contract
 
-- **One interface, separate keys.** Each role has its own key per chain and
-  environment: `oracle-operator` and `solana-relayer` (Solana, Ed25519);
-  `uma-asserter`, `uma-challenger`, `oracle-checker` and `evm-relayer` (EVM,
-  secp256k1). Admin and upgrade keys are never available through this service, and
-  no infrastructure key signs a user's trade.
+- **One runtime role.** `oracle-operator` (Solana, Ed25519) is the only signing
+  role. The EOX roles (`uma-asserter`, `uma-challenger`, `oracle-checker`,
+  `evm-relayer`, `solana-relayer`) were retired on 2026-10-11 and remain in the key
+  directory only as `retired` entries for verification. Admin and upgrade keys are
+  never available through this service, and no infrastructure key signs a user's
+  trade.
 - **Every request** carries a request ID, role, immutable key version, CAIP-2
-  network (`eip155:<chainId>` or `solana:<genesis hash prefix>`), operation identity,
+  network (`solana:<genesis hash prefix>`), operation identity,
   expiry and the exact transaction bytes. The client validates these before sending.
 - **Idempotency:** an identical retry returns the recorded result; different bytes
   under the same request ID are rejected with `REQUEST_ID_CONFLICT`. Signing

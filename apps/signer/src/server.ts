@@ -50,11 +50,10 @@ export function createSignerServer(options: SignerServerOptions): Server {
         if (req.method !== "GET") return error(res, 405, "METHOD_NOT_ALLOWED", "method not allowed");
         return write(res, 200, options.directory());
       }
-      const match = /^\/v1\/sign\/(solana|evm)$/.exec(url.pathname);
-      if (!match) return error(res, 404, "NOT_FOUND", "not found");
+      if (url.pathname !== "/v1/sign/solana") return error(res, 404, "NOT_FOUND", "not found");
       if (req.method !== "POST") return error(res, 405, "METHOD_NOT_ALLOWED", "method not allowed");
       const body = (await readJson(req)) as { chain?: string };
-      if (body?.chain !== match[1]) return error(res, 400, "INVALID_REQUEST", "chain does not match the route");
+      if (body?.chain !== "solana") return error(res, 400, "INVALID_REQUEST", "chain does not match the route");
       const result = await options.sign(caller, body);
       return write(res, result.decision === "signed" ? 200 : 403, result);
     } catch (failure) {

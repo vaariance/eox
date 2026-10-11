@@ -5,7 +5,6 @@ import {
   type KeyDirectory,
   type KeyDirectoryEntry,
   type RemoteSigner,
-  type SignEvmTransactionRequest,
   type SignRequest,
   type SignResult,
   type SignSolanaTransactionRequest,
@@ -29,9 +28,8 @@ export class SigningClientError extends Error {
 }
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
-const NETWORK_PATTERN = /^(eip155:[0-9]{1,20}|solana:[1-9A-HJ-NP-Za-km-z]{32})$/;
+const NETWORK_PATTERN = /^solana:[1-9A-HJ-NP-Za-km-z]{32}$/;
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
-const HEX_PATTERN = /^0x([0-9a-f]{2})+$/;
 
 export function validateSignRequest(request: SignRequest, nowSeconds: number): void {
   if (!REQUEST_ID_PATTERN.test(request.requestId)) throw new SigningClientError("invalid request id", 0);
@@ -40,20 +38,12 @@ export function validateSignRequest(request: SignRequest, nowSeconds: number): v
     throw new SigningClientError(`role ${request.role} does not sign for ${request.chain}`, 0);
   }
   if (!NETWORK_PATTERN.test(request.network)) throw new SigningClientError("invalid network", 0);
-  if (request.chain === "evm" !== request.network.startsWith("eip155:")) {
-    throw new SigningClientError("network does not match chain", 0);
-  }
   if (!request.keyVersion) throw new SigningClientError("missing key version", 0);
   if (!request.operation.operationId || !request.operation.kind) throw new SigningClientError("missing operation identity", 0);
   if (!Number.isSafeInteger(request.expiresAt) || request.expiresAt <= nowSeconds) {
     throw new SigningClientError("request expired", 0);
   }
-  if (request.chain === "solana" && !BASE64_PATTERN.test(request.transactionBase64)) {
-    throw new SigningClientError("invalid Solana transaction bytes", 0);
-  }
-  if (request.chain === "evm" && !HEX_PATTERN.test(request.unsignedTransactionHex)) {
-    throw new SigningClientError("invalid EVM transaction bytes", 0);
-  }
+  if (!BASE64_PATTERN.test(request.transactionBase64)) throw new SigningClientError("invalid Solana transaction bytes", 0);
 }
 
 export function createSigningClient(options: SigningClientOptions): RemoteSigner {
@@ -94,6 +84,5 @@ export function createSigningClient(options: SigningClientOptions): RemoteSigner
       return active[0]!;
     },
     signSolanaTransaction: (request: Omit<SignSolanaTransactionRequest, "chain">) => sign({ ...request, chain: "solana" }),
-    signEvmTransaction: (request: Omit<SignEvmTransactionRequest, "chain">) => sign({ ...request, chain: "evm" }),
   };
 }

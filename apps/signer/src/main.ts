@@ -1,8 +1,8 @@
+import { Connection, type PublicKey } from "@solana/web3.js";
 import { GoogleAuth } from "google-auth-library";
 import { googleIdTokenVerifier } from "./auth.js";
 import { loadSignerConfig } from "./config.js";
 import { keyDirectory, resolveKeys } from "./directory.js";
-import { signEvmTransaction } from "./evm.js";
 import { createSignerServer } from "./server.js";
 import { createSigningService } from "./service.js";
 import { signSolanaTransaction } from "./solana.js";
@@ -23,18 +23,31 @@ const token = async () => {
 };
 const now = () => Math.floor(Date.now() / 1000);
 
+const needsSolanaReads = Object.values(config.bindings).some((b) => b?.solana?.programs.some((p) => p.linkage));
+let solanaAccounts;
+if (needsSolanaReads) {
+  const rpc = process.env.SIGNER_SOLANA_RPC_URL;
+  if (!rpc || !/^https:\/\//.test(rpc)) throw new Error("SIGNER_SOLANA_RPC_URL must be an https URL when a COX linkage is bound");
+  const connection = new Connection(rpc, "confirmed");
+  const genesis = await connection.getGenesisHash();
+  const network = config.keys["oracle-operator"].network.slice("solana:".length);
+  if (!genesis.startsWith(network)) throw new Error(`Solana RPC genesis ${genesis} is not the configured network ${network}`);
+  solanaAccounts = async (keys: PublicKey[]) =>
+    (await connection.getMultipleAccountsInfo(keys, "confirmed")).map((a) => (a ? { owner: a.owner, data: Buffer.from(a.data) } : null));
+}
+
 const keys = await resolveKeys(config, token);
-const directory = keyDirectory(config, keys, 1, now());
+const directory = keyDirectory(config, keys, now());
 const sign = createSigningService({
   config,
   keys,
   store: new FirestoreDecisionStore(project, token),
   signers: {
     solana: (keyVersion, rawPublicKey, transactionBase64) => signSolanaTransaction(token, keyVersion, rawPublicKey, transactionBase64),
-    evm: (keyVersion, address, unsignedTransactionHex) => signEvmTransaction(token, keyVersion, address, unsignedTransactionHex),
   },
   now,
   log: (entry) => console.log(JSON.stringify({ severity: "INFO", message: "signing decision", ...entry })),
+  solanaAccounts,
 });
 
 const server = createSignerServer({

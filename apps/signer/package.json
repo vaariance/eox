@@ -12,8 +12,7 @@
   "dependencies": {
     "@eox/signing": "workspace:*",
     "@solana/web3.js": "^1.98.0",
-    "google-auth-library": "^9.15.0",
-    "viem": "^2.21.0"
+    "google-auth-library": "^9.15.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
