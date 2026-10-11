@@ -1,6 +1,13 @@
 # COX product direction and work plan
 
-Version 13 · 11 October 2026 · Bounded on-chain publication storage
+Version 14 · 11 October 2026 · CRYPTO benchmark entry and exit
+
+Version 14 records Peter's app flow: the swap SDK handles collateral → CRYPTO
+benchmark units and CRYPTO benchmark units → collateral. Moving between CRYPTO
+and individual asset positions happens afterward inside the trading app using
+the existing switch instruction. Swaps retain future-publication execution and
+separate withdrawal of finalized proceeds. The current collateral is the devnet
+test mint; this does not enable genuine USDC or change the deployed program.
 
 Version 13 records Peter's approved storage decision: retain one latest
 publication and one reusable execution batch per pool on chain. Preserve full
@@ -317,6 +324,12 @@ Keep batch IDs, sequences and predecessor checks in their payloads. Batch and
 publication accounts use schema 2 and fixed per-pool addresses; all other
 account schemas remain unchanged. On-chain history exposes the latest
 publication; earlier publications come from the verified archive.
+
+**Swap SDK — Peter.** `@cox/client/swap` supplies the benchmark-only entry/exit
+flow, on-chain quote estimates, unsigned wallet transactions, committed balances
+and request status, cancellation/refund and withdrawal. Godwin integrates it into
+the app. Asset switches use the existing low-level builders inside the trading
+app. Quotes do not guarantee the next publication's output or fill time.
 
 **P4 — Publisher.** `apps/cox-publisher`: for each cutoff, read the archived
 snapshot from J2, submit exactly those values and their digest in `publish`,

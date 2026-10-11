@@ -1,8 +1,7 @@
 # COX integration handoff
 
-The prepared rolling-storage upgrade changes batch/publication seeds and history
-retention. Read [the new handoff](ROLLING-STORAGE-HANDOFF.md) before integrating.
-It is not deployed; the deployment record below still describes the old build.
+The deployed rolling-storage build uses one reusable batch and one latest
+publication per pool. Their account and archive contract is documented below.
 
 P3 targets Solana devnet and classic SPL six-decimal test collateral. Program
 deployment and live-pool activation are separate. A deployed program does not
@@ -12,9 +11,10 @@ The program is deployed on devnet at
 `G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF`; see
 `deploy/deployed-devnet.json` for the verified build, transaction and authorities.
 The generated IDL, client, fixture accounts, hash vectors and allowlist are
-ready for service/UI/monitor integration. Signer binding is still separate;
-no registry, methodology, collateral mint or live pool was initialized by
-deployment.
+ready for service/UI/monitor integration. Registry, sealed methodology, test mint,
+pool and vault were initialized separately; see `deploy/initialized-devnet.json`.
+The publisher is installed with signer access; its last recorded verification
+was waiting for origin. See `deploy/publisher-running-devnet.json` for evidence.
 
 ## Price archive encoding correction for Joel
 
@@ -93,8 +93,8 @@ against finalized chain state before replacement.
 
 See `apps/cox-publisher/README.md` for setup and activation prerequisites and
 `apps/cox-publisher/VERIFICATION.md` for the local evidence and limits. The
-service is not yet installed or running on the dev VM. Registry, sealed
-methodology, test pool, signer authorization and funding remain prerequisites.
+service is installed on the dev VM; see [operations](../../deploy/dev/README.md#cox-publisher-on-eox-dev).
+Installation does not establish successful live publication or trading.
 The disabled template enables Bybit to follow Joel's 10 October J3 decision;
 the actual sealed methodology must match before runtime startup.
 
@@ -104,5 +104,61 @@ were removed. No executable import into those packages remains. The remote
 `eox-archive` tag was verified before deletion. Papers and ignored research
 remain intact. Joel's `apps/app-api/fixtures/oracle-preview.json` remains an
 archived provenance artifact; its retired math-crate string is not a live import.
-The old deployed EOX program remains abandoned in place. Cleanup is a separate
-review/commit group from P4; see `research/deletion-audit.md`.
+The old deployed EOX program remains abandoned in place. Cleanup completed in
+`7702a88`; see the [cleanup note](README.md#eox-cleanup).
+
+## Reusable accounts and publication archive
+
+Keep the existing runtime KMS key, dedicated impersonated publisher identity,
+six instruction discriminators and fee caps. The account seeds change:
+
+| Account | Fixed seeds | Schema |
+| --- | --- | --- |
+| Batch | UTF-8 `batch`, pool public key | 2 |
+| Publication | UTF-8 `publication`, pool public key | 2 |
+
+Batch ID and publication sequence remain in the account data and protocol;
+they are no longer PDA seeds. All other accounts remain schema 1 with their
+existing layouts/seeds. Use the regenerated IDL and `@cox/client` builders.
+The client `addresses.batch(pool)` and `addresses.publication(pool)` now take
+only the pool; `CoxInstructions.finalize(keys)` no longer takes a sequence.
+
+Signer integrations must validate these fixed addresses and schema 2. Keep its live pool/phase/cursor/predecessor/request/position checks;
+never permit an unfinished batch to be overwritten. No new runtime instruction
+or expanded signing role is needed. The 1.4M CU and 1,000 micro-lamport caps
+remain sufficient in compiled local measurements. Initialized pool, vault, mint and methodology addresses are recorded in
+`deploy/initialized-devnet.json`.
+
+Full finalized publication account bytes are archived by the publisher before
+any next transaction is signed or broadcast, including recovery of persisted
+transactions. Each archive record is immutable JSON at
+`${statePath}.history/<sequence>.json`, schema `cox.publication-archive/v1`:
+
+- `identity`: full genesis hash, program and pool public keys.
+- `address`: fixed publication PDA; `sequence` and `batch`: decimal strings.
+- `accountBase64`: complete 8,192-byte account, including discriminator.
+- `accountSha256`: SHA-256 of those raw bytes; `stateDigest`: protocol state hash.
+- `finalizedSlot`: slot of the coherent finalized pool/publication RPC response.
+
+The bytes include complete state preimage, prices, snapshot/manifest hashes and
+commit time. `PublicationHistory` verifies program/pool/schema, state digest,
+sequence and predecessor linkage; it syncs files and directory before proceeding.
+Missing predecessors, conflicting existing bytes and disk errors stop signing.
+Temporary crash leftovers cannot replace accepted archive files. Local syncing
+is not disaster recovery: arrange and verify archive backup/restore before live
+activation. Preserve both journal and history directory across deployments.
+
+For historical APIs, read this archive and validate its bytes and hash chain
+against the latest on-chain state anchor. Live `CoxReader.publication(poolId,
+sequence)` throws `CoxHistoryNotRetained` if the reused account holds a different
+sequence; it must never return the latest record as an older publication. Old
+batch details are not retained by this publication archive. Do not promise
+historical batch reads from the reused account.
+
+### Latest account and archived history
+
+Read the fixed publication account and deduplicate by its stored sequence/state
+digest. Validate each predecessor and use archived complete publications for
+older sequences. Continue independent reference/receipt/state verification.
+The archive is distinct from Joel's source-price archive; price observations
+and hash-only events cannot reconstruct complete finalized publication bytes.

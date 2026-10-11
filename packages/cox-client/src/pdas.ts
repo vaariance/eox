@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
 import { bytes32, integer } from "./wire.ts";
 

@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import type anchor from "@coral-xyz/anchor";
 import type { Program } from "@coral-xyz/anchor";
 import { PublicKey, TransactionMessage, VersionedTransaction, type TransactionInstruction } from "@solana/web3.js";

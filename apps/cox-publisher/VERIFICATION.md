@@ -73,7 +73,7 @@ is pinned by deploy/publisher-build.json, and enabled startup rejects the old
 deployment record. The signer must adopt fixed schema-2 batch/publication
 addresses. Backup/restore and live integration remain activation requirements.
 
-See packages/cox/ROLLING-STORAGE-HANDOFF.md for the release contract, measured
+See packages/cox/INTEGRATION.md#reusable-accounts-and-publication-archive for the release contract, measured
 allocation/compute and prepared binary hash. No active-pool migration is provided.
 
 ## Installed VM verification — 11 October 2026
@@ -84,7 +84,7 @@ Node.js 24.21.0. Startup validates the actual deployed executable, sealed pool
 and signer identity. Clock synchronization, waiting-state restart recovery and
 process exclusivity were checked. A private-bucket upload/download test restored
 68,261 bytes with identical SHA-256; the real waiting-state journal is backed up.
-See `deploy/dev/COX-PUBLISHER.md` and
+See `deploy/dev/README.md#cox-publisher-on-eox-dev` and
 `packages/cox/deploy/publisher-running-devnet.json`.
 
 This supersedes the installation and backup prerequisites described above.

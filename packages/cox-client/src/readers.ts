@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import type { Program } from "@coral-xyz/anchor";
 import { PublicKey, type AccountInfo } from "@solana/web3.js";
 import type { Accounts, Pool, Position, Publication, Request } from "./accounts.ts";

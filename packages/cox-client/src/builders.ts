@@ -1,10 +1,11 @@
-import anchor, { type Program } from "@coral-xyz/anchor";
+import { Buffer } from "buffer";
+import { BN, type Program } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import { addresses } from "./pdas.ts";
 import { bytes32 } from "./wire.ts";
 
 const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-const bn = (value: bigint) => new anchor.BN(value.toString());
+const bn = (value: bigint) => new BN(value.toString());
 export interface ManifestConfig { version: string; roster: number[]; origin: bigint; bybit: boolean; feedCheckDigest: Uint8Array }
 export interface PublishPrice { priceE8: bigint; venue: 0 | 1 | 2; step: 1 | 2 | 3 | 4; candleStart: bigint; tradeAgeMinutes: number }
 export interface PoolKeys { pool: PublicKey; vault: PublicKey }

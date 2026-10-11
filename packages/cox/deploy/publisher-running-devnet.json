@@ -14,7 +14,6 @@
   "serviceUser": "cox-publisher",
   "enabledAtBoot": true,
   "configuration": "/etc/cox-publisher/dev.json",
-  "rpcUrl": "https://api.devnet.solana.com",
   "poolId": "0",
   "pool": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
   "originUtc": "2026-10-11T08:00:00Z",
@@ -37,5 +36,19 @@
   "restoreTestSha256": "129400fcd2caa18bf7c48b63da58af6ffd4c58551abe87104a7c7e20313d6899",
   "restoreTestBytes": 68261,
   "backupLimitation": "Offsite uploads follow local archival asynchronously; VM loss can lose records not yet uploaded. Monitor backup failures.",
-  "fullTradingBatchArchive": "deferred by Peter"
+  "fullTradingBatchArchive": "deferred by Peter",
+  "rpcOrigin": "https://cox-rpc-proxy.variance.space",
+  "rpcCredentialStorage": "/etc/cox-publisher/dev.json only; authenticated path omitted from this record",
+  "rpcVerifiedAt": "2026-10-11T07:29:12Z",
+  "rpcMethodsVerified": [
+    "getGenesisHash",
+    "getHealth",
+    "getLatestBlockhash",
+    "getBlockHeight",
+    "getAccountInfo",
+    "getMultipleAccounts",
+    "getSignatureStatuses"
+  ],
+  "rpcRestartVerified": true,
+  "rpcFailoverVerified": false
 }
