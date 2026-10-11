@@ -20,8 +20,9 @@ const statuses = ["queued", "filled", "condition-failed", "expired", "zero-value
 export type SwapRequestStatus = typeof statuses[number];
 export interface SwapOptions { poolId: bigint; collateralMint: PublicKey }
 export interface WalletAccounts { owner: PublicKey; tokenAccount: PublicKey }
-export interface BuyCrypto extends WalletAccounts { amount: bigint; minimumUnits: bigint; expiryBatch: bigint }
-export interface SellCrypto extends WalletAccounts { units: bigint; minimumProceeds: bigint; expiryBatch: bigint }
+export interface FeeTerms { version: bigint; bps: number; cap: bigint }
+export interface BuyCrypto extends WalletAccounts { expectedFeeVersion?: bigint; amount: bigint; minimumUnits: bigint; expiryBatch: bigint }
+export interface SellCrypto extends WalletAccounts { expectedFeeVersion?: bigint; units: bigint; minimumProceeds: bigint; expiryBatch: bigint }
 export interface SwapPlan {
   kind: "buy-crypto" | "sell-crypto" | "withdraw" | "cancel" | "expire" | "refund";
   owner: PublicKey;
@@ -29,6 +30,7 @@ export interface SwapPlan {
   collateralMint: PublicKey;
   testOnly: true;
   observedSequence: bigint;
+  feeTerms: FeeTerms | null;
   instructions: readonly TransactionInstruction[];
   request: { address: PublicKey; nonce: bigint; earliestBatchEstimate: bigint; expiryBatch: bigint } | null;
 }
@@ -36,6 +38,10 @@ export interface SwapQuote {
   direction: "collateral-to-crypto" | "crypto-to-collateral";
   input: bigint;
   estimatedOutput: bigint;
+  gross: bigint;
+  fee: bigint;
+  netCollateral: bigint;
+  feeTerms: FeeTerms;
   observedSequence: bigint;
   collateralMint: PublicKey;
   testOnly: true;
@@ -76,6 +82,10 @@ export class CoxSwapSdk {
     this.pdas = addresses(program.programId);
     this.poolKey = this.pdas.pool(options.poolId);
   }
+  private feeTerms(pool: Pool): FeeTerms { return { version: number(pool.feeVersion), bps: pool.feeBps, cap: number(pool.feeCap) }; }
+  private checkFeeVersion(pool: Pool, expected?: bigint) {
+    if (expected !== undefined) { uint(expected, U64_MAX); check(expected === number(pool.feeVersion), "SwapFeeChangedRebuild"); }
+  }
   private cryptoClass(pool: Pool): number { return pool.classes.length - 1; }
   private async context(owner?: PublicKey) {
     const connection = this.program.provider.connection;
@@ -104,7 +114,7 @@ export class CoxSwapSdk {
     check(vault.owner.equals(TOKEN_PROGRAM) && vault.data.length === 165 && vault.data[108] === 1
       && vault.data.subarray(0, 32).equals(this.options.collateralMint.toBuffer())
       && vault.data.subarray(32, 64).equals(this.poolKey.toBuffer()), "SwapVaultMismatch");
-    check(vault.data.readBigUInt64LE(64) >= number(pool.active) + number(pool.pending) + number(pool.payable) + number(pool.residual), "SwapCollateralShortfall");
+    check(vault.data.readBigUInt64LE(64) >= number(pool.active) + number(pool.pending) + number(pool.payable) + number(pool.residual) + number(pool.fees), "SwapCollateralShortfall");
     check(clock.data.length === 40, "SwapClockMismatch");
     const now = clock.data.readBigInt64LE(32);
     const origin = number(pool.origin);
@@ -135,7 +145,7 @@ export class CoxSwapSdk {
   }
   private plan(kind: SwapPlan["kind"], owner: PublicKey, pool: Pool, instruction: TransactionInstruction, request: SwapPlan["request"] = null): SwapPlan {
     return { kind, owner, pool: this.poolKey, collateralMint: this.options.collateralMint, testOnly: true,
-      observedSequence: number(pool.sequence), instructions: [instruction], request };
+      observedSequence: number(pool.sequence), feeTerms: request ? this.feeTerms(pool) : null, instructions: [instruction], request };
   }
   private earliestBatch(context: Awaited<ReturnType<CoxSwapSdk["context"]>>) {
     const { pool, now } = context;
@@ -153,6 +163,7 @@ export class CoxSwapSdk {
   async market() {
     const context = await this.context();
     return { pool: this.poolKey, collateralMint: this.options.collateralMint, collateralDecimals: COLLATERAL_DECIMALS,
+      feeTerms: this.feeTerms(context.pool), pendingFees: context.pool.feePending ? { version: number(context.pool.feePendingVersion), bps: context.pool.feePendingBps, cap: number(context.pool.feePendingCap), activationCutoff: number(context.pool.feePendingCutoff) } : null,
       cryptoUnitDecimals: CRYPTO_UNIT_DECIMALS, cryptoClass: this.cryptoClass(context.pool), testOnly: true as const,
       benchmarkLabel: `CRYPTO (pilot, ${context.methodology.roster.length} assets)`, initialized: context.pool.initialized,
       paused: context.registry.paused, halted: context.halted, earliestBatchEstimate: this.earliestBatch(context), sequence: number(context.pool.sequence), batch: number(context.pool.lastBatch) };
@@ -178,10 +189,18 @@ export class CoxSwapSdk {
     const context = await this.context();
     this.trading(context);
     const buying = direction === "collateral-to-crypto";
-    const result = await new CoxSimulations(this.program, owner).quote(this.poolKey, buying ? 0 : 2,
-      buying ? 255 : this.cryptoClass(context.pool), buying ? this.cryptoClass(context.pool) : 255, buying ? input : 0n, buying ? 0n : input);
+    const simulations = new CoxSimulations(this.program, owner);
+    const operation = buying ? 0 : 2;
+    const from = buying ? 255 : this.cryptoClass(context.pool), to = buying ? this.cryptoClass(context.pool) : 255;
+    const feeResult = context.pool.schemaVersion === 2
+      ? await simulations.quoteWithFee(this.poolKey, operation, from, to, buying ? input : 0n, buying ? 0n : input, number(context.pool.feeVersion))
+      : null;
+    const result = feeResult ?? await simulations.quote(this.poolKey, operation, from, to, buying ? input : 0n, buying ? 0n : input);
+    const fee = feeResult ? number(feeResult.fee) : 0n;
+    const gross = feeResult ? number(feeResult.gross) : buying ? input : number(result.proceeds);
+    if (feeResult) check(number(feeResult.feeVersion) === number(context.pool.feeVersion), "SwapFeeChangedRebuild");
     check(result.sequence.eq(context.pool.sequence), "SwapReadChangedRetry");
-    return { direction, input, estimatedOutput: number(buying ? result.minted : result.proceeds),
+    return { direction, input, gross, fee, netCollateral: gross - fee, feeTerms: this.feeTerms(context.pool), estimatedOutput: number(buying ? result.minted : result.proceeds),
       observedSequence: number(result.sequence), collateralMint: this.options.collateralMint, testOnly: true,
       execution: "future-publication", guaranteed: false };
   }
@@ -189,22 +208,28 @@ export class CoxSwapSdk {
     uint(input.amount, COLLATERAL_LIMIT, true); uint(input.minimumUnits, UNIT_LIMIT);
     const context = await this.context(input.owner);
     this.trading(context);
+    this.checkFeeVersion(context.pool, input.expectedFeeVersion);
     check(number(context.pool.active) + number(context.pool.pending) + input.amount <= COLLATERAL_LIMIT, "SwapCapacityExceeded");
     check(await this.token(input.tokenAccount, input.owner) >= input.amount, "SwapInsufficientCollateral");
     const request = this.reservation(context, input.expiryBatch);
     return this.plan("buy-crypto", input.owner, context.pool,
-      this.builder.deposit(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.amount, input.minimumUnits, input.expiryBatch), request);
+      (context.pool.schemaVersion === 2
+        ? this.builder.depositWithFee(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.amount, input.minimumUnits, input.expiryBatch, number(context.pool.feeVersion))
+        : this.builder.deposit(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.amount, input.minimumUnits, input.expiryBatch)), request);
   }
   async prepareSell(input: SellCrypto): Promise<SwapPlan> {
     uint(input.units, UNIT_LIMIT, true); uint(input.minimumProceeds, U64_MAX);
     const context = await this.context(input.owner);
     this.trading(context);
+    this.checkFeeVersion(context.pool, input.expectedFeeVersion);
     const crypto = context.position?.classes[this.cryptoClass(context.pool)];
     check(!!crypto && number(crypto.units) - number(crypto.locked) >= input.units, "SwapInsufficientUnlockedUnits");
     await this.token(input.tokenAccount, input.owner);
     const request = this.reservation(context, input.expiryBatch);
     return this.plan("sell-crypto", input.owner, context.pool,
-      this.builder.redeem(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.units, input.minimumProceeds, input.expiryBatch), request);
+      (context.pool.schemaVersion === 2
+        ? this.builder.redeemWithFee(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.units, input.minimumProceeds, input.expiryBatch, number(context.pool.feeVersion))
+        : this.builder.redeem(this.keys(input, request.nonce), this.cryptoClass(context.pool), input.units, input.minimumProceeds, input.expiryBatch)), request);
   }
   private async ownedRequest(owner: PublicKey, nonce: bigint, pool: Pool) {
     uint(nonce, U64_MAX);
@@ -220,6 +245,9 @@ export class CoxSwapSdk {
     const value = await this.ownedRequest(owner, nonce, pool);
     check(value.status >= 0 && value.status < statuses.length, "SwapRequestStatusUnknown");
     return { address: this.pdas.request(this.poolKey, nonce), owner, nonce, status: statuses[value.status]!,
+      feeTerms: { version: number(value.feeVersion), bps: value.feeBps, cap: number(value.feeCap) },
+      gross: value.status === 1 ? (value.schemaVersion === 1 ? number(value.operation === 0 ? value.amount : value.proceeds) : number(value.gross)) : 0n,
+      fee: value.status === 1 ? number(value.fee) : 0n,
       targetBatch: number(value.targetBatch), expiryBatch: number(value.expiryBatch),
       mintedUnits: value.status === 1 ? number(value.minted) : 0n,
       proceeds: value.status === 1 ? number(value.proceeds) : 0n,
@@ -270,6 +298,7 @@ export class CoxSwapSdk {
     if (plan.request) {
       const context = await this.context();
       this.trading(context);
+      check(!!plan.feeTerms && plan.feeTerms.version === number(context.pool.feeVersion), "SwapFeeChangedRebuild");
       check(number(context.pool.nextRequestNonce) === plan.request.nonce, "SwapNonceChangedRebuild");
       this.reservation(context, plan.request.expiryBatch);
     }

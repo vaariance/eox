@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import anchor, { type Idl } from "@coral-xyz/anchor";
 import { PublicKey, type AccountInfo } from "@solana/web3.js";
-import { addresses, checkedPublication, decodeAccount, stateBytes, stateDigest, type Publication } from "@cox/client";
+import { addresses, checkedPublication, decodeAccount, feePolicyDigest, receiptRoot, stateBytes, stateDigest, type Publication } from "@cox/client";
 import { PublicationHistory } from "../src/history.ts";
 
 const idl = JSON.parse(readFileSync(new URL("../../../packages/cox/idl/cox.json", import.meta.url), "utf8")) as Idl;
@@ -25,10 +25,14 @@ const poolId = BigInt(pool.poolId.toString());
 const identity = { program: program.programId.toBase58(), pool: original.pool.toBase58(), genesisHash: "test-genesis" };
 const digest = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
-function publication(sequence: bigint, previousState: Uint8Array = Buffer.alloc(32), extra = 0): AccountInfo<Buffer> {
+function publication(sequence: bigint, previousState: Uint8Array = Buffer.alloc(32), extra = 0, fees = false): AccountInfo<Buffer> {
   const state = { ...originalState, sequence, batch: sequence, previousState, cutoff: originalState.cutoff + sequence * 60n,
-    residual: originalState.residual + BigInt(extra) };
-  const value: Publication = { ...original, sequence: new anchor.BN(sequence.toString()), batch: new anchor.BN(sequence.toString()),
+    residual: originalState.residual + BigInt(extra), ...(fees ? { receiptRoot: receiptRoot([], 2), feeState: {
+      fees: 200n, batchFees: 200n, feeVersion: 1n, feeBps: 2, feeCap: 2000000n, feeNextVersion: 1n,
+      feePending: false, feePendingVersion: 1n, feePendingBps: 2, feePendingCap: 2000000n,
+      feePendingCutoff: originalState.cutoff, feeInitialScheduled: true, feePolicyDigest: feePolicyDigest(originalState.manifest),
+    } } : {}) };
+  const value: Publication = { ...original, schemaVersion: fees ? 3 : 2, sequence: new anchor.BN(sequence.toString()), batch: new anchor.BN(sequence.toString()),
     statePreimage: [...stateBytes(state)], stateDigest: [...stateDigest(state)] };
   const coder = program.coder.accounts as unknown as { accountLayouts: Map<string, { layout: { encode(value: unknown, bytes: Buffer): number }; discriminator: number[] }> };
   const layout = coder.accountLayouts.get("publication")!;
@@ -42,6 +46,20 @@ async function setup(t: { after(fn: () => Promise<void>): void }) {
   t.after(() => rm(directory, { recursive: true, force: true }));
   return { directory, history: new PublicationHistory(directory, program, identity, poolId) };
 }
+
+test("fee publications preserve a V1 predecessor and survive archive reopening", async t => {
+  const { directory, history } = await setup(t);
+  await history.preserve(publication(0n), 100);
+  const zero = await history.read(0n);
+  await history.preserve(publication(1n, Buffer.from(zero.value.stateDigest), 0, true), 110);
+  const reopened = new PublicationHistory(directory, program, identity, poolId);
+  assert.equal((await reopened.read(0n)).value.schemaVersion, 2);
+  const first = await reopened.read(1n);
+  assert.equal(first.value.schemaVersion, 3);
+  assert.equal(first.value.state.feeState!.fees, 200n);
+  await reopened.preserve(publication(2n, Buffer.from(first.value.stateDigest), 0, true), 120);
+  assert.equal((await reopened.read(2n)).value.sequence.toString(), "2");
+});
 
 test("archives complete consecutive finalized accounts, preserving original slot on retry", async t => {
   const { directory, history } = await setup(t);

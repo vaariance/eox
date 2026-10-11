@@ -28,10 +28,10 @@ function setup() {
     getLatestBlockhash: async () => ({ blockhash: PublicKey.default.toBase58(), lastValidBlockHeight: 1000 }),
     simulateTransaction: async (transaction: VersionedTransaction) => {
       const instruction = new anchor.BorshInstructionCoder(program.idl).decode(Buffer.from(transaction.message.compiledInstructions[0]!.data))!;
-      assert.equal(instruction.name, "quoteRequest");
+      assert.ok(instruction.name === "quoteRequest" || instruction.name === "quoteRequestWithFee");
       quoteInstructions.push(instruction.data as { operation: number; from: number; to: number });
       return { value: { err: null, returnData: { programId: program.programId.toBase58(),
-        data: [program.coder.types.encode("quoteRead", { sequence: quoteSequence ?? pool.sequence, minted: bn(2000000000000000000n), proceeds: bn(2000000n) }).toString("base64"), "base64"] } } };
+        data: [program.coder.types.encode(instruction.name === "quoteRequestWithFee" ? "feeQuoteRead" : "quoteRead", { sequence: quoteSequence ?? pool.sequence, minted: bn(2000000000000000000n), proceeds: bn(instruction.name === "quoteRequestWithFee" ? 1999600n : 2000000n), gross: bn(2000000n), fee: bn(400n), feeVersion: get("pool").feeVersion }).toString("base64"), "base64"] } } };
     },
   } as unknown as Connection;
   const program = new anchor.Program(idl, { connection });
@@ -233,4 +233,51 @@ test("compiled-program asset-zero receipt is refused as a benchmark swap", async
   await assert.rejects(s.sdk.request(receipt.owner, BigInt(receipt.nonce.toString())), /SwapRequestNotBenchmark/);
   assert.equal((await s.sdk.market()).cryptoClass, s.pool.classes.length - 1);
   assert.equal((await s.sdk.market()).cryptoUnitDecimals, 12);
+});
+
+test("migrated pool swaps lock fee versions and expose gross, fee and net quotes", async () => {
+  const s = setup();
+  s.pool.schemaVersion = 2; s.pool.feeVersion = bn(1); s.pool.feeBps = 2; s.pool.feeCap = bn(2000000);
+  s.put("pool", s.poolKey, s.pool);
+  const quote = await s.sdk.quoteBuy(s.owner, 2000000n);
+  assert.deepEqual(quote.feeTerms, { version: 1n, bps: 2, cap: 2000000n });
+  assert.equal(quote.gross, 2000000n); assert.equal(quote.fee, 400n); assert.equal(quote.netCollateral, 1999600n);
+  const buy = await s.sdk.prepareBuy({ ...s.buy, expectedFeeVersion: quote.feeTerms.version });
+  const instruction = s.decode(buy);
+  assert.equal(instruction.name, "depositWithFee");
+  assert.equal((instruction.data as { expectedFeeVersion: anchor.BN }).expectedFeeVersion.toString(), "1");
+  assert.deepEqual(buy.feeTerms, quote.feeTerms);
+  s.position.staged = false;
+  s.position.classes[s.pool.classes.length - 1] = { units: bn(5000000000000n), locked: bn(0) };
+  s.put("position", s.pdas.position(s.poolKey, s.owner), s.position);
+  const sellQuote = await s.sdk.quoteSell(s.owner, 2000000000000n);
+  assert.equal(sellQuote.estimatedOutput, 1999600n);
+  const sell = await s.sdk.prepareSell({ owner: s.owner, tokenAccount: s.tokenAccount, units: 2000000000000n,
+    minimumProceeds: 1999600n, expiryBatch: s.buy.expiryBatch, expectedFeeVersion: 1n });
+  assert.equal(s.decode(sell).name, "redeemWithFee");
+  s.pool.feeVersion = bn(2); s.put("pool", s.poolKey, s.pool);
+  await assert.rejects(s.sdk.transaction(buy), /SwapFeeChangedRebuild/);
+  await assert.rejects(s.sdk.prepareBuy({ ...s.buy, expectedFeeVersion: 1n }), /SwapFeeChangedRebuild/);
+  await assert.rejects(s.sdk.prepareSell({ owner: s.owner, tokenAccount: s.tokenAccount, units: 1n,
+    minimumProceeds: 0n, expiryBatch: s.buy.expiryBatch, expectedFeeVersion: 1n }), /SwapFeeChangedRebuild/);
+});
+test("committed fee reserves cannot be mistaken for available custody or staged user receipts", async () => {
+  const s = setup();
+  s.pool.schemaVersion = 2; s.pool.fees = bn(100); s.put("pool", s.poolKey, s.pool);
+  await assert.rejects(s.sdk.market(), /SwapCollateralShortfall/);
+  const vault = s.map.get(s.pool.vault.toBase58())!;
+  vault.data.writeBigUInt64LE(vault.data.readBigUInt64LE(64) + 100n, 64);
+  assert.equal((await s.sdk.market()).feeTerms.version, 0n);
+  const request = s.get("request");
+  request.schemaVersion = 2; request.operation = 0; request.to = s.pool.classes.length - 1;
+  request.status = 0; request.applied = true; request.boundSequence = s.pool.sequence.addn(1);
+  request.receiptStatus = 0; request.feeVersion = bn(1); request.feeBps = 2; request.feeCap = bn(2000000);
+  request.gross = bn(1000000); request.fee = bn(200);
+  s.put("request", s.pdas.request(s.poolKey, BigInt(request.nonce.toString())), request);
+  const staged = await s.sdk.request(request.owner, BigInt(request.nonce.toString()));
+  assert.equal(staged.fee, 0n); assert.equal(staged.gross, 0n);
+  s.pool.sequence = request.boundSequence; s.put("pool", s.poolKey, s.pool);
+  const committed = await s.sdk.request(request.owner, BigInt(request.nonce.toString()));
+  assert.equal(committed.fee, 200n); assert.equal(committed.gross, 1000000n);
+  assert.equal(committed.feeTerms.version, 1n);
 });

@@ -120,6 +120,214 @@ pub mod cox {
         reconcile(p, &ctx.accounts.vault)?;
         Ok(())
     }
+    pub fn migrate_pool(ctx: Context<MigratePool>) -> Result<()> {
+        require!(ctx.accounts.registry.paused, CoxError::Paused);
+        let info = ctx.accounts.pool.to_account_info();
+        let mut data = info.try_borrow_mut_data()?;
+        require!(
+            data.len() == 4096 && data[..8] == Pool::DISCRIMINATOR[..],
+            CoxError::InvalidAccount
+        );
+        let legacy = LegacyPool::deserialize(&mut &data[8..])?;
+        require!(legacy.schema_version == 1, CoxError::AlreadyProcessed);
+        require!(legacy.stage.is_none(), CoxError::BatchBusy);
+        let expected = Pubkey::create_program_address(
+            &[b"pool", &legacy.pool_id.to_le_bytes(), &[legacy.bump]],
+            &crate::ID,
+        )
+        .map_err(|_| error!(CoxError::InvalidAccount))?;
+        require_keys_eq!(expected, info.key(), CoxError::InvalidAccount);
+        require_keys_eq!(
+            legacy.registry,
+            ctx.accounts.registry.key(),
+            CoxError::InvalidAccount
+        );
+        require_keys_eq!(
+            legacy.vault,
+            ctx.accounts.vault.key(),
+            CoxError::InvalidAccount
+        );
+        require_keys_eq!(
+            legacy.collateral_mint,
+            ctx.accounts.vault.mint,
+            CoxError::InvalidCollateral
+        );
+        let mut clean = Vec::with_capacity(data.len());
+        clean.extend_from_slice(Pool::DISCRIMINATOR);
+        legacy.serialize(&mut clean)?;
+        clean.resize(data.len(), 0);
+        let mut p = Pool::try_deserialize(&mut clean.as_slice())?;
+        reconcile(&mut p, &ctx.accounts.vault)?;
+        p.schema_version = 2;
+        data.fill(0);
+        p.try_serialize(&mut &mut data[..])?;
+        Ok(())
+    }
+    pub fn schedule_fees(
+        ctx: Context<ManageFees>,
+        bps: u16,
+        cap: u64,
+        activation_cutoff: u64,
+    ) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        require!(p.schema_version == 2, CoxError::InvalidAccount);
+        require!(bps <= 100 && cap <= 2_000_000, CoxError::InvalidFee);
+        require!(
+            !p.fee_pending
+                || p.stage.is_none()
+                || p.stage_batch
+                    .checked_mul(60)
+                    .and_then(|v| p.origin.checked_add(v))
+                    .is_some_and(|v| v < p.fee_pending_cutoff),
+            CoxError::BatchBusy
+        );
+        let t = now()?;
+        require!(
+            activation_cutoff > t
+                && activation_cutoff >= p.origin
+                && (activation_cutoff - p.origin) % 60 == 0,
+            CoxError::InvalidFeeActivation
+        );
+        if p.fee_initial_scheduled {
+            require!(
+                activation_cutoff >= add(t, 86_400)?,
+                CoxError::InvalidFeeActivation
+            );
+        }
+        p.fee_next_version = add(p.fee_next_version, 1)?;
+        p.fee_pending = true;
+        p.fee_pending_version = p.fee_next_version;
+        p.fee_pending_bps = bps;
+        p.fee_pending_cap = cap;
+        p.fee_pending_cutoff = activation_cutoff;
+        p.fee_initial_scheduled = true;
+        emit!(FeesScheduled {
+            pool: p.key(),
+            version: p.fee_pending_version,
+            bps,
+            cap,
+            activation_cutoff
+        });
+        Ok(())
+    }
+    pub fn cancel_fees(ctx: Context<ManageFees>) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        require!(p.fee_pending, CoxError::InvalidFeeActivation);
+        require!(
+            p.stage.is_none()
+                || p.stage_batch
+                    .checked_mul(60)
+                    .and_then(|v| p.origin.checked_add(v))
+                    .is_some_and(|v| v < p.fee_pending_cutoff),
+            CoxError::BatchBusy
+        );
+        emit!(FeesCancelled {
+            pool: p.key(),
+            version: p.fee_pending_version
+        });
+        p.fee_pending = false;
+        Ok(())
+    }
+    pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
+        let p = &mut ctx.accounts.pool;
+        reconcile(p, &ctx.accounts.vault)?;
+        require!(amount > 0 && amount <= p.fees, CoxError::InsufficientFees);
+        p.fees = sub(p.fees, amount)?;
+        transfer_out(
+            p,
+            &ctx.accounts.vault,
+            &ctx.accounts.treasury_token,
+            &ctx.accounts.token_program,
+            amount,
+        )?;
+        ctx.accounts.vault.reload()?;
+        reconcile(p, &ctx.accounts.vault)?;
+        emit!(FeesWithdrawn {
+            pool: p.key(),
+            admin: ctx.accounts.admin.key(),
+            amount
+        });
+        Ok(())
+    }
+    pub fn deposit_with_fee(
+        ctx: Context<Submit>,
+        to: u8,
+        amount: u64,
+        minimum_units: u128,
+        expiry: u64,
+        expected_fee_version: u64,
+    ) -> Result<()> {
+        require!(
+            ctx.accounts.pool.fee_version == expected_fee_version,
+            CoxError::FeeVersionChanged
+        );
+        submit(
+            ctx,
+            Submission {
+                op: 0,
+                from: 255,
+                to,
+                amount,
+                units: 0,
+                min_units: minimum_units,
+                min_proceeds: 0,
+                expiry,
+            },
+        )
+    }
+    pub fn switch_with_fee(
+        ctx: Context<Submit>,
+        from: u8,
+        to: u8,
+        units: u128,
+        minimum_units: u128,
+        expiry: u64,
+        expected_fee_version: u64,
+    ) -> Result<()> {
+        require!(
+            ctx.accounts.pool.fee_version == expected_fee_version,
+            CoxError::FeeVersionChanged
+        );
+        submit(
+            ctx,
+            Submission {
+                op: 1,
+                from,
+                to,
+                amount: 0,
+                units,
+                min_units: minimum_units,
+                min_proceeds: 0,
+                expiry,
+            },
+        )
+    }
+    pub fn redeem_with_fee(
+        ctx: Context<Submit>,
+        from: u8,
+        units: u128,
+        minimum_proceeds: u64,
+        expiry: u64,
+        expected_fee_version: u64,
+    ) -> Result<()> {
+        require!(
+            ctx.accounts.pool.fee_version == expected_fee_version,
+            CoxError::FeeVersionChanged
+        );
+        submit(
+            ctx,
+            Submission {
+                op: 2,
+                from,
+                to: 255,
+                amount: 0,
+                units,
+                min_units: 0,
+                min_proceeds: minimum_proceeds,
+                expiry,
+            },
+        )
+    }
     pub fn deposit(
         ctx: Context<Submit>,
         to: u8,
@@ -127,6 +335,10 @@ pub mod cox {
         minimum_units: u128,
         expiry: u64,
     ) -> Result<()> {
+        require!(
+            ctx.accounts.pool.fee_version == 0,
+            CoxError::FeeVersionChanged
+        );
         submit(
             ctx,
             Submission {
@@ -149,6 +361,10 @@ pub mod cox {
         minimum_units: u128,
         expiry: u64,
     ) -> Result<()> {
+        require!(
+            ctx.accounts.pool.fee_version == 0,
+            CoxError::FeeVersionChanged
+        );
         submit(
             ctx,
             Submission {
@@ -170,6 +386,10 @@ pub mod cox {
         minimum_proceeds: u64,
         expiry: u64,
     ) -> Result<()> {
+        require!(
+            ctx.accounts.pool.fee_version == 0,
+            CoxError::FeeVersionChanged
+        );
         submit(
             ctx,
             Submission {
@@ -272,7 +492,7 @@ pub mod cox {
         let previous_batch = &ctx.accounts.batch;
         if p.initialized {
             require!(
-                previous_batch.schema_version == 2
+                matches!(previous_batch.schema_version, 2 | 3)
                     && previous_batch.pool == p.key()
                     && previous_batch.phase == 2
                     && previous_batch.batch_id == p.last_batch
@@ -382,7 +602,7 @@ pub mod cox {
             )
         };
         let b = &mut ctx.accounts.batch;
-        b.schema_version = 2;
+        b.schema_version = if p.schema_version == 2 { 3 } else { 2 };
         b.bump = ctx.bumps.batch;
         b.pool = p.key();
         b.batch_id = batch_id;
@@ -402,6 +622,7 @@ pub mod cox {
         b.blocked = vec![false; n];
         b.accepted_deposits = 0;
         b.new_payable = 0;
+        b.fees = 0;
         b.executed = 0;
         b.rejected = 0;
         b.phase = 0;
@@ -411,7 +632,14 @@ pub mod cox {
         b.queue_start = p.queue_start;
         b.cursor = p.queue_start;
         b.next_queue_start = p.next_request_nonce;
-        b.receipt_root = mm(math::digest("COX/RECEIPTS/V1", &[]))?;
+        b.receipt_root = mm(math::digest(
+            if b.schema_version == 3 {
+                "COX/RECEIPTS/V2"
+            } else {
+                "COX/RECEIPTS/V1"
+            },
+            &[],
+        ))?;
         b.staged_root = mm(math::digest("COX/STAGE/V1", &[]))?;
         b.accepted_at = t;
         r.max_accepted_batch = r.max_accepted_batch.max(batch_id);
@@ -451,7 +679,8 @@ pub mod cox {
                 expiry: r.expiry_batch,
                 operation: operation(r),
             };
-            match math::batch(&to_math(&b.fixed), &[request], b.batch_id) {
+            match math::batch_with_fees(&to_math(&b.fixed), &[request], b.batch_id, &[fee_terms(r)])
+            {
                 Ok(result) => {
                     let receipt = &result.receipts[0];
                     r.receipt_status = match receipt.outcome {
@@ -462,6 +691,8 @@ pub mod cox {
                     };
                     r.minted = receipt.minted;
                     r.proceeds = receipt.proceeds;
+                    r.gross = receipt.gross;
+                    r.fee = receipt.fee;
                     if r.receipt_status == 0 && r.to != 255 {
                         let i = r.to as usize;
                         match b.incoming[i].checked_add(r.minted) {
@@ -474,6 +705,8 @@ pub mod cox {
                     r.receipt_status = 4;
                     r.minted = 0;
                     r.proceeds = 0;
+                    r.gross = 0;
+                    r.fee = 0;
                 }
             }
         } else if r.status == 0 {
@@ -583,12 +816,14 @@ pub mod cox {
                 r.receipt_status = 4;
                 r.minted = 0;
                 r.proceeds = 0;
+                r.fee = 0;
             }
             if r.from != 255 {
                 let i = r.from as usize;
                 position.staged_unlocks[i] = addu(position.staged_unlocks[i], r.units)?;
             }
             if r.receipt_status == 0 {
+                b.fees = add(b.fees, r.fee)?;
                 if r.from != 255 {
                     let i = r.from as usize;
                     b.burns[i] = addu(b.burns[i], r.units)?;
@@ -609,6 +844,7 @@ pub mod cox {
                     .checked_add(1)
                     .ok_or(CoxError::ArithmeticOverflow)?;
             } else {
+                r.fee = 0;
                 if r.operation == 0 {
                     position.staged_refundable = add(position.staged_refundable, r.amount)?;
                 }
@@ -623,6 +859,13 @@ pub mod cox {
             bytes.push(r.receipt_status);
             bytes.extend_from_slice(&r.minted.to_le_bytes());
             bytes.extend_from_slice(&r.proceeds.to_le_bytes());
+            if b.schema_version == 3 {
+                bytes.extend_from_slice(&r.gross.to_le_bytes());
+                bytes.extend_from_slice(&r.fee.to_le_bytes());
+                bytes.extend_from_slice(&r.fee_version.to_le_bytes());
+                bytes.extend_from_slice(&r.fee_bps.to_le_bytes());
+                bytes.extend_from_slice(&r.fee_cap.to_le_bytes());
+            }
             b.receipt_root = math::artifact_digest(&bytes);
             let mut staged = Vec::new();
             staged.extend_from_slice(&b.staged_root);
@@ -641,7 +884,7 @@ pub mod cox {
         let previous_publication = &ctx.accounts.publication;
         if p.initialized {
             require!(
-                previous_publication.schema_version == 2
+                matches!(previous_publication.schema_version, 2 | 3)
                     && previous_publication.pool == p.key()
                     && previous_publication.sequence == p.sequence
                     && previous_publication.batch == p.last_batch
@@ -691,13 +934,17 @@ pub mod cox {
         let fixed_total = total(&b.fixed)?;
         let active = total(&classes)?;
         let flow = sub(
-            sub(add(fixed_total, b.accepted_deposits)?, b.new_payable)?,
+            sub(
+                sub(add(fixed_total, b.accepted_deposits)?, b.new_payable)?,
+                b.fees,
+            )?,
             active,
         )?;
         let before = p.classes.clone();
         p.active = active;
         p.pending = sub(p.pending, b.accepted_deposits)?;
         p.payable = add(p.payable, b.new_payable)?;
+        p.fees = add(p.fees, b.fees)?;
         p.residual = add(p.residual, add(b.transfer_residual, flow)?)?;
         let current = b.prices.iter().map(|x| x.price_e8).collect::<Vec<_>>();
         if !p.initialized {
@@ -712,6 +959,18 @@ pub mod cox {
         p.initialized = true;
         p.stage = None;
         p.queue_start = b.next_queue_start;
+        if p.fee_pending && b.cutoff >= p.fee_pending_cutoff {
+            p.fee_version = p.fee_pending_version;
+            p.fee_bps = p.fee_pending_bps;
+            p.fee_cap = p.fee_pending_cap;
+            p.fee_pending = false;
+            emit!(FeesActivated {
+                pool: p.key(),
+                version: p.fee_version,
+                bps: p.fee_bps,
+                cap: p.fee_cap
+            });
+        }
         ctx.accounts.registry.active_batches = sub(ctx.accounts.registry.active_batches, 1)?;
         let state = state_bytes(
             &crate::ID,
@@ -724,7 +983,7 @@ pub mod cox {
         p.state_digest = math::artifact_digest(&state);
         b.phase = 2;
         let publication = &mut ctx.accounts.publication;
-        publication.schema_version = 2;
+        publication.schema_version = if p.schema_version == 2 { 3 } else { 2 };
         publication.bump = ctx.bumps.publication;
         publication.pool = p.key();
         publication.sequence = p.sequence;
@@ -749,7 +1008,9 @@ pub mod cox {
     pub fn read_reference(ctx: Context<ReadPool>, class: u8) -> Result<ReferenceRead> {
         let p = &ctx.accounts.pool;
         require!(
-            p.schema_version == 1 && p.initialized && (class as usize) < p.classes.len(),
+            matches!(p.schema_version, 1 | 2)
+                && p.initialized
+                && (class as usize) < p.classes.len(),
             CoxError::InvalidAccount
         );
         let c = &p.classes[class as usize];
@@ -807,6 +1068,7 @@ pub mod cox {
         units: u128,
     ) -> Result<QuoteRead> {
         let p = &ctx.accounts.pool;
+        require!(p.fee_version == 0, CoxError::FeeVersionChanged);
         require!(operation <= 2 && p.initialized, CoxError::InvalidRequest);
         let operation = match operation {
             0 => math::Operation::Deposit {
@@ -839,6 +1101,63 @@ pub mod cox {
             sequence: p.sequence,
             minted: result.receipts[0].minted,
             proceeds: result.receipts[0].proceeds,
+        })
+    }
+    pub fn quote_request_with_fee(
+        ctx: Context<ReadPool>,
+        operation: u8,
+        from: u8,
+        to: u8,
+        amount: u64,
+        units: u128,
+        expected_fee_version: u64,
+    ) -> Result<FeeQuoteRead> {
+        let p = &ctx.accounts.pool;
+        require!(p.initialized && operation <= 2, CoxError::InvalidRequest);
+        require!(
+            p.fee_version == expected_fee_version,
+            CoxError::FeeVersionChanged
+        );
+        let operation = match operation {
+            0 => math::Operation::Deposit {
+                to: to as usize,
+                amount,
+                min_units: 0,
+            },
+            1 => math::Operation::Switch {
+                from: from as usize,
+                to: to as usize,
+                units,
+                min_units: 0,
+            },
+            _ => math::Operation::Redeem {
+                from: from as usize,
+                units,
+                min_proceeds: 0,
+            },
+        };
+        let result = mm(math::batch_with_fees(
+            &to_math(&p.classes),
+            &[math::Request {
+                id: "quote".into(),
+                expiry: u64::MAX,
+                operation,
+            }],
+            p.last_batch,
+            &[math::FeeTerms {
+                version: p.fee_version,
+                bps: p.fee_bps,
+                cap: p.fee_cap,
+            }],
+        ))?;
+        let receipt = &result.receipts[0];
+        Ok(FeeQuoteRead {
+            sequence: p.sequence,
+            minted: receipt.minted,
+            proceeds: receipt.proceeds,
+            gross: receipt.gross,
+            fee: receipt.fee,
+            fee_version: p.fee_version,
         })
     }
     pub fn materialize_position(ctx: Context<MaterializePosition>) -> Result<()> {
@@ -936,6 +1255,35 @@ pub struct Methodology {
     pub origin: u64,
     pub bybit: bool,
 }
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct LegacyPool {
+    pub schema_version: u16,
+    pub bump: u8,
+    pub pool_id: u64,
+    pub registry: Pubkey,
+    pub methodology: Pubkey,
+    pub collateral_mint: Pubkey,
+    pub vault: Pubkey,
+    pub origin: u64,
+    pub last_batch: u64,
+    pub sequence: u64,
+    pub state_digest: [u8; 32],
+    pub benchmark: i128,
+    pub origin_prices: Vec<u64>,
+    pub last_prices: Vec<u64>,
+    pub references: Vec<i128>,
+    pub classes: Vec<Class>,
+    pub active: u64,
+    pub pending: u64,
+    pub payable: u64,
+    pub residual: u64,
+    pub next_request_nonce: u64,
+    pub stage: Option<Pubkey>,
+    pub initialized: bool,
+    pub queue_start: u64,
+    pub stage_batch: u64,
+    pub stage_closed_end: u64,
+}
 #[account]
 pub struct Pool {
     pub schema_version: u16,
@@ -964,6 +1312,17 @@ pub struct Pool {
     pub queue_start: u64,
     pub stage_batch: u64,
     pub stage_closed_end: u64,
+    pub fee_version: u64,
+    pub fee_bps: u16,
+    pub fee_cap: u64,
+    pub fees: u64,
+    pub fee_next_version: u64,
+    pub fee_pending: bool,
+    pub fee_pending_version: u64,
+    pub fee_pending_bps: u16,
+    pub fee_pending_cap: u64,
+    pub fee_pending_cutoff: u64,
+    pub fee_initial_scheduled: bool,
 }
 #[account]
 pub struct Position {
@@ -1008,6 +1367,11 @@ pub struct Request {
     pub minted: u128,
     pub proceeds: u64,
     pub applied: bool,
+    pub fee_version: u64,
+    pub fee_bps: u16,
+    pub fee_cap: u64,
+    pub gross: u64,
+    pub fee: u64,
 }
 #[account]
 pub struct Batch {
@@ -1042,6 +1406,7 @@ pub struct Batch {
     pub accepted_at: u64,
     pub phase: u8,
     pub safety_changed: bool,
+    pub fees: u64,
 }
 #[account]
 pub struct Publication {
@@ -1127,6 +1492,39 @@ pub struct Submit<'info> {
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
+pub struct MigratePool<'info> {
+    pub admin: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump,has_one=admin)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,owner=crate::ID)]
+    pub pool: UncheckedAccount<'info>,
+    #[account(token::authority=pool)]
+    pub vault: Account<'info, TokenAccount>,
+}
+#[derive(Accounts)]
+pub struct ManageFees<'info> {
+    pub admin: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump,has_one=admin)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault)]
+    pub pool: Account<'info, Pool>,
+    #[account(token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+}
+#[derive(Accounts)]
+pub struct WithdrawFees<'info> {
+    pub admin: Signer<'info>,
+    #[account(seeds=[b"registry"],bump=registry.bump,has_one=admin)]
+    pub registry: Account<'info, Registry>,
+    #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault)]
+    pub pool: Account<'info, Pool>,
+    #[account(mut,token::authority=pool,token::mint=pool.collateral_mint)]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(mut,token::authority=admin,token::mint=pool.collateral_mint)]
+    pub treasury_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+#[derive(Accounts)]
 pub struct ManageRequest<'info> {
     pub authority: Signer<'info>,
     #[account(seeds=[b"registry"],bump=registry.bump)]
@@ -1196,7 +1594,7 @@ pub struct Process<'info> {
     pub registry: Account<'info, Registry>,
     #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
     pub pool: Box<Account<'info, Pool>>,
-    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=batch.schema_version==2 @ CoxError::InvalidAccount)]
+    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=matches!(batch.schema_version, 2 | 3) @ CoxError::InvalidAccount)]
     pub batch: Box<Account<'info, Batch>>,
     #[account(mut,seeds=[b"request",pool.key().as_ref(),request.nonce.to_le_bytes().as_ref()],bump=request.bump,has_one=pool)]
     pub request: Account<'info, Request>,
@@ -1211,7 +1609,7 @@ pub struct BatchOnly<'info> {
     pub registry: Account<'info, Registry>,
     #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
     pub pool: Account<'info, Pool>,
-    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=batch.schema_version==2 @ CoxError::InvalidAccount)]
+    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=matches!(batch.schema_version, 2 | 3) @ CoxError::InvalidAccount)]
     pub batch: Account<'info, Batch>,
     #[account(token::authority=pool,token::mint=pool.collateral_mint)]
     pub vault: Account<'info, TokenAccount>,
@@ -1224,7 +1622,7 @@ pub struct Finalize<'info> {
     pub registry: Account<'info, Registry>,
     #[account(mut,seeds=[b"pool",pool.pool_id.to_le_bytes().as_ref()],bump=pool.bump,has_one=registry,has_one=vault,has_one=methodology,constraint=pool.stage==Some(batch.key()) @ CoxError::BatchBusy)]
     pub pool: Box<Account<'info, Pool>>,
-    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=batch.schema_version==2 @ CoxError::InvalidAccount)]
+    #[account(mut,seeds=[b"batch",pool.key().as_ref()],bump=batch.bump,has_one=pool,constraint=matches!(batch.schema_version, 2 | 3) @ CoxError::InvalidAccount)]
     pub batch: Box<Account<'info, Batch>>,
     #[account(seeds=[b"methodology",methodology.digest.as_ref()],bump=methodology.bump)]
     pub methodology: Account<'info, Methodology>,
@@ -1398,9 +1796,27 @@ fn halted(p: &Pool, t: u64) -> Result<bool> {
                 .ok_or(CoxError::ArithmeticOverflow)?,
         )?) >= 3600)
 }
+fn fee_terms(r: &Request) -> math::FeeTerms {
+    if r.schema_version == 1 {
+        math::FeeTerms::default()
+    } else {
+        math::FeeTerms {
+            version: r.fee_version,
+            bps: r.fee_bps,
+            cap: r.fee_cap,
+        }
+    }
+}
 fn reconcile(p: &mut Pool, v: &TokenAccount) -> Result<()> {
-    require!(p.schema_version == 1, CoxError::InvalidAccount);
-    let expected = add(add(p.active, p.pending)?, add(p.payable, p.residual)?)?;
+    require!(matches!(p.schema_version, 1 | 2), CoxError::InvalidAccount);
+    require!(
+        p.schema_version == 2 || (p.fees == 0 && p.fee_version == 0 && !p.fee_pending),
+        CoxError::InvalidAccount
+    );
+    let expected = add(
+        add(add(p.active, p.pending)?, add(p.payable, p.residual)?)?,
+        p.fees,
+    )?;
     require!(v.amount >= expected, CoxError::VaultMismatch);
     p.residual = add(p.residual, v.amount - expected)?;
     require!(p.active == total(&p.classes)?, CoxError::VaultMismatch);
@@ -1557,7 +1973,7 @@ fn submit(ctx: Context<Submit>, submission: Submission) -> Result<()> {
         c.locked = addu(c.locked, units)?;
     }
     let r = &mut ctx.accounts.request;
-    r.schema_version = 1;
+    r.schema_version = p.schema_version;
     r.bump = ctx.bumps.request;
     r.pool = p.key();
     r.owner = ctx.accounts.owner.key();
@@ -1572,6 +1988,9 @@ fn submit(ctx: Context<Submit>, submission: Submission) -> Result<()> {
     r.units = units;
     r.minimum_units = min_units;
     r.minimum_proceeds = min_proceeds;
+    r.fee_version = p.fee_version;
+    r.fee_bps = p.fee_bps;
+    r.fee_cap = p.fee_cap;
     emit!(RequestQueued {
         pool: p.key(),
         request: r.key(),
@@ -1677,7 +2096,13 @@ pub fn state_bytes(
     manifest: &[u8; 32],
 ) -> Result<Vec<u8>> {
     let mut bytes = Vec::new();
-    "COX/STATE/V1".to_string().serialize(&mut bytes)?;
+    (if p.schema_version == 2 {
+        "COX/STATE/V2"
+    } else {
+        "COX/STATE/V1"
+    })
+    .to_string()
+    .serialize(&mut bytes)?;
     bytes.extend_from_slice(program.as_ref());
     bytes.extend_from_slice(pool.as_ref());
     b.sequence.serialize(&mut bytes)?;
@@ -1703,6 +2128,27 @@ pub fn state_bytes(
     p.payable.serialize(&mut bytes)?;
     p.residual.serialize(&mut bytes)?;
     bytes.extend_from_slice(&b.receipt_root);
+    if p.schema_version == 2 {
+        p.fees.serialize(&mut bytes)?;
+        b.fees.serialize(&mut bytes)?;
+        p.fee_version.serialize(&mut bytes)?;
+        p.fee_bps.serialize(&mut bytes)?;
+        p.fee_cap.serialize(&mut bytes)?;
+        p.fee_next_version.serialize(&mut bytes)?;
+        p.fee_pending.serialize(&mut bytes)?;
+        p.fee_pending_version.serialize(&mut bytes)?;
+        p.fee_pending_bps.serialize(&mut bytes)?;
+        p.fee_pending_cap.serialize(&mut bytes)?;
+        p.fee_pending_cutoff.serialize(&mut bytes)?;
+        p.fee_initial_scheduled.serialize(&mut bytes)?;
+        let mut policy = Vec::new();
+        "COX/FEES/V1".to_string().serialize(&mut policy)?;
+        policy.extend_from_slice(manifest);
+        100u16.serialize(&mut policy)?;
+        2_000_000u64.serialize(&mut policy)?;
+        86_400u64.serialize(&mut policy)?;
+        bytes.extend_from_slice(&math::artifact_digest(&policy));
+    }
     Ok(bytes)
 }
 #[error_code]
@@ -1743,6 +2189,10 @@ pub enum CoxError {
     InvalidAuthority,
     InvalidOrigin,
     CapacityExceeded,
+    InvalidFee,
+    InvalidFeeActivation,
+    FeeVersionChanged,
+    InsufficientFees,
 }
 #[derive(Accounts)]
 pub struct ReadPool<'info> {
@@ -1778,6 +2228,41 @@ pub struct QuoteRead {
     pub sequence: u64,
     pub minted: u128,
     pub proceeds: u64,
+}
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct FeeQuoteRead {
+    pub sequence: u64,
+    pub minted: u128,
+    pub proceeds: u64,
+    pub gross: u64,
+    pub fee: u64,
+    pub fee_version: u64,
+}
+#[event]
+pub struct FeesScheduled {
+    pub pool: Pubkey,
+    pub version: u64,
+    pub bps: u16,
+    pub cap: u64,
+    pub activation_cutoff: u64,
+}
+#[event]
+pub struct FeesCancelled {
+    pub pool: Pubkey,
+    pub version: u64,
+}
+#[event]
+pub struct FeesActivated {
+    pub pool: Pubkey,
+    pub version: u64,
+    pub bps: u16,
+    pub cap: u64,
+}
+#[event]
+pub struct FeesWithdrawn {
+    pub pool: Pubkey,
+    pub admin: Pubkey,
+    pub amount: u64,
 }
 #[event]
 pub struct PublicationCommitted {

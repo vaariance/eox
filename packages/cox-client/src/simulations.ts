@@ -8,7 +8,8 @@ type Integer = anchor.BN;
 export interface ReferenceRead { sequence: Integer; batch: Integer; cutoff: Integer; reference: Integer; backing: Integer; units: Integer; stateDigest: number[] }
 export interface PositionRead { sequence: Integer; classes: { units: Integer; locked: Integer }[]; payable: Integer; refundable: Integer }
 export interface QuoteRead { sequence: Integer; minted: Integer; proceeds: Integer }
-interface Returns { referenceRead: ReferenceRead; positionRead: PositionRead; quoteRead: QuoteRead }
+export interface FeeQuoteRead extends QuoteRead { gross: Integer; fee: Integer; feeVersion: Integer }
+interface Returns { feeQuoteRead: FeeQuoteRead; referenceRead: ReferenceRead; positionRead: PositionRead; quoteRead: QuoteRead }
 export class CoxSimulations {
   readonly instructions;
   readonly program: Program;
@@ -27,4 +28,5 @@ export class CoxSimulations {
   reference(pool: PublicKey, classIndex: number) { return this.simulate(this.instructions.readReference(pool, classIndex), "referenceRead"); }
   position(pool: PublicKey, owner: PublicKey) { return this.simulate(this.instructions.readPosition(pool, owner), "positionRead"); }
   quote(pool: PublicKey, operation: 0 | 1 | 2, from: number, to: number, amount: bigint, units: bigint) { return this.simulate(this.instructions.quoteRequest(pool, operation, from, to, amount, units), "quoteRead"); }
+  quoteWithFee(pool: PublicKey, operation: 0 | 1 | 2, from: number, to: number, amount: bigint, units: bigint, expectedFeeVersion: bigint) { return this.simulate(this.instructions.quoteRequestWithFee(pool, operation, from, to, amount, units, expectedFeeVersion), "feeQuoteRead"); }
 }

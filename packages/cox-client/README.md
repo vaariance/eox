@@ -66,7 +66,7 @@ Serialize large integers as decimal strings in API responses. A relative referen
 
 Account validation does not authenticate price venues or replace independent publication verification. Use the IDL and matching client release together: account layouts and PDA seeds are versioned protocol details.
 
-Each pool has one reusable batch account and one latest-publication account, both at schema version 2 with fixed seeds. Other accounts remain at schema version 1. `reader.batch(poolId, batchId)` and `reader.publication(poolId, sequence)` check that the requested identity is still retained and fail with `CoxHistoryNotRetained` after it has been overwritten. Historical publications must come from the publisher's archive; there is no per-sequence on-chain history account.
+Each pool has one reusable batch account and one latest-publication account at fixed seeds. Legacy pools and requests use schema 1; migrated pools and new requests use schema 2. Legacy batches and publications use schema 2, and fee-aware batches and publications use schema 3. Readers accept both releases, treating legacy fee fields as zero. `reader.batch(poolId, batchId)` and `reader.publication(poolId, sequence)` check that the requested identity is still retained and fail with `CoxHistoryNotRetained` after it has been overwritten. Historical publications must come from the publisher's archive; there is no per-sequence on-chain history account.
 
 ## User transactions
 
@@ -75,7 +75,7 @@ Each pool has one reusable batch account and one latest-publication account, bot
 A typical user flow is:
 
 1. Read the pool's current global request nonce and derive the position and request addresses with `addresses(program.programId)`.
-2. Build a deposit, switch or redemption instruction with exact amounts, minimum output and inclusive expiry batch.
+2. For a migrated pool, build `depositWithFee`, `switchWithFee` or `redeemWithFee` with exact amounts, net minimum output, inclusive expiry batch and the observed `pool.feeVersion`. Legacy instructions work only while the active fee version is zero.
 3. Assemble a transaction, have the wallet sign it and submit it through the application's transaction transport.
 4. Track the request through a future publication and batch finalization.
 5. Withdraw committed redemption payables or refund a rejected/cancelled deposit when appropriate.
@@ -88,7 +88,19 @@ Refund and withdrawal are distinct operations. Redemption creates a payable afte
 
 `CoxSimulations.reference`, `position` and `quote` execute unsigned versioned transactions with `sigVerify: false` at finalized commitment. Results are accepted only when return data comes from the configured program. Simulation makes no trade and reserves nothing.
 
-`quote` estimates the current committed valuation. A future publication fixes the actual execution values, which may differ. Minimum-output and expiry checks remain authoritative on chain.
+`quote` estimates the current committed valuation for legacy or zero-version pools. For migrated pools, use `quoteWithFee` with the observed configuration version; it returns gross collateral value, fee, net redemption proceeds or net minted units, and the configuration version. A future publication fixes the actual execution values, which may differ. Minimum-output and expiry checks remain authoritative on chain.
+
+## Trading fees
+
+Fees are calculated in collateral base units: `min(gross × bps / 10_000, cap)`, rounded down. Either a zero rate or zero cap disables charging. The program limits configuration to 100 bps and 2,000,000 base units ($2 for six-decimal USDC). Fees apply once to successful deposits, switches and redemptions; cancellations, failed requests, refunds and withdrawals carry no trading fee. Network fees are separate.
+
+`CoxSwapSdk.market()` exposes active fee terms and any scheduled change. Quotes include `gross`, `fee`, `netCollateral`, `estimatedOutput` and `feeTerms`; quote amounts remain estimates for a future publication. Pass `quote.feeTerms.version` as `expectedFeeVersion` to `prepareBuy` or `prepareSell` to preserve the reviewed configuration. Prepared transactions are rejected if their fee version changes before signing or on-chain submission. Submitted requests retain their original fee rate and cap.
+
+Request reads expose locked `feeTerms`; `gross` and `fee` become visible when a successful receipt is committed. Staged receipts cannot be treated as completed trades. The vault's committed treasury balance is `pool.fees` and remains separate from user backing, pending deposits, payables and residual.
+
+Admin builders provide `migratePool`, `scheduleFees`, `cancelFees` and `withdrawFees`. The first schedule activates at a future publication; subsequent schedules require at least 24 hours' notice. Activation occurs when a qualifying publication finalizes. Treasury withdrawals must use an admin-owned token account for the pool's collateral mint. These instructions require admin authorization and are outside publisher authority.
+
+Fee-aware receipts and states use `COX/RECEIPTS/V2` and `COX/STATE/V2`. `receiptRoot([], 2)` selects the empty V2 root; nonempty V2 receipts carry `feeTerms`. `State.feeState` selects V2 state encoding. `decodeState` retains V1 compatibility and verifies the V2 fee-policy digest. The original sealed methodology bytes remain immutable.
 
 ## Batch processing
 

@@ -22,6 +22,7 @@ pub enum MathError {
     InsufficientPayable,
     InvalidPrice,
     InvalidSnapshot,
+    InvalidFeeTerms,
 }
 impl std::fmt::Display for MathError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -225,12 +226,35 @@ pub enum Outcome {
     Expired,
     ZeroValueClass,
 }
+pub const MAX_FEE_BPS: u16 = 100;
+pub const MAX_FEE_CAP: u64 = 2_000_000;
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FeeTerms {
+    pub version: u64,
+    pub bps: u16,
+    pub cap: u64,
+}
+impl FeeTerms {
+    pub fn validate(&self) -> Result<()> {
+        if self.bps > MAX_FEE_BPS || self.cap > MAX_FEE_CAP {
+            return Err(MathError::InvalidFeeTerms);
+        }
+        Ok(())
+    }
+    pub fn fee(&self, gross: u64) -> Result<u64> {
+        self.validate()?;
+        amount((mul(gross as i128, self.bps as i128)? / 10_000).min(self.cap as i128))
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Receipt {
     pub id: String,
     pub outcome: Outcome,
     pub minted: u128,
     pub proceeds: u64,
+    pub gross: u64,
+    pub fee: u64,
+    pub fee_version: u64,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchResult {
@@ -239,6 +263,7 @@ pub struct BatchResult {
     pub refunds: u64,
     pub residual: u64,
     pub accepted_deposits: u64,
+    pub fees: u64,
     pub receipts: Vec<Receipt>,
 }
 pub fn batch(
@@ -246,7 +271,26 @@ pub fn batch(
     requests: &[Request],
     publication_batch: u64,
 ) -> Result<BatchResult> {
+    batch_with_fees(
+        classes,
+        requests,
+        publication_batch,
+        &vec![FeeTerms::default(); requests.len()],
+    )
+}
+pub fn batch_with_fees(
+    classes: &[Class],
+    requests: &[Request],
+    publication_batch: u64,
+    fees: &[FeeTerms],
+) -> Result<BatchResult> {
     validate_classes(classes)?;
+    if requests.len() != fees.len() {
+        return Err(MathError::InvalidFeeTerms);
+    }
+    for terms in fees {
+        terms.validate()?;
+    }
     let mut reserved = vec![0i128; classes.len()];
     let mut ids = HashSet::new();
     for request in requests {
@@ -289,7 +333,8 @@ pub fn batch(
     let mut delta = vec![0i128; classes.len()];
     let (mut accepted, mut payable, mut refunds) = (0i128, 0i128, 0i128);
     let mut receipts = Vec::with_capacity(requests.len());
-    for request in requests {
+    let mut total_fees = 0i128;
+    for (request, terms) in requests.iter().zip(fees) {
         let (from, to, x, deposit, minimum) = match request.operation {
             Operation::Deposit {
                 to,
@@ -315,11 +360,18 @@ pub fn batch(
         };
         let mut proceeds = 0;
         let mut minted = 0;
+        let mut gross = 0;
+        let mut fee = 0;
         if outcome == Outcome::Filled {
             if let Some(i) = from {
                 proceeds = mul(x, classes[i].backing as i128)? / int(classes[i].units)?;
             }
-            let input = if from.is_none() { deposit } else { proceeds };
+            gross = if from.is_none() { deposit } else { proceeds };
+            fee = terms.fee(amount(gross)?)? as i128;
+            let input = gross - fee;
+            if from.is_some() {
+                proceeds = input;
+            }
             if let Some(i) = to {
                 let c = &classes[i];
                 if c.units > 0 && c.backing == 0 {
@@ -346,6 +398,9 @@ pub fn batch(
                 outcome,
                 minted: 0,
                 proceeds: 0,
+                gross: amount(gross)?,
+                fee: 0,
+                fee_version: terms.version,
             });
             continue;
         }
@@ -359,11 +414,15 @@ pub fn batch(
         } else {
             payable = add(payable, proceeds)?;
         }
+        total_fees = add(total_fees, fee)?;
         receipts.push(Receipt {
             id: request.id.clone(),
             outcome,
             minted: units(minted)?,
             proceeds: amount(proceeds)?,
+            gross: amount(gross)?,
+            fee: amount(fee)?,
+            fee_version: terms.version,
         });
     }
     let result = classes
@@ -390,6 +449,7 @@ pub fn batch(
     let residual = add(before, accepted)?
         .checked_sub(payable)
         .and_then(|v| v.checked_sub(after))
+        .and_then(|v| v.checked_sub(total_fees))
         .ok_or(MathError::ArithmeticOverflow)?;
     if residual < 0 {
         return Err(MathError::InsolventBatch);
@@ -401,6 +461,7 @@ pub fn batch(
         refunds: amount(refunds)?,
         residual: amount(residual)?,
         accepted_deposits: amount(accepted)?,
+        fees: amount(total_fees)?,
         receipts,
     })
 }

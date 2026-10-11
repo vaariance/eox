@@ -66,3 +66,54 @@ node packages/cox/scripts/deployment.ts verify \
 ```
 
 A verified executable is only one part of activation. Pool initialization must bind the intended registry, sealed methodology, mint and vault. The signing service must independently bind those accounts, the verified program and approved runtime instructions before enabling publication. Admin operations, upgrades, wallet trades and token transfers remain outside the runtime signer allowlist. See the [publisher guide](../../../apps/cox-publisher/README.md) for runtime configuration and execution.
+
+## Fee upgrade for an existing pool
+
+The configurable fee release preserves pool 1 and its existing collateral,
+positions, queued requests and publication history. The target initial policy
+is 2 bps with a 2,000,000-base-unit cap. Neither fee activation nor a program
+upgrade is implied by a prepared artifact. Use the matching IDL and client
+release; do not upgrade a running service independently across this boundary.
+
+1. Review the compiled fee lifecycle tests and exact executable hash; obtain
+   commit and deployment approval before changing the live program.
+2. Prepare the publisher release and matching readers. The publisher's
+   `programSha256` must identify the newly deployed executable. Prepare signer
+   account-layout validation and API/UI fee handling before enabling fees.
+3. Let the accepted batch finish. Stop the publisher while idle, pause the
+   registry with admin authority, and preserve the latest finalized publication
+   through the existing archive writer. Verify the archive backup and record
+   pool, positions, requests and vault totals before migration.
+4. Upgrade the existing program with its separate upgrade authority. Use
+   `CoxInstructions.migratePool(admin, { pool, vault })` to migrate the paused
+   pool in place. The migration accepts only the verified legacy pool layout
+   with no unfinished batch and initializes every fee field to zero.
+5. Verify unchanged units, reservations, payables, collateral and predecessor
+   digest. Retain the old publication bytes. Roll out matching publisher,
+   signer, API and client readers, unpause, then resume the publisher. Confirm
+   a V2 publication links the preserved V1 predecessor and backups still work.
+6. Schedule initial fees with `scheduleFees(admin, { pool, vault }, 2,
+   2_000_000n, activationCutoff)`. Choose a future minute-aligned cutoff only
+   after clients display fee terms and submit the expected configuration
+   version. The initial schedule has no 24-hour notice requirement; replacing
+   or cancelling it consumes that exception. Every later schedule requires
+   24 hours. No timer or service restart is needed to activate: finalization
+   commits the eligible configuration.
+7. Demonstrate a real devnet wallet deposit, switch, redemption and withdrawal,
+   reconcile gross/fee/net receipts, then withdraw earned fees to the admin's
+   USDC account. Confirm queued pre-activation requests remain fee-free.
+
+Joel's signer must retain only the six existing publication/processing
+instructions. Migration, scheduling, cancellation, fee withdrawals and wallet
+trade instructions must stay outside its allowlist. The API must use
+`depositWithFee`, `switchWithFee`, `redeemWithFee` and `quoteRequestWithFee`
+for migrated pools, expose gross/fee/net and configuration versions, and
+include committed fees in vault reconciliation. Godwin's app must display
+those fees and net outputs before wallet signing and rebuild on a version
+mismatch. The independent monitor needs V2 receipt/state decoding and must
+keep legacy history verification. Historical archives must never be rewritten.
+
+Pause and investigate if the deployment hash, migration totals, vault equality
+or history linkage differ from the reviewed values. After migration, do not
+roll back to a program that does not understand the new accounting; preserve
+state and fix forward through the controlled upgrade process.
