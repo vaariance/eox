@@ -10,13 +10,14 @@ import {
   type CoxRequest,
   type CoxStatus,
   type CryptoComposition,
+  type FeeStatus,
   type Portfolio,
   type Publication,
   type ReceiptStatus,
   type RequestState,
   type VaultReconciliation,
 } from "@eox/app-api";
-import { batchOf, classIds, parseManifest, toPublication, type ChainPublication, type Manifest } from "./chain.js";
+import { batchOf, classIds, feeConfiguration, parseManifest, toPublication, type ChainPublication, type Manifest } from "./chain.js";
 import { PublicationArchiveMissing, type PublicationArchive } from "./publication-archive.js";
 import { PublicationLog } from "./publication-log.js";
 import type { CoxSource } from "./source.js";
@@ -162,8 +163,13 @@ export class LiveCoxSource implements CoxSource {
   }
 
   private reconcile(view: ChainView, sequence: number): VaultReconciliation {
-    const ledger = big(view.pool.active) + big(view.pool.pending) + big(view.pool.payable) + big(view.pool.residual);
-    return { sequence, vault: view.vault.toString(), ledger: ledger.toString(), covered: view.vault >= ledger };
+    const fees = big(view.pool.fees);
+    const ledger = big(view.pool.active) + big(view.pool.pending) + big(view.pool.payable) + big(view.pool.residual) + fees;
+    return { sequence, vault: view.vault.toString(), ledger: ledger.toString(), fees: fees.toString(), covered: view.vault >= ledger };
+  }
+
+  private fees(pool: Pool): FeeStatus {
+    return { ...feeConfiguration(pool, pool.schemaVersion === 2), migrated: pool.schemaVersion === 2, committed: pool.fees.toString() };
   }
 
   private append(publication: ChainPublication, batch: Batch | null, slot: number): void {
@@ -220,6 +226,7 @@ export class LiveCoxSource implements CoxSource {
       executing: view?.pool.stage !== null && view?.pool.stage !== undefined,
       monitor: null,
       reconciliation,
+      fees: view ? this.fees(view.pool) : null,
       currentBatch: current,
     };
   }
@@ -323,7 +330,7 @@ export class LiveCoxSource implements CoxSource {
     const requestId = address.toBase58();
     const receiptStatus = RECEIPT_STATUSES[request.receiptStatus];
     const receipt = request.status !== 0 && request.status !== 5 && request.applied && receiptStatus
-      ? { requestId, sequence: Number(request.boundSequence.toString()), batch: Number(request.boundBatch.toString()), status: receiptStatus, minted: request.minted.toString(), proceeds: request.proceeds.toString() }
+      ? { requestId, sequence: Number(request.boundSequence.toString()), batch: Number(request.boundBatch.toString()), status: receiptStatus, minted: request.minted.toString(), proceeds: request.proceeds.toString(), gross: request.schemaVersion === 1 ? null : request.gross.toString(), fee: request.fee.toString() }
       : null;
     return {
       requestId,
@@ -338,6 +345,7 @@ export class LiveCoxSource implements CoxSource {
       targetBatch: Number(request.targetBatch.toString()),
       expiryBatch: Number(request.expiryBatch.toString()),
       state,
+      feeTerms: { version: request.feeVersion.toString(), bps: request.feeBps, cap: request.feeCap.toString() },
       receipt,
     };
   }
