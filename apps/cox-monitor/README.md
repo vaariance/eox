@@ -1,100 +1,65 @@
-# COX monitor
+# COX archive monitor
 
-Independent checker for the COX devnet MVP (`product.md` task G2). It holds no
-key, signs nothing and cannot pause anything. It reports; a person decides.
+An independent, read-only checker for archived COX price snapshots. It verifies archive consistency and can compare archived candles with the source venues. It holds no signing key and cannot publish, pause trading or change protocol state.
+
+## Run locally
+
+Install the workspace dependencies, then run from the repository root:
 
 ```sh
 pnpm --filter @eox/cox-monitor start
-pnpm --filter @eox/cox-monitor test
 ```
 
-| Variable | Default | Meaning |
+The default evidence API is `http://127.0.0.1:8787`, and the verdict server listens on `127.0.0.1:8792`.
+
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `EVIDENCE_API_URL` | `http://127.0.0.1:8787` | Joel's evidence API |
-| `MONITOR_STATE` | `cox-monitor-state.json` | where progress and verdicts are kept |
-| `MONITOR_HOST`, `MONITOR_PORT` | `127.0.0.1`, `8792` | where verdicts are served |
-| `MONITOR_INTERVAL_SECONDS` | `20` | pause between checks |
-| `MONITOR_PAGE_SIZE`, `MONITOR_MAX_PAGES` | `50`, `20` | cutoffs read per request and requests per check; lower them to catch up gently |
-| `MONITOR_VENUE_CHECK` | off | `true` re-fetches candles from the venues |
-| `MONITOR_USER_AGENT` | none | required with the venue check; names COX and a contact address |
-| `MONITOR_VENUE_INTERVAL_SECONDS` | `600` | pause between venue sweeps |
+| `EVIDENCE_API_URL` | `http://127.0.0.1:8787` | Archived-price evidence API. |
+| `MONITOR_STATE` | `cox-monitor-state.json` | Persistent progress and verdict file. |
+| `MONITOR_HOST`, `MONITOR_PORT` | `127.0.0.1`, `8792` | Verdict server address. |
+| `MONITOR_INTERVAL_SECONDS` | `20` | Interval between archive checks. |
+| `MONITOR_PAGE_SIZE`, `MONITOR_MAX_PAGES` | `50`, `20` | Cutoffs per page and maximum pages per check. |
+| `MONITOR_VENUE_CHECK` | Disabled | Set to `true` to query source venues. |
+| `MONITOR_USER_AGENT` | Unset | Required for venue checks; identifies COX and a contact address. |
+| `MONITOR_VENUE_INTERVAL_SECONDS` | `600` | Interval between venue sweeps. |
 
-## What it checks today
+## Verification scope
 
-It follows the evidence API's price change feed. For every archived cutoff it:
+For each archived cutoff, the monitor independently converts venue closes to USD at scale 10⁸, checks the archived fallback order, reconstructs the snapshot digest, verifies artifact hashes and compares the change-feed entry with its cutoff record. Bybit conversion uses the archived USDT/USD rate.
 
-1. converts each venue close to USD × 10⁸ itself and compares it with the
-   archived `priceE8` (Bybit closes use the archived USDT/USD rate);
-2. checks the `COX/PRICE-FALLBACK/V1` order: no earlier step had trades, and an
-   archived attempt shows trades at the step that was used;
-3. rebuilds the `COX/WIRE/V1` snapshot digest and compares it;
-4. fetches every archived artifact and checks it hashes to its digest;
-5. checks that the change feed and the cutoff agree about the snapshot.
+Archive verdicts are `match`, `mismatch`, `skipped` or `inadmissible`. `skipped` identifies snapshots written before the supported `COX/WIRE/V1` digest format. Progress is saved after every page so restarts resume from the stored cursor.
 
-Each cutoff gets one verdict: `match`, `mismatch` (with findings), `skipped`
-(digest written before `COX/WIRE/V1`) or `inadmissible` (no usable snapshot).
-Progress is saved after every page, so a restart continues where it stopped.
+Optional venue checks verify the used candle, earlier empty fallback steps, carried Kraken prices and the Bybit conversion rate through `@eox/price-feeds`. A cutoff waits three minutes before checking. Requests are sequential and bounded: Kraken at most one request per four seconds; Coinbase and Bybit at most one per second. Candle retention can prevent verification of older cutoffs.
 
-## Checking against the venues
+Venue results are `pending`, `confirmed`, `mismatch`, `unverified` or `not-checked`. A venue mismatch also changes the overall verdict to `mismatch`.
 
-With `MONITOR_VENUE_CHECK=true`, every cutoff whose archive check matched is
-later compared with the venues themselves, through `@eox/price-feeds` only:
+## Read-only API
 
-- the close that was used must be the venue's close for that candle, and that
-  candle must have trades;
-- every earlier step the archive recorded as empty must have no trades at the
-  venue;
-- a carried Kraken close must be Kraken's last trade before the cutoff;
-- a Bybit price's USDT/USD rate must be the venue's cutoff close.
+Responses use schema `cox.monitor/v1`; verdicts have `scope: "archive"`.
 
-Requests are bulk and sequential: one per venue and asset covers many cutoffs.
-Budgets are a quarter of each venue's published limit or less (`SYSTEM.md`
-§10.1): Kraken one request per 4 s, Coinbase and Bybit one per second. A
-cutoff waits three minutes before it is checked so candles are final.
-
-The result is each verdict's `venues` field: `pending`, `confirmed`,
-`mismatch` (the verdict itself becomes `mismatch`), `unverified` (a venue no
-longer returns the candle) or `not-checked`.
-
-## Verdicts
-
-Read-only, schema `cox.monitor/v1`, every verdict has `scope: "archive"`.
-
-| Request | Returns |
+| Endpoint | Response |
 | --- | --- |
-| `GET /v1/verdicts/latest` | the newest verdict; 404 `NO_VERDICT` before the first check |
-| `GET /v1/verdicts/:cutoff` | the verdict for one cutoff; 404 `VERDICT_NOT_FOUND` |
-| `GET /v1/verdicts?limit=` | recent verdicts, newest first (1 to 1440, default 60) |
-| `GET /health`, `GET /healthz` | counts, whether it has started, the latest cutoff |
+| `GET /v1/verdicts/latest` | Latest verdict; 404 `NO_VERDICT` before the first check. |
+| `GET /v1/verdicts/:cutoff` | Verdict for a cutoff; 404 `VERDICT_NOT_FOUND` if absent. |
+| `GET /v1/verdicts?limit=` | Newest verdicts first; default 60, range 1–1440. |
+| `GET /health`, `GET /healthz` | Startup status, counts and latest cutoff. |
 
-## Running on the dev VM
+The server has no authentication layer. Keep the default loopback binding or place it behind an access-controlled gateway when exposing it remotely.
 
-`deploy/deploy.sh` installs only the monitor and restarts no other service. It
-bundles `src/main.ts` into one file, copies it to
-`/opt/cox-monitor/releases/<commit>` on `eox-dev`, points
-`/opt/cox-monitor/current` at it and starts systemd `cox-monitor` as its own
-user `cox-monitor`. State is in `/var/lib/cox-monitor/state.json`. The unit
-reads at most 5 cutoffs every 20 seconds so a backlog does not load the
-evidence API, and leaves the venue check off.
+## Limits
 
-```bash
+The monitor checks archives rather than reading COX program publications. Its independent calculation modules implement references, CRYPTO, MVP-0 revaluation, fixed-value batch flows and commitment digests against the specification vectors. Those calculations are not currently an on-chain reconciliation service, and they do not model the safety pass or capacity caps.
+
+A matching archive is internally consistent. A confirmed venue check means the venue returns matching candles; neither result proves that the venue price represents a true or manipulation-free market price. Recorded-data tests do not establish successful operation against live venues.
+
+## Deployment and development
+
+```sh
+pnpm --filter @eox/cox-monitor build
+pnpm --filter @eox/cox-monitor test
 apps/cox-monitor/deploy/deploy.sh
 ```
 
-## Calculations it can already reproduce
+The deployment script requires `gcloud`, VM access and a clean monitor/price-feeds working tree. It accepts `GCP_PROJECT`, `GCP_ZONE` and `GCP_INSTANCE`, defaulting to the development environment. It bundles the app, installs a release under `/opt/cox-monitor/releases/<commit>` and restarts only systemd `cox-monitor`.
 
-Written from `packages/cox/SPEC.md` and matched against the published vectors,
-without importing `@cox/methodology` or `packages/cox-client`: references and
-CRYPTO (§4), MVP-0 revaluation (§5), fixed-value batch flows (§6), price and
-snapshot digests, receipt root and state digest (§3).
-
-## Not done yet
-
-- It does not read publications from the `cox` program, so it does not yet
-  compare its own references, revaluation, receipts or state digest with what
-  was committed. That needs a live pool.
-- The venue check has only been tested against recorded-style candle data.
-  It has not been run against the live venues.
-- It does not model the SPEC §11 safety pass or capacity caps.
-- A `match` means the archive is internally consistent, and `confirmed` means
-  the venues return the same candles. Neither means a venue's price was true.
+The supplied unit stores state in `/var/lib/cox-monitor/state.json`, processes up to five cutoffs per 20-second check and leaves venue checks disabled. Inspect it with `systemctl status cox-monitor` and `journalctl -u cox-monitor`.

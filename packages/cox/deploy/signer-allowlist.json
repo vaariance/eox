@@ -1,7 +1,7 @@
 {
   "schema": "cox.signer-allowlist/v1",
   "network": "solana-devnet",
-  "status": "prepared-rolling-upgrade-rebinding-required",
+  "status": "deployed-pool-created-signer-rebinding-required",
   "programId": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
   "role": "oracle-operator",
   "publicKey": "GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6",
@@ -50,5 +50,19 @@
     "runtimeHeapBytes": 32768,
     "note": "These local measured values inform a reviewed signer configuration; they do not enable or modify the deployed signing service."
   },
-  "requiredBuildSha256": "fd557e30dc1476d33076a83d7a2497753f03f6fedac0b4f9e11283e61e1e6172"
+  "requiredBuildSha256": "fd557e30dc1476d33076a83d7a2497753f03f6fedac0b4f9e11283e61e1e6172",
+  "bindings": {
+    "registry": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+    "poolId": "0",
+    "pool": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+    "vault": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8",
+    "collateralMint": "5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X",
+    "methodology": "Hk37dxaRjEzcngRoXRCc9N4bkqKRMCDofqTFEQ7CWyMw",
+    "methodologyDigest": "78dfc58ef66c40c92faf09d2fc46226947760d95f29416fbd357e5dc31a944cb",
+    "origin": "1791705600",
+    "batch": "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb",
+    "publication": "J5Jyo9xBvaEeG5g6n5CE85SS9sy9zBriHHx3giUAEnZC",
+    "batchSchemaVersion": 2,
+    "publicationSchemaVersion": 2
+  }
 }

@@ -1,0 +1,122 @@
+{
+  "schema": "cox.pool-setup/v1",
+  "program": "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF",
+  "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "registry": "9E52kNuxk7bHHuuvvrG13hvRBinvSnPFNFYM9kcPcKEC",
+  "admin": "4rCo36GY63kyZpCae2ccfhJEk3TLqKMybhT42YhCPp9N",
+  "upgradeAuthority": "4yHCCpEmBvaCKAdfiY2kULM8qFJcDQR4uSrfAT3EWbw5",
+  "runtimeAuthority": "GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6",
+  "nextPoolId": "1",
+  "verifiedAt": "2026-10-11T06:00:04.850Z",
+  "status": "pool-created-awaiting-first-publication",
+  "registrySignature": "5hmG9fJVHJ4Kp4GxYKz9b3We75m1PgA4anZx7uwaGU8yXtXPKrMDW7VVUhZGxp6kmczCEiWdY7qXoYTWBZ2kmmV",
+  "testCollateral": {
+    "mint": "5rpGrekfBLHdF8PD8eKLzXQPPmhyF7FCKeE1VA5CwV3X",
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "decimals": 6,
+    "mintAuthority": "4rCo36GY63kyZpCae2ccfhJEk3TLqKMybhT42YhCPp9N",
+    "freezeAuthority": null,
+    "supply": "0",
+    "signature": "3nJVj15HYGd5uBTFYz99a762TwGFdFXcduZ3Pf2V2UAyUtpXnSYra5Ki7MoDd2vcGiJju4knpFT8jrHczjLighq6"
+  },
+  "methodology": "Hk37dxaRjEzcngRoXRCc9N4bkqKRMCDofqTFEQ7CWyMw",
+  "pool": "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb",
+  "vault": "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8",
+  "publisherEnabled": false,
+  "feedCheck": {
+    "status": "provisional-devnet-approved",
+    "reportSha256": "a6e00882f979d1b46c7d36504f8e82ed870935f878d5b86a8bce41a7aa281175",
+    "requestedDays": 7,
+    "onTimeSnapshots": 549,
+    "admissibleSnapshots": 548,
+    "lateSnapshots": 11,
+    "failingAssets": [
+      "ZEC",
+      "STRK",
+      "HYPE",
+      "TAO",
+      "WLD",
+      "ONDO",
+      "ENA",
+      "ZRO",
+      "FET",
+      "JUP",
+      "AERO",
+      "RENDER",
+      "TIA",
+      "W"
+    ],
+    "failureShare": "1/549",
+    "requiredMaximumFailureShare": "0.001",
+    "reportToUTC": "2026-10-11T05:53:00Z",
+    "policy": "Peter approved proceeding with incoming data on 2026-10-11; seven-day history and failure-threshold gates deferred for this devnet test; all 30 assets retained"
+  },
+  "methodologyDigest": "78dfc58ef66c40c92faf09d2fc46226947760d95f29416fbd357e5dc31a944cb",
+  "poolId": "0",
+  "origin": "1791705600",
+  "originUTC": "2026-10-11T08:00:00.000Z",
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP",
+    "BNB",
+    "TRX",
+    "AVAX",
+    "DOT",
+    "NEAR",
+    "SUI",
+    "APT",
+    "UNI",
+    "ARB",
+    "OP",
+    "INJ",
+    "AAVE",
+    "ZEC",
+    "STRK",
+    "HYPE",
+    "TAO",
+    "WLD",
+    "ONDO",
+    "ENA",
+    "ZRO",
+    "FET",
+    "JUP",
+    "AERO",
+    "RENDER",
+    "TIA",
+    "W"
+  ],
+  "bybit": true,
+  "poolInitialized": false,
+  "setupTransactions": [
+    {
+      "step": "register-methodology",
+      "signature": "3nW2poeL5g9TXBXY19V8k1bSRE9xoM3rqduWSCD9mFspWB6wMcmrSdFLbGZb7R42GPXERxA4xRPBXnm786xM9nYD"
+    },
+    {
+      "step": "upload-0",
+      "signature": "2Unti7k1EvBkHT162yeZNk6TpguQ91RsK73oAfNJmvC5kbLbGiJHF7bEXp5P685Ws4C3h3zpKxf47iegT1mPL4Hi"
+    },
+    {
+      "step": "upload-700",
+      "signature": "35Bybzp4z6He289USELKuZwoetWpNURxzuUDeP1KmTuW4JNuRip64RmRA669EGwvbT7UpCjAmtj8dZz9CrTFfGzp"
+    },
+    {
+      "step": "upload-1400",
+      "signature": "3xxRFNSNrph5Bncs4Djnszgia22SVY1zoh5Uuaon1CtiWgV2EkGTZZTmJ55YEF2jYbeyFEY8Zca4KroLdmz25kfN"
+    },
+    {
+      "step": "upload-2100",
+      "signature": "WFiA1dwxACMRRDSVTNmMPsCL36G6xJLb94RgazccV6pELFp8wEdhjtjUUNh2BHq7wEPYDM2Jd9Sf1PeM1sFwNsx"
+    },
+    {
+      "step": "seal-methodology",
+      "signature": "KSqqRaxseHW86DrBPGsE1AuggqxqCmsDVNnbbJwqreCXCihMihAkz6XBw1Qe5nn1QTyvs7qx1TR7i8WAQnnJe9i"
+    },
+    {
+      "step": "initialize-pool-0",
+      "signature": "353kS1USw6Ua4yHgHgAqfKYST7fq511G9gngn256GgDYUETc5FRu9oPoGNPN7m9C9r1Efe24W6SW3G9Wdeu934Jk"
+    }
+  ]
+}

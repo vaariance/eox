@@ -1,5 +1,9 @@
 # COX integration handoff
 
+The prepared rolling-storage upgrade changes batch/publication seeds and history
+retention. Read [the new handoff](ROLLING-STORAGE-HANDOFF.md) before integrating.
+It is not deployed; the deployment record below still describes the old build.
+
 P3 targets Solana devnet and classic SPL six-decimal test collateral. Program
 deployment and live-pool activation are separate. A deployed program does not
 mean a sealed live methodology, active pool or running publisher exists.
@@ -15,7 +19,7 @@ deployment.
 ## Price archive encoding correction for Joel
 
 `packages/cox/SPEC.md` section 3 and `fixtures/vectors.json` are authoritative.
-The Rust P2 encoder and Godwin's monitor already match those vectors. The
+The Rust P2 encoder and Godwin's monitor already match those vectors. The historical
 provisional archive encoder reported in the 2026-10-10 COX price-evidence log
 entry has a different layout. Matching domain text alone is insufficient.
 
@@ -31,8 +35,9 @@ entry has a different layout. Matching domain text alone is insufficient.
 Venue codes remain Kraken 0, Coinbase 1 and Bybit 2. Allowed step/venue pairs
 are (1,0), (2,1), (3,2), (4,0). No stringified hexadecimal digest is hashed.
 
-Joel must version the archive correction and serve authoritative digests before
-the P4 publisher consumes them. Existing append-only observations and payloads
+Joel implemented and versioned this correction in `3559f2e` (migration `011`).
+The current archive serves `digestEncoding: "COX/WIRE/V1"`; P4 recomputes and
+checks those exact P1 hashes. This resolves the historical mismatch above. Existing append-only observations and payloads
 must remain intact. Historical provisional digests must not be silently
 relabeled as `COX/WIRE/V1`; a new computed digest or explicit versioned adapter
 can bind the original stored evidence. The COX program accepts only P1 bytes.
@@ -76,27 +81,28 @@ the verified deployed address, approved pool accounts and reviewed fee limits.
 Runtime work needs only the default 32 KiB heap. The one-time admin methodology
 seal uses 256 KiB and is outside the runtime allowlist.
 
-## Legacy dependencies retained until their replacements land
+## P4 publisher and retired EOX dependencies
 
-The audit is for this `dev` checkout; recheck after integration with
-`origin/main`. No Joel or Godwin component was changed to force deletion.
+The local publisher implementation is in `apps/cox-publisher`. Its disabled
+configuration and service template do not initialize accounts or enable signing.
+It admits only complete archived P1 snapshots matching the sealed roster,
+verifies linked artifact bytes, and uses the existing remote signer. Accepted
+batches advance through evaluation, aggregate safety, preparation and finalization
+without a fill deadline. Persisted transactions are verified and reconciled
+against finalized chain state before replacement.
 
-| Retained legacy material | Current caller or carry-over requirement |
-| --- | --- |
-| `apps/oracle-worker/src/references.ts`, `types.ts` and EOX IDL | Joel's app API live source, Solana reader and tests |
-| Economic `packages/oracle/crates/math`, CLI, baseline/us-improves fixtures and artifact list | Joel's app API fixture generator and provenance checks |
-| `packages/methodology` | Joel's evidence facts and app API readiness |
-| Worker `journal.ts`, `retry.ts`, `solana.ts` and its `codec.ts` → `provider.ts`/`publication.ts` closure | P4 transport/recovery carry-over; retain the complete compiling closure until its COX replacement exists |
+See `apps/cox-publisher/README.md` for setup and activation prerequisites and
+`apps/cox-publisher/VERIFICATION.md` for the local evidence and limits. The
+service is not yet installed or running on the dev VM. Registry, sealed
+methodology, test pool, signer authorization and funding remain prerequisites.
+The disabled template enables Bybit to follow Joel's 10 October J3 decision;
+the actual sealed methodology must match before runtime startup.
 
-After the COX compiled lifecycle suite passed, Peter's retired EOX program,
-receiver/protocol/streaming modules and tests, protocol fixtures, worker
-proposal lifecycle, command/demo/preview entry points and their obsolete
-exports/scripts were removed. The oracle Cargo workspace now builds only the
-retained economic math and CLI. Retained EOX Rust tests (24), worker tests
-(14) and worker type checking pass. The old deployed program is abandoned in
-place. Peter included these deletions with the COX implementation in commit
-`34662df`; see `research/deletion-audit.md`.
-
-Papers and ignored sealed research remain preserved. The `eox-archive` Git
-tag does not include ignored files. The surviving worker transport closure is
-an explicit temporary dependency, not a new EOX publisher or live integration.
+After merging Joel's caller replacements and verifying P4 carry-over, the
+remaining tracked EOX worker, methodology, economic math, CLI, IDL and fixtures
+were removed. No executable import into those packages remains. The remote
+`eox-archive` tag was verified before deletion. Papers and ignored research
+remain intact. Joel's `apps/app-api/fixtures/oracle-preview.json` remains an
+archived provenance artifact; its retired math-crate string is not a live import.
+The old deployed EOX program remains abandoned in place. Cleanup is a separate
+review/commit group from P4; see `research/deletion-audit.md`.

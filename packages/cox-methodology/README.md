@@ -1,37 +1,56 @@
-# COX methodology — P1 draft
+# COX methodology
 
-Dependency-free TypeScript targeting Node 24's native type stripping.
+`@cox/methodology` defines the asset catalogue, canonical methodology manifest and price/snapshot encodings for COX. It also provides a TypeScript arithmetic specification used to generate cross-language test vectors.
+
+The package runs on Node.js 24 using native TypeScript stripping. It makes no exchange requests, holds no private keys and transfers no collateral.
+
+## Run
+
+From the repository root:
 
 ```sh
-node --test packages/cox-methodology/test/*.test.ts
+pnpm --filter @cox/methodology test
 node packages/cox-methodology/src/fixtures.ts
 ```
 
-Run from the repository root. Regeneration uses file-relative URLs and is
-independent of the working directory. Tests do not regenerate expected files.
-`pnpm --filter @cox/methodology test` is equivalent with Node 24 on PATH.
+The second command regenerates fixtures. Tests compare against stored expected bytes without rewriting them. Fixture output paths are resolved relative to the source files.
 
-`compileManifest(config)` emits canonical UTF-8 JSON and its SHA-256. The draft
-includes the SYSTEM v2.3 roster, equal rational weights, fallback/conversion,
-clocks, signer identity, test-only MVP-0 and arithmetic/accounting rule IDs.
-A draft has no origin or feed-report digest; a seal requires both. The caller
-must verify the feed report, authority key and deployment before activation.
-Changing roster or Bybit availability creates a different digest.
+## Manifest compiler
 
-`priceBytes` and `snapshotBytes` implement COX/WIRE/V1 from
-[the mechanism specification](../cox/SPEC.md). They validate local shape/order,
-not venue authenticity or fallback-attempt evidence. `exactUsd` admits exact
-e8 prices. `bybitUsd` applies the single named rational conversion.
+`compileManifest(config)` returns `canonical`, `digest`, `assetCount` and `label`. The canonical representation is a UTF-8 JSON tuple hashed with SHA-256. It commits the ordered asset roster, rational equal weights, venue identifiers, fallback and conversion policies, publication timing, runtime identity, test mechanism and arithmetic rules.
 
-`vectors.ts` is an executable specification oracle for P1 fixtures. It assumes
-valid pre-reserved requests and ledger inputs; it is not a user-facing service
-or a replacement for the Rust implementation. It uses BigInt with checked
-signed-i128 arithmetic boundaries. P2 must add storage bounds, numerical
-envelope analysis and the full adversarial simulation suite. Godwin's monitor
-must reimplement the rules independently rather than import this oracle.
+```ts
+import { compileManifest, DEV_RUNTIME } from "@cox/methodology";
 
-No exchange calls, private keys, deployment, SPL transfers or production
-collateral are included. The roster remains provisional pending Joel's feed
-check. See SPEC §1 for next-publication eligibility, asynchronous execution and the
-one-minute operating capacity target. The +55 s bound is for accepting a
-snapshot, not finishing trades.
+const manifest = compileManifest({
+  version: "example-1",
+  assets: ["BTC", "ETH"],
+  originUnixSeconds: null,
+  runtimeAuthority: DEV_RUNTIME,
+  bybitEnabled: true,
+  feedCheckDigest: null,
+  status: "draft",
+});
+```
+
+A draft may omit the origin and feed-report digest. A sealed manifest requires both. The origin must be a positive UTC minute boundary; assets must appear in canonical catalogue order. Changing any committed field produces a different digest. Sealing validates representation, not the truth of the feed report or a deployment's readiness.
+
+## Prices and wire encoding
+
+| Function | Purpose |
+| --- | --- |
+| `exactUsd(value)` | Admit a positive USD decimal exactly at scale `10^8`, bounded by `u64` |
+| `bybitUsd(close, conversion)` | Multiply exact decimal inputs and round their USD conversion under the named policy |
+| `priceBytes(price)` | Encode a validated price under `COX/PRICE/V1` |
+| `snapshotBytes(cutoff, prices, roster)` | Encode the ordered price digests under `COX/SNAPSHOT/V1` |
+| `sha256(bytes)` | Return a lowercase hexadecimal SHA-256 digest |
+
+`exactUsd` rejects scientific notation, excess decimal places and zero. `priceBytes` checks venue/step combinations, candle alignment and permitted trade age. `snapshotBytes` checks canonical order, roster completeness and cutoff-relative candle times. These checks do not authenticate a venue or establish that fallback attempts actually occurred.
+
+Reference values use scale `10^12`. Monetary and fixed-point inputs remain `bigint` or decimal strings; do not convert them through JavaScript floating-point numbers.
+
+## Arithmetic specification and compatibility
+
+`src/vectors.ts` implements the reference arithmetic with checked signed-`i128` boundaries and assumes valid reserved requests and ledger inputs. The [Rust engine](../cox/README.md) executes the mechanism and adds storage, capacity and custody enforcement. Independent verification implementations should derive their calculations from the specification rather than reuse this oracle.
+
+The [mechanism specification](../cox/SPEC.md) and [shared fixtures](../cox/fixtures/vectors.json) define the interoperable encoding. The one-minute schedule includes a snapshot acceptance bound of cutoff +55 seconds; this is not a trade completion deadline. The compiled manifest explicitly records asynchronous execution with no fill deadline and a one-minute operating capacity target.

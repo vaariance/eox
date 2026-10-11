@@ -1,59 +1,68 @@
 # COX devnet deployment
 
-`devnet.json` is the deployment configuration template. The program is now
-deployed; `deployed-devnet.json` records the verified chain state and build.
-The former EOX program is never upgraded. Runtime publication uses the
-existing `oracle-operator` KMS key. The deployment wallet, program identity
-and upgrade authority are separate local devnet keys under ignored `.cox/keys`.
-No runtime private key exists there. Preserve the upgrade key securely.
+This directory contains configuration and recorded release information for the COX Solana program. It targets devnet and test collateral.
 
-Build using the pinned Anchor 0.31.1 dependencies, Agave SBF wrapper 2.2.1
-and platform tools v1.48 (Rust 1.84.1-dev):
+| File | Purpose |
+| --- | --- |
+| `devnet.json` | Expected network, program identity, authorities and toolchain |
+| `deployed-devnet.json` | Verified release commit, executable hash, deployment transaction and on-chain authority |
+| `signer-allowlist.json` | Permitted runtime instructions and their discriminators |
+| `initialized-devnet.json` | Recorded registry, sealed methodology, test mint, pool and vault initialization |
+| `methodology-devnet.json` | Sealed methodology inputs and canonical bytes |
+| `publisher-devnet.json` | Repository publisher configuration template |
+| `publisher-running-devnet.json` | Dated runtime installation and verification record |
+
+The program address is `G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF`. Treat the deployment record as a release record, rather than current pool or publisher status. Deploying the executable does not initialize a registry, seal a methodology, create collateral or activate a pool.
+
+## Requirements
+
+Run commands from the repository root with Node.js 24 and the pinned toolchain:
+
+- Anchor dependencies: `0.31.1`.
+- Agave SBF wrapper: `2.2.1`.
+- Platform tools: `v1.48`, using `rustc 1.84.1-dev`.
+- A generated IDL whose address matches the configured program.
+- A funded devnet deployment wallet and the separately controlled program and upgrade keys.
+
+Local keys are stored under ignored `.cox/keys` as `cox-program-keypair.json`, `cox-admin-keypair.json` and `cox-upgrade-keypair.json`. Their public identities must match `devnet.json`; files must not be readable by other users. Preserve the upgrade key securely. Runtime publishing uses the non-exportable `oracle-operator` KMS identity; never create a local copy of its private key.
+
+Keep authenticated RPC URLs in private configuration. Never commit or log provider API keys or proxy access tokens.
+
+## Build and review
 
 ```sh
-node packages/cox/scripts/deployment.ts build --solana-bin /path/to/solana-release/bin --platform-tools /path/to/v1.48/platform-tools
+node packages/cox/scripts/deployment.ts build \
+  --solana-bin /path/to/solana-release/bin \
+  --platform-tools /path/to/v1.48/platform-tools
 ```
 
-The build records source digests, tool version, binary size and SHA-256 under
-`.cox/reviewed-build.json`. Run the compiled-program tests before review.
-After Peter approves the concrete commits, rebuild the exact approved commit
-on any branch and run:
+The build records source digests, IDL hash, tool versions, compiler hash, binary size and executable SHA-256 in ignored `.cox/reviewed-build.json`. Run the [compiled program tests](../crates/program-tests/README.md) against that artifact and review the exact release commit before deployment.
+
+The Agave 2.2.1 wrapper's default platform version is v1.44. This release explicitly requires v1.48. Prepare a dedicated SDK tree whose `platform-tools-sdk/sbf/scripts/install.sh` platform version and `platform-tools-sdk/sbf/dependencies/platform-tools` link both use v1.48, so compilation and stripping use the same platform. The repository script does not modify system tool installations.
+
+## Deploy
+
+After the concrete release commit is approved, build that committed revision and run:
 
 ```sh
-node packages/cox/scripts/deployment.ts deploy --solana-bin /path/to/solana-release/bin --platform-tools /path/to/v1.48/platform-tools --approved-commit FULL_COMMIT_SHA
+node packages/cox/scripts/deployment.ts deploy \
+  --solana-bin /path/to/solana-release/bin \
+  --platform-tools /path/to/v1.48/platform-tools \
+  --approved-commit FULL_COMMIT_SHA
 ```
 
-The script requires a clean committed COX tree, checks the approved build,
-verifies that HEAD and the reviewed build match the approved commit, pins
-the devnet genesis hash and checks the public identities of all local keys.
-Deployment has no branch or remote-membership requirement.
-It deploys only the program. It creates no mint, pool, methodology or live
-publication. Faucet test SOL funds the deployment wallet; it is not collateral.
+The script requires a clean committed `packages/cox` tree, matching HEAD/reviewed-build/approved commit identities, matching local key identities and the pinned devnet genesis hash. Deployment may run from any branch; there is no remote-membership requirement. Recheck devnet SOL balance, program rent and transaction fees before each deployment. Devnet SOL used for fees and rent is separate from pool collateral.
 
-The script then downloads the deployed executable, verifies the reviewed
-bytes (allowing only zero allocation padding) and the separate upgrade
-authority, and writes `deployed-devnet.json` with actual chain information.
-Only that verified record establishes the deployed program and build hash.
-Joel binds the signer to the verified address and permitted instructions
-in the integration handoff. Live-pool activation is a separate task.
+The script downloads the deployed executable, compares it with the reviewed build while allowing only zero allocation padding, verifies the upgrade authority and writes `deployed-devnet.json`. A mismatch fails verification.
 
-## Toolchain setup used for local verification
+## Verify an existing deployment
 
-Agave wrapper 2.2.1 reports a default platform v1.44. This release instead
-explicitly uses platform v1.48 (`rustc 1.84.1-dev`). The local wrapper's
-`platform-tools-sdk/sbf/scripts/install.sh` platform-version variable was
-changed from v1.44 to v1.48, and
-`platform-tools-sdk/sbf/dependencies/platform-tools` links to that installed
-v1.48 tree. This ensures both compilation and the strip tool use the same
-platform. The repository build script does not modify a system installation;
-prepare a dedicated SDK tree with this alignment before invoking it. The
-wrapper's banner still mentions its original default; the reviewed build
-records the actual compiler version and SHA-256 separately.
+With the matching reviewed build and toolchain present:
 
-Peter funded the dedicated deployment wallet with 10 devnet SOL. Following
-deployment it holds 5.2677364 SOL. Initial faucet requests were rate limited.
-The pre-deployment RPC rent quotes were
-are 4.72125548 SOL for the 929,253-byte program-data account and 4.72121484 SOL
-for the 929,245-byte temporary buffer. Actual net deployment cost, including
-fees, was 4.7322636 SOL. These are devnet test tokens, not user collateral.
-Recheck rent and balance before any future deployment.
+```sh
+node packages/cox/scripts/deployment.ts verify \
+  --solana-bin /path/to/solana-release/bin \
+  --platform-tools /path/to/v1.48/platform-tools
+```
+
+A verified executable is only one part of activation. Pool initialization must bind the intended registry, sealed methodology, mint and vault. The signing service must independently bind those accounts, the verified program and approved runtime instructions before enabling publication. Admin operations, upgrades, wallet trades and token transfers remain outside the runtime signer allowlist. See the [publisher guide](../../../apps/cox-publisher/README.md) for runtime configuration and execution.
