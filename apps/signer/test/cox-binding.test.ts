@@ -10,6 +10,7 @@ const binding = config.bindings["oracle-operator"]!;
 const cox = binding.solana!.programs[0]!;
 const program = new PublicKey(cox.programId);
 const poolId = Buffer.alloc(8);
+poolId.writeBigUInt64LE(1n);
 const registry = PublicKey.findProgramAddressSync([Buffer.from("registry")], program)[0];
 const pool = PublicKey.findProgramAddressSync([Buffer.from("pool"), poolId], program)[0];
 const vault = PublicKey.findProgramAddressSync([Buffer.from("vault"), pool.toBuffer()], program)[0];
@@ -18,7 +19,7 @@ const operator = new PublicKey("GNmM11ZMFqEu3FYewGNDunpSSJBw8KnkDxzCGpSbpGj6");
 const batch = PublicKey.findProgramAddressSync([Buffer.from("batch"), pool.toBuffer()], program)[0];
 const publication = PublicKey.findProgramAddressSync([Buffer.from("publication"), pool.toBuffer()], program)[0];
 
-test("binds the deployed COX program, pool 0 and only the publisher service", () => {
+test("binds the deployed COX program, pool 1 and only the publisher service", () => {
   assert.equal(cox.programId, "G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF");
   assert.deepEqual(cox.discriminators, ["publish", "evaluate", "safety", "seal_evaluation", "execute", "finalize"].map(discriminator));
   assert.deepEqual(config.callers, { "cox-publisher@colosseum-eox.iam.gserviceaccount.com": ["oracle-operator"] });
@@ -34,7 +35,7 @@ test("binds the deployed COX program, pool 0 and only the publisher service", ()
 });
 
 function publish(poolAccount: PublicKey) {
-  const keys = [operator, operator, registry, poolAccount, new PublicKey("Hk37dxaRjEzcngRoXRCc9N4bkqKRMCDofqTFEQ7CWyMw"), batch, vault, SystemProgram.programId];
+  const keys = [operator, operator, registry, poolAccount, new PublicKey("5h3fnfD9BFbJ1iRmRTy7fd6DPy1xEWNg4h2KGheRxFT6"), batch, vault, SystemProgram.programId];
   const instruction = new TransactionInstruction({
     programId: program,
     keys: keys.map((pubkey, i) => ({ pubkey, isSigner: i < 2, isWritable: [0, 2, 3, 5].includes(i) })),
@@ -48,11 +49,11 @@ function publish(poolAccount: PublicKey) {
   return new VersionedTransaction(message);
 }
 
-test("binds activated pool 0, its sealed methodology and its reusable batch and publication accounts", () => {
-  assert.deepEqual(cox.linkage, { kind: "cox-v2", poolId: "0", pool: pool.toBase58(), methodology: "Hk37dxaRjEzcngRoXRCc9N4bkqKRMCDofqTFEQ7CWyMw" });
-  assert.equal(pool.toBase58(), "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb");
-  assert.equal(batch.toBase58(), "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb");
-  assert.equal(publication.toBase58(), "J5Jyo9xBvaEeG5g6n5CE85SS9sy9zBriHHx3giUAEnZC");
+test("binds activated pool 1, its sealed methodology and its reusable batch and publication accounts", () => {
+  assert.deepEqual(cox.linkage, { kind: "cox-v2", poolId: "1", pool: pool.toBase58(), methodology: "5h3fnfD9BFbJ1iRmRTy7fd6DPy1xEWNg4h2KGheRxFT6" });
+  assert.equal(pool.toBase58(), "F44g6A58N3cu9TGaDE1LiDB3r1BCxCrfFkMQV1DcEv37");
+  assert.equal(batch.toBase58(), "585NzfdUEPMQCBcxWNzzDiap5rTB5jUNyJZMqEGYWbAv");
+  assert.equal(publication.toBase58(), "CeWq5nVR9wzcJGqeegEQhXXfJqBRtdp8bVVSm4PtF6e");
 });
 
 test("refuses every request while the binding is disabled", () => {

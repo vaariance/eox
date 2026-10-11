@@ -680,6 +680,28 @@ another agent needs to know.
 - **Open:** Review and commit approval. This documentation pass made no source or runtime changes; concurrent staged changes remain untouched.
 - **Refs:** Root `README.md`, package/app READMEs, `deploy/dev/README.md`.
 
+### 2026-10-11 · Joel (Claude Code) · Live app API reads the reusable publication account
+
+- **Area:** `apps/app-api`, `packages/app-api`, `deploy/dev`; `dev` merged into `main`.
+- **What:** Peter's rolling-storage build keeps one reusable publication and one batch account per pool, so the live source now reads registry, pool, vault, publication and batch in one finalized call per tick. It appends the publication when it is the next sequence and fills earlier gaps from the publisher's archive, verifying each record's identity, account hash, state and predecessor chain. A root timer copies the archive read-only to `/opt/eox/state/cox-publication-archive`. Publications whose batch was already reused report `fixed: null` and null money flows; `finalization.transaction` is `null` and `slot` is the observed finalized slot. Both app APIs run on a checksum-pinned Node 24 (`@cox/client` needs it; Node 22 failed on its `BN` import). `dev` was merged at `245523d`. Its lockfile carried rollup 4.64.5, which the release-age policy refuses, so the lockfile keeps rollup 4.64.1. Verified on the VM at `6111d6a`: publications 0 to 33 served without gaps, status fresh, vault reconciled. The signer has signed the publisher's traffic since origin (115 in the first hour, none refused), and the new IDL's account order matches its pins.
+- **Rules for agents:** Never serve the reused publication as an older sequence. A `null` fixed valuation means the batch was not observed before reuse, not zero.
+- **Open:** Peter: `packages/cox-client/test/swap.test.ts` bundle test and the publisher's `fsync` tests fail on Windows only (`/C:/` path and `EPERM`).
+- **Refs:** `apps/app-api/src/cox/live-source.ts`, `apps/app-api/src/cox/publication-archive.ts`, `deploy/dev/README.md`, commits `ade5bb5`..`6111d6a`.
+
+### 2026-10-11 · Joel (Claude Code) · Public live app API
+
+- **Area:** `apps/app-api`, GCP Cloud Run `cox-app-api-live` (europe-west1), `apps/rpc-proxy` tokens.
+- **What:** At Joel's request the live `cox.app-api/v1` is public at `https://cox-app-api-live-529206295845.europe-west1.run.app`. It runs as service account `cox-app-api-live`, which can only read the RPC secret `cox-app-api-live-rpc-urls` and objects in `gs://colosseum-cox-publication-archives-dev`. One always-on instance (`min=max=1`, CPU always allocated); state is in `/tmp`, so each start rebuilds history from the archive bucket (records are verified by content hash, account hash, state and predecessor chain). RPC goes through Joel's Cloudflare proxy with its own fourth token, then public devnet. CORS `*`; POST transaction routes are limited to 30 per client per minute (429 `RATE_LIMITED`, client = last `X-Forwarded-For` entry). The container now runs on Node 24 (`node:24.21.0-slim`). Verified from outside: publications 0 to 54 without gaps, 30 assets priced, status fresh, vault reconciled, CORS, builder validation and the rate limit.
+- **Rules for agents:** Godwin: use this URL for the live web app; check `deployment.origin` is `live`. It is devnet and test collateral only. Never raise the instance count without moving submission tracking to shared storage: submission lookups are per instance.
+- **Refs:** `apps/app-api/README.md`, commits `9a133d2`..`9a65246`.
+
+### 2026-10-11 · Joel (Claude Code) · Signer and live APIs moved to pool 1 (devnet USDC)
+
+- **Area:** `apps/signer/config/dev.json`, `deploy/dev`, Cloud Run `cox-app-api-live`.
+- **What:** At Peter's request (2026-10-11), the signer binding and both live app APIs moved from pool 0 to pool 1. Checked on chain before the change: pool `F44g6A58N3cu9TGaDE1LiDB3r1BCxCrfFkMQV1DcEv37` (pool 1's PDA, 31 classes, origin 1791714000 = 10:20 UTC, not yet initialized), vault `6fMcr5FTx3ZmrZp5XpxjD3fpUqfdza27XccVHaaoRGEp` (owned by the pool, holds the pool's mint), mint `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` (Circle's devnet USDC, 6 decimals), sealed methodology `5h3fnfD9BFbJ1iRmRTy7fd6DPy1xEWNg4h2KGheRxFT6` (digest `8dff8843…c819`, 30 assets), reusable batch `585NzfdUEPMQCBcxWNzzDiap5rTB5jUNyJZMqEGYWbAv` and publication `CeWq5nVR9wzcJGqeegEQhXXfJqBRtdp8bVVSm4PtF6e`. The signer now pins those accounts and refuses pool 0. Both live APIs read history from `gs://colosseum-cox-publication-archives-dev/pool-1/history/`; `eox-dev-vm` got read-only access to that bucket and the VM's archive copy timer was removed, since one folder cannot hold two pools' sequences.
+- **Rules for agents:** Devnet USDC is still devnet: no real value. Pool 0's history stays in its own bucket prefix.
+- **Refs:** commits `ae7bc2b`, `ef3f6cd`.
+
 ### 2026-10-11 · Godwin (Claude Code) · Swap page uses @cox/client/swap
 
 - **Area:** `apps/web`.

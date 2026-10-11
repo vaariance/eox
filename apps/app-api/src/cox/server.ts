@@ -30,6 +30,17 @@ export interface CoxApiServerOptions {
   corsOrigin?: string | null;
   transactions?: CoxTransactions | null;
   submissions?: CoxSubmissions | null;
+  postLimit?: { perMinute: number; trustForwardedFor: boolean } | null;
+}
+
+function clientAddress(req: IncomingMessage, trustForwardedFor: boolean): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const value = Array.isArray(forwarded) ? forwarded.join(",") : forwarded;
+  if (trustForwardedFor && value) {
+    const last = value.split(",").map((part) => part.trim()).filter(Boolean).at(-1);
+    if (last) return last;
+  }
+  return req.socket.remoteAddress ?? "unknown";
 }
 
 function cors(res: ServerResponse, origin: string | null): void {
@@ -67,6 +78,25 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
   const corsOrigin = options.corsOrigin ?? null;
   const transactions = options.transactions ?? null;
   const submissions = options.submissions ?? null;
+  const postLimit = options.postLimit ?? null;
+  const buckets = new Map<string, { tokens: number; at: number }>();
+
+  function admit(req: IncomingMessage, res: ServerResponse): void {
+    if (!postLimit) return;
+    const key = clientAddress(req, postLimit.trustForwardedFor);
+    const nowMs = Date.now();
+    if (buckets.size > 10_000) for (const [k, b] of buckets) if (nowMs - b.at > 60_000) buckets.delete(k);
+    const bucket = buckets.get(key) ?? { tokens: postLimit.perMinute, at: nowMs };
+    bucket.tokens = Math.min(postLimit.perMinute, bucket.tokens + ((nowMs - bucket.at) / 60_000) * postLimit.perMinute);
+    bucket.at = nowMs;
+    if (bucket.tokens < 1) {
+      buckets.set(key, bucket);
+      res.setHeader("retry-after", String(Math.ceil(((1 - bucket.tokens) * 60) / postLimit.perMinute)));
+      throw new ApiError(429, "RATE_LIMITED", "too many transaction requests; try again shortly");
+    }
+    bucket.tokens -= 1;
+    buckets.set(key, bucket);
+  }
 
   async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
     const type = req.headers["content-type"] ?? "";
@@ -92,6 +122,7 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
     const [, a, b] = path;
     if (path.length !== 3 || a !== "transactions") throw new ApiError(404, "NOT_FOUND", "not found");
     if (!transactions || !submissions) throw new ApiError(409, "NOT_LIVE", "transactions are built only by a live deployment");
+    admit(req, res);
     const input = await body(req);
     if (b === "submit") return send(res, await submissions.submit(input.transaction));
     const builder = BUILDERS.find((name) => name === b);

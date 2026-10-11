@@ -44,6 +44,20 @@ Responses use schema `cox.monitor/v1`; verdicts have `scope: "archive"`.
 | `GET /v1/verdicts?limit=` | Newest verdicts first; default 60, range 1–1440. |
 | `GET /health`, `GET /healthz` | Startup status, counts and latest cutoff. |
 
+## Running on the dev VM
+
+`deploy/deploy.sh` installs only the monitor and restarts no other service. It
+bundles `src/main.ts` into one file, copies it to
+`/opt/cox-monitor/releases/<commit>` on `eox-dev`, points
+`/opt/cox-monitor/current` at it and starts systemd `cox-monitor` as its own
+user `cox-monitor`. State is in `/var/lib/cox-monitor/state.json`. The unit
+reads at most 5 cutoffs every 20 seconds so a backlog does not load the
+evidence API, and leaves the venue check off.
+
+```bash
+apps/cox-monitor/deploy/deploy.sh
+```
+
 The server has no authentication layer. Keep the default loopback binding or place it behind an access-controlled gateway when exposing it remotely.
 
 ## Limits

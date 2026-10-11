@@ -57,6 +57,16 @@ sudo -u eox -H PNPM_VERSION="$pnpm_version" bash -c '
 
 printf '%s\n' \
   "30 5 * * * /opt/eox/backup-db.sh ${backup_bucket} >> /opt/eox/logs/backup.log 2>&1" | crontab -u eox -
+node24=/opt/eox/runtime/node-v24.21.0-linux-x64
+if [ ! -x "$node24/bin/node" ]; then
+  node_download=$(mktemp -d)
+  curl -fsSL -o "$node_download/node.tar.xz" https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz
+  echo "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  $node_download/node.tar.xz" | sha256sum -c -
+  install -d -m 0755 /opt/eox/runtime
+  tar -xJf "$node_download/node.tar.xz" -C /opt/eox/runtime
+  rm -rf "$node_download"
+fi
+
 start_service() {
   install -m 0644 "/opt/eox/app/deploy/dev/$1.service" "/etc/systemd/system/$1.service"
   systemctl daemon-reload
@@ -83,6 +93,12 @@ if [ -f /etc/systemd/system/eox-app-api-live.service ]; then
   systemctl disable --now eox-app-api-live >/dev/null 2>&1 || true
   rm -f /etc/systemd/system/eox-app-api-live.service /opt/eox/app-api-live.env
   rm -rf /opt/eox/state/app-api-live
+  systemctl daemon-reload
+fi
+if [ -f /etc/systemd/system/cox-publication-archive-copy.timer ]; then
+  systemctl disable --now cox-publication-archive-copy.timer >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/cox-publication-archive-copy.timer /etc/systemd/system/cox-publication-archive-copy.service /opt/eox/copy-publication-archive.sh
+  rm -rf /opt/eox/state/cox-publication-archive
   systemctl daemon-reload
 fi
 install -d -o eox -g eox -m 0750 /opt/eox/state/cox-app-api-live

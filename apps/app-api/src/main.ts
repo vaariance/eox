@@ -1,9 +1,12 @@
 import { dirname, join, resolve } from "node:path";
+import { addresses } from "@cox/client";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { loadProgram } from "./cox/chain.js";
 import { CoxFixtureSource } from "./cox/fixture-source.js";
 import { LiveCoxSource } from "./cox/live-source.js";
+import { directorySource, gcsSource, PublicationArchive, type ArchiveSource } from "./cox/publication-archive.js";
+import { GoogleAuth } from "google-auth-library";
 import { checkGenesis, failoverConnection, parseRpcUrls } from "./cox/rpc.js";
 import { createCoxApiServer, type CoxApiServerOptions } from "./cox/server.js";
 import { CoxSubmissions } from "./cox/submissions.js";
@@ -46,7 +49,21 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
   const connection = failoverConnection(urls, "finalized", (from, to, reason) => console.warn(`cox rpc failover from ${from} to ${to}: ${reason}`));
   const program = loadProgram(connection, process.env.COX_IDL_PATH ?? join(here, "..", "..", "..", "packages", "cox", "idl", "cox.json"));
   const poolId = BigInt(poolText);
-  const options = { connection, program, poolId, network, logPath: join(stateDir, `publications-${poolId}.jsonl`), pollMs, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
+  const archiveDir = process.env.COX_PUBLICATION_ARCHIVE;
+  const archiveGcs = process.env.COX_PUBLICATION_ARCHIVE_GCS;
+  if (archiveDir && archiveGcs) throw new Error("set only one of COX_PUBLICATION_ARCHIVE and COX_PUBLICATION_ARCHIVE_GCS");
+  let source: ArchiveSource | null = null;
+  if (archiveDir) source = directorySource(resolve(archiveDir));
+  if (archiveGcs) {
+    const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/devstorage.read_only"] });
+    source = gcsSource(archiveGcs, async () => {
+      const token = await auth.getAccessToken();
+      if (!token) throw new Error("no Google access token for the publication archive");
+      return token;
+    });
+  }
+  const archive = source ? new PublicationArchive(source, program, addresses(program.programId).pool(poolId), genesis) : null;
+  const options = { connection, program, poolId, network, logPath: join(stateDir, `publications-${poolId}.jsonl`), pollMs, archive, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
   for (;;) {
     try {
       const source = await LiveCoxSource.open(options);
@@ -65,7 +82,10 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
 }
 
 const sources = mode === "cox-live" ? await live() : { source: new CoxFixtureSource(join(here, "..", "fixtures", "cox-fixture.json")) };
-const server = createCoxApiServer({ ...sources, corsOrigin, onError: (error) => console.error("app-api request failed", error) });
+const postPerMinute = Number(process.env.APP_API_POST_LIMIT_PER_MINUTE ?? "30");
+if (!Number.isInteger(postPerMinute) || postPerMinute < 1) throw new Error(`invalid APP_API_POST_LIMIT_PER_MINUTE: ${postPerMinute}`);
+const postLimit = { perMinute: postPerMinute, trustForwardedFor: process.env.APP_API_TRUST_FORWARDED_FOR === "true" };
+const server = createCoxApiServer({ ...sources, corsOrigin, postLimit, onError: (error) => console.error("app-api request failed", error) });
 server.listen(port, host, () => console.log(`app-api (${mode}) listening on http://${host}:${port}`));
 
 function shutdown(): void {

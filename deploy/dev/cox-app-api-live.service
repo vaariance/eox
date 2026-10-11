@@ -1,5 +1,5 @@
 [Unit]
-Description=COX app API (live source over the devnet cox program)
+Description=COX app API (live source over the devnet cox program, pool 1)
 After=network-online.target
 Wants=network-online.target
 
@@ -12,11 +12,12 @@ Environment=APP_API_HOST=127.0.0.1
 Environment=APP_API_PORT=8791
 Environment=APP_API_SOURCE=cox-live
 Environment=COX_NETWORK=solana-devnet
-Environment=COX_POOL_ID=0
+Environment=COX_POOL_ID=1
 Environment=COX_RPC_URLS=https://api.devnet.solana.com
 Environment=APP_API_STATE_DIR=/opt/eox/state/cox-app-api-live
+Environment=COX_PUBLICATION_ARCHIVE_GCS=gs://colosseum-cox-publication-archives-dev/pool-1/history/
 EnvironmentFile=-/opt/eox/cox-app-api-live.env
-ExecStart=/opt/eox/app/apps/app-api/node_modules/.bin/tsx src/main.ts
+ExecStart=/opt/eox/runtime/node-v24.21.0-linux-x64/bin/node --import /opt/eox/app/apps/app-api/node_modules/tsx/dist/loader.mjs src/main.ts
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

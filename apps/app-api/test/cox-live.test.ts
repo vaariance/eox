@@ -1,4 +1,5 @@
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +11,7 @@ import { createCoxApiClient, type Publication, type UnsignedTransaction } from "
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadProgram } from "../src/cox/chain.js";
 import { LiveCoxSource } from "../src/cox/live-source.js";
+import { directorySource, gcsSource, PublicationArchive, PublicationArchiveMissing } from "../src/cox/publication-archive.js";
 import { PublicationLog } from "../src/cox/publication-log.js";
 import { createCoxApiServer } from "../src/cox/server.js";
 import { CoxSubmissions } from "../src/cox/submissions.js";
@@ -23,10 +25,14 @@ const fixture = JSON.parse(readFileSync(join(root, "packages", "cox", "fixtures"
 };
 const POOL = "Fn3Xuh7CVxjcRpqJEnGR1isPy2GVBBsdiAbuhfpoVbHb";
 const VAULT = "6Z7NdtAx71cmySoSYMDm697UCQcuuVYj39yPFsh2nWQ8";
-const MINT = "EHabPa4wojMHYfs9vwy77oEcpazRY5m7qHwgEa3Cx2kz";
-const OWNER = "5JZscCkA2m4GrBDLEjxk3ZKuysw1LGsBQoPq4kY2XBvs";
+const MINT = "54JFNS6S9YszKKrAQp4EYuuq4Khsj5vKgdfR4fJk5Wgf";
+const OWNER = "DbiQtg1LM8UCLjY7g38d9MEpnE2Zm6eSh3tmRHojY7Au";
 const REQUEST = "H6wVPbPg4N3qsTyCWyYuuDfWhUUeGTBp2eGiZWuvXQG7";
-const PREDECESSOR = "16ff39cb1381a652e992d9b42bc2d5b5d74889bacaa6c03ad1d75c8e9a0b151b";
+const PREDECESSOR = "a3a503199e6473d4ed9f6e9bf1102d2130fd06bae84c19d17ec63f8b2c3f1a17";
+const STATE_DIGEST = "415921267ce275b5917786a678908b7ac9972105692657e8d0dbb7ef71f79dd8";
+const MANIFEST = "13958d7ddc906ef68321713db05d7524ca791a647f1e09525bd91364688f564f";
+const PUBLICATION = "J5Jyo9xBvaEeG5g6n5CE85SS9sy9zBriHHx3giUAEnZC";
+const BATCH = "CckMCGwaEDcRbHogJLa79GRU74nFPAJtLEe3GSyzzHtb";
 const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
 class FixtureConnection {
@@ -133,8 +139,6 @@ beforeEach(() => {
   ledger = [pool.active, pool.pending, pool.payable, pool.residual].reduce((sum: bigint, v: { toString(): string }) => sum + BigInt(v.toString()), 0n);
   connection.set(VAULT, TOKEN_PROGRAM, tokenAccount(MINT, ledger));
   connection.set(MINT, TOKEN_PROGRAM, mintAccount(6));
-  const publication = Object.values(fixture.accounts).find((a) => a.name === "publication")!.address;
-  connection.signatures.set(publication, [{ signature: "finalize-signature", slot: 509739999, err: null }]);
   expect(programId.toBase58()).toBe("G6iQGoupNSfduw1QJxQ9vcVi9FnCC6cbippXsi4QQzJF");
 });
 
@@ -145,7 +149,7 @@ describe("live COX source on the compiled-program account fixtures", () => {
     const source = await open();
     expect(await source.deployment()).toMatchObject({
       origin: "live", network: "solana-devnet", program: fixture.programAddress, poolId: "0", poolAddress: POOL, collateralMint: MINT, collateralDecimals: 6, testCollateral: true,
-      methodology: { status: "sealed", assetCount: 30, label: "CRYPTO (pilot, 30 assets)", digest: "6022696ff185464c4787369d0de7f4bc075bfa4933aa9669b7de493f95edc113" },
+      methodology: { status: "sealed", assetCount: 30, label: "CRYPTO (pilot, 30 assets)", digest: MANIFEST },
     });
     const crypto = await source.crypto();
     expect(crypto.members).toHaveLength(30);
@@ -165,9 +169,9 @@ describe("live COX source on the compiled-program account fixtures", () => {
     expect(seen).toEqual([latest]);
     expect(latest!.identity).toMatchObject({
       sequence: 1, batch: 1, predecessorSequence: 0, predecessorBatch: 0, missedBatches: [], cutoff: 120060,
-      stateDigest: "2c4a985999c699a43113063883c2fb2856c4d5e53dfaaf0d98dddde8ce7a0583",
-      manifestDigest: "6022696ff185464c4787369d0de7f4bc075bfa4933aa9669b7de493f95edc113",
-      finalization: { transaction: "finalize-signature", slot: 509739999, finalized: true },
+      stateDigest: STATE_DIGEST,
+      manifestDigest: MANIFEST,
+      finalization: { transaction: null, slot: 1, finalized: true },
     });
     expect(latest!.prices).toHaveLength(30);
     expect(latest!.prices[0]).toEqual({ assetId: "BTC", priceE8: "100000000", venue: "kraken", step: 1, candleStart: 120000, tradeAgeMinutes: 0 });
@@ -176,6 +180,11 @@ describe("live COX source on the compiled-program account fixtures", () => {
     const { active, pending, payable, residual, vault } = latest!.ledger;
     expect(BigInt(active) + BigInt(pending) + BigInt(payable) + BigInt(residual)).toBe(BigInt(vault));
     expect(latest!.ledger.refundable).toBeNull();
+    expect(latest!.classes.every((c) => c.fixed !== null)).toBe(true);
+    expect(latest!.flows.acceptedDeposits).not.toBeNull();
+    await source.tick();
+    expect(await source.publications()).toHaveLength(2);
+    expect(seen).toHaveLength(1);
     const status = await source.status(120060 + 25);
     expect(status).toMatchObject({ state: "fresh", latestSequence: 1, latestBatch: 1, missedCutoffs: 0, executing: false, reconciliation: { sequence: 1, vault: ledger.toString(), ledger: ledger.toString(), covered: true } });
     expect((await source.assets())[0]!.latest).toMatchObject({ sequence: 1, batch: 1, priceE8: "100000000" });
@@ -212,6 +221,104 @@ describe("live COX source on the compiled-program account fixtures", () => {
       receipt: { requestId: REQUEST, sequence: 1, batch: 1, status: "filled", minted: "1000000000000000000", proceeds: "0" },
     }]);
     expect(await source.portfolio("11111111111111111111111111111111")).toBeNull();
+  });
+});
+
+describe("transaction rate limit", () => {
+  it("limits POSTs per client using the address the proxy appended last", async () => {
+    const source = await open();
+    const program = loadProgram(connection as unknown as Connection, idlPath);
+    const transactions = new CoxTransactions({ connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes });
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json") });
+    const server = createCoxApiServer({ source, transactions, submissions, postLimit: { perMinute: 2, trustForwardedFor: true } });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1/transactions/withdraw`;
+    const post = (forwarded: string) => fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": forwarded }, body: JSON.stringify({ owner: "bad" }) });
+    try {
+      expect((await post("1.1.1.1, 9.9.9.9")).status).toBe(400);
+      expect((await post("2.2.2.2, 9.9.9.9")).status).toBe(400);
+      const limited = await post("3.3.3.3, 9.9.9.9");
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get("retry-after")).toBe("30");
+      expect(((await limited.json()) as { error: { code: string } }).error.code).toBe("RATE_LIMITED");
+      expect((await post("9.9.9.9, 8.8.8.8")).status).toBe(400);
+      expect((await fetch(url.replace("/transactions/withdraw", "/status"))).status).toBe(200);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+  });
+});
+
+describe("reusable publication account and the publisher archive", () => {
+  function archiveRecord(overrides: Record<string, unknown> = {}) {
+    const account = Object.values(fixture.accounts).find((a) => a.name === "publication")!;
+    const bytes = Buffer.from(account.dataHex, "hex");
+    return {
+      schema: "cox.publication-archive/v1",
+      identity: { program: fixture.programAddress, pool: POOL, genesisHash: "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG" },
+      address: PUBLICATION, sequence: "1", batch: "1", stateDigest: STATE_DIGEST,
+      accountSha256: createHash("sha256").update(bytes).digest("hex"), accountBase64: bytes.toString("base64"), finalizedSlot: 77,
+      ...overrides,
+    };
+  }
+
+  function archive(records: Record<string, unknown>) {
+    const directory = join(dir, "history");
+    mkdirSync(directory, { recursive: true });
+    for (const [sequence, record] of Object.entries(records)) writeFileSync(join(directory, `${sequence}.json`), JSON.stringify(record));
+    return new PublicationArchive(directorySource(directory), loadProgram(connection as unknown as Connection, idlPath), new PublicKey(POOL), "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
+  }
+
+  it("refuses to skip publications that are only in an unconfigured archive", async () => {
+    const source = await open();
+    await expect(source.tick()).rejects.toThrow(PublicationArchiveMissing);
+    expect(await source.publications()).toHaveLength(0);
+  });
+
+  it("reads and checks archived publication bytes, and refuses tampered or foreign records", async () => {
+    const store = archive({ 1: archiveRecord(), 2: archiveRecord({ sequence: "2" }), 3: archiveRecord({ sequence: "3", accountSha256: "00".repeat(32) }), 4: archiveRecord({ identity: { program: fixture.programAddress, pool: VAULT, genesisHash: "x" } }) });
+    const { publication, slot } = await store.read(1n);
+    expect(Buffer.from(publication.stateDigest).toString("hex")).toBe(STATE_DIGEST);
+    expect(slot).toBe(77);
+    await expect(store.read(2n)).rejects.toThrow("does not match its record");
+    await expect(store.read(3n)).rejects.toThrow("fails its account hash");
+    await expect(store.read(4n)).rejects.toThrow("another program, pool or network");
+    await expect(store.read(9n)).rejects.toThrow(PublicationArchiveMissing);
+  });
+
+  it("reads one content-addressed record per sequence from Cloud Storage", async () => {
+    const text = JSON.stringify(archiveRecord());
+    const digest = createHash("sha256").update(text).digest("hex");
+    const objects: Record<string, string> = { [`pool-0/history/1/${digest}.json`]: text, [`pool-0/history/2/${"0".repeat(64)}.json`]: text, [`pool-0/history/3/${digest}.json`]: text, [`pool-0/history/3/${"1".repeat(64)}.json`]: text };
+    const requests: string[] = [];
+    const storage = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input));
+      requests.push(`${(init?.headers as Record<string, string>).authorization} ${url.pathname}`);
+      const prefix = url.searchParams.get("prefix");
+      if (prefix !== null) return Response.json({ items: Object.keys(objects).filter((name) => name.startsWith(prefix)).map((name) => ({ name })) });
+      const name = decodeURIComponent(url.pathname.split("/o/")[1]!);
+      return objects[name] === undefined ? new Response("", { status: 404 }) : new Response(objects[name]);
+    }) as typeof fetch;
+    const source = gcsSource("gs://cox-archive/pool-0/history/", async () => "token", storage);
+    const store = new PublicationArchive(source, loadProgram(connection as unknown as Connection, idlPath), new PublicKey(POOL), "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
+    expect((await store.read(1n)).slot).toBe(77);
+    expect(requests.every((r) => r.startsWith("Bearer token /storage/v1/b/cox-archive/o"))).toBe(true);
+    await expect(store.read(2n)).rejects.toThrow("does not match its name");
+    await expect(store.read(3n)).rejects.toThrow("holds 2 records");
+    await expect(store.read(5n)).rejects.toThrow(PublicationArchiveMissing);
+    expect(() => gcsSource("gs://cox-archive/pool-0/history", async () => "token")).toThrow("ending in a slash");
+  });
+
+  it("indexes a publication whose batch was already reused, leaving the fixed valuation unknown", async () => {
+    new PublicationLog(join(dir, "publications.jsonl"), { program: fixture.programAddress, pool: POOL }).append(originEntry());
+    connection.accounts.delete(BATCH);
+    const source = await open();
+    await source.tick();
+    const [, latest] = await source.publications();
+    expect(latest!.identity).toMatchObject({ sequence: 1, stateDigest: STATE_DIGEST });
+    expect(latest!.classes.every((c) => c.fixed === null)).toBe(true);
+    expect(latest!.flows).toMatchObject({ acceptedDeposits: null, newPayable: null, transferResidual: null, flowResidual: null, executed: 64 });
   });
 });
 
