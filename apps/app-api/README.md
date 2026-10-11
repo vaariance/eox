@@ -3,8 +3,24 @@
 ## COX: `cox.app-api/v1` (`product.md` J3)
 
 ```bash
-APP_API_SOURCE=cox-fixture pnpm --filter @eox/app-api-server start   # http://127.0.0.1:8790
+APP_API_SOURCE=cox-fixture pnpm --filter @eox/app-api-server start   # http://127.0.0.1:8790; APP_API_CORS_ORIGIN=* to allow browsers
 ```
+
+**Public fixture URL:** `https://cox-app-api-529206295845.us-central1.run.app`
+(Cloud Run `cox-app-api`, us-central1, open to anyone, CORS `*`, read-only,
+fixture data only). Use it as `baseUrl`; `/health` answers `{"status":"ok"}`.
+The service account `cox-app-api` holds no permissions. Redeploy after a change
+with the image from `apps/app-api/Dockerfile`.
+
+Fixture wallets for `/v1/wallets/:owner/portfolio`:
+
+| Wallet | What it shows |
+|---|---|
+| `HgC4Jn7XMLzNsDjVdsr1x7BDuGBb2SBvx5TFLSUYaEyU` | two filled requests (deposit, redemption) and one queued deposit; a payable |
+| `7TKNJWWpjcVWsnwo9TJvJyBMFLDwvgpKdDxPqmfw87cp` | a deposit and a switch, holding two classes |
+| `GBZafz1m5qSDc3br2zEa2YG4hvQqj5DESk694byEwcNa` | a CRYPTO-class deposit |
+| `3vdUxQYrGNUPyK1QNDkeyXDDfHvgTE3JQZjKZ6pUr4rX` | a deposit rejected on its condition; refundable |
+| `HEkyBsK77wJPKjd4WS3d2auyJZqdwmVJt9w1SE2Uq9jZ` | a deposit expired over the missed batch; refundable |
 
 Use `createCoxApiClient` from `@eox/app-api`. Every response is
 `{ schemaVersion: "cox.app-api/v1", deployment, status, data }`; `status` is
