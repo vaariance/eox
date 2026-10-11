@@ -9,6 +9,7 @@ import { CRYPTO_CLASS, changeSince, decimalsOf, classViews, currentOf, findClass
 
 const HOUR = 3600;
 const WINDOW = 4 * HOUR;
+const SPARK = 240;
 const EMPTY = "—";
 
 function EmptyRow({ id, name, href }: { id: string; name: string; href: string }) {
@@ -94,7 +95,7 @@ export default async function MarketsPage() {
                   <td className="px-4 py-3"><PriceSource price={priceOf(current, asset.assetId)} /></td>
                   <td className="num px-4 py-3 text-right text-base">{formatAmount(latest(reference), 4)}</td>
                   <td className="px-4 py-3 text-right"><Change ratio={changeSince(reference, HOUR)} /></td>
-                  <td className="px-4 py-3"><Sparkline points={reference} tone={direction(changeSince(reference, WINDOW))} /></td>
+                  <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(changeSince(reference, WINDOW))} /></td>
                   <td className="num px-4 py-3 text-right">{formatAmount(claim.backing)}</td>
                   <td className="num px-4 py-3 text-right">{claim.unitValue === null ? "n/a" : formatAmount(claim.unitValue, 6)}</td>
                 </tr>
@@ -111,7 +112,7 @@ export default async function MarketsPage() {
               <td className="px-4 py-3 text-xs text-muted">All {assets.length} assets</td>
               <td className="num px-4 py-3 text-right text-base">{formatAmount(100, 4)}</td>
               <td className="px-4 py-3 text-right">{current ? <Change ratio={0} /> : <span className="text-muted">{EMPTY}</span>}</td>
-              <td className="px-4 py-3">{current ? <Sparkline points={level} tone={direction(changeSince(level, WINDOW))} /> : <span className="text-muted">{EMPTY}</span>}</td>
+              <td className="px-4 py-3">{current ? <Sparkline points={level.slice(-SPARK)} tone={direction(changeSince(level, WINDOW))} /> : <span className="text-muted">{EMPTY}</span>}</td>
               <td className="num px-4 py-3 text-right">{formatAmount(cryptoClass.backing)}</td>
               <td className="num px-4 py-3 text-right">{cryptoClass.unitValue === null ? "n/a" : formatAmount(cryptoClass.unitValue, 6)}</td>
             </tr>
