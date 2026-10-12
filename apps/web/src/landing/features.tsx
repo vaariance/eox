@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { logoOf } from "./logos";
+import { CoinFace, CoinNode } from "./coin";
 import { color } from "./tokens.stylex";
 
 const NARROW = "@media (max-width: 860px)";
@@ -114,7 +114,6 @@ const styles = stylex.create({
     animationTimingFunction: "linear",
     animationIterationCount: "infinite",
   },
-  round: { clipPath: "circle(50%)" },
 
   stack: { position: "relative", width: "100%", maxWidth: 400 },
   ghost: {
@@ -183,8 +182,8 @@ const styles = stylex.create({
     overflow: "hidden",
     display: "grid",
     placeItems: "center",
-    backgroundColor: color.accent,
-    color: color.onAccent,
+    backgroundColor: color.disc,
+    color: color.fg,
     fontWeight: 700,
     fontSize: 22,
     boxShadow: `0 0 0 3px ${color.panel}, 0 12px 24px rgba(0, 0, 0, 0.45)`,
@@ -193,7 +192,6 @@ const styles = stylex.create({
     animationTimingFunction: "ease-in-out",
     animationIterationCount: "infinite",
   },
-  image: { display: "block", width: "100%", height: "100%" },
   badge: {
     position: "relative",
     display: "inline-flex",
@@ -208,11 +206,6 @@ const styles = stylex.create({
   },
   live: { width: 7, height: 7, borderRadius: "50%", backgroundColor: color.accent },
 });
-
-function Logo({ id }: { id: string }) {
-  const logo = logoOf(id);
-  return logo ? <img src={logo} alt="" {...stylex.props(styles.image)} /> : <>{id.slice(0, 1)}</>;
-}
 
 function Chart({ values }: { values: number[] }) {
   const width = 380;
@@ -255,23 +248,6 @@ const LINKS: Array<{ d: string; delay?: number }> = [
   { d: `M268 ${HUBS[1]} C330 ${HUBS[1]} 340 ${LEFT[2]} 412 ${LEFT[2]}`, delay: -2.7 },
 ];
 
-function Node({ id, x, y }: { id: string; x: number; y: number }) {
-  const logo = logoOf(id);
-  return (
-    <g>
-      <circle cx={x} cy={y} r="27" fill="#151517" stroke="rgba(255, 255, 255, 0.16)" />
-      {logo ? (
-        <image href={logo} x={x - 16} y={y - 16} width="32" height="32" {...stylex.props(styles.round)} />
-      ) : (
-        <>
-          <circle cx={x} cy={y} r="16" fill="#F2622E" />
-          <text x={x} y={y + 5} textAnchor="middle" fontSize="14" fontWeight="700" fill="#FFFFFF">{id.slice(0, 1)}</text>
-        </>
-      )}
-    </g>
-  );
-}
-
 function Flow({ from, to }: { from: string[]; to: string[] }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 480 280" {...stylex.props(styles.flow)}>
@@ -282,10 +258,10 @@ function Flow({ from, to }: { from: string[]; to: string[] }) {
         <circle key={link.d} r="3.5" fill="#FFFFFF" {...stylex.props(styles.dot)} style={{ offsetPath: `path("${link.d}")`, animationDelay: `${link.delay}s` }} />
       ))}
       {from.map((id, index) => (
-        <Node key={`f${id}`} id={id} x={40} y={LEFT[index]} />
+        <CoinNode key={`f${id}`} id={id} x={40} y={LEFT[index]} />
       ))}
       {to.map((id, index) => (
-        <Node key={`t${id}`} id={id} x={440} y={LEFT[index]} />
+        <CoinNode key={`t${id}`} id={id} x={440} y={LEFT[index]} />
       ))}
       {HUBS.map((y) => (
         <g key={y}>
@@ -308,7 +284,7 @@ export interface FeatureData {
 }
 
 export function Features({ data }: { data: FeatureData }) {
-  const pile = [...new Set([...data.top, "BTC", "ETH", "SOL", "XRP", "SUI"])].filter((id) => logoOf(id)).slice(0, 5);
+  const pile = [...new Set([...data.top, "BTC", "ETH", "SOL", "XRP", "SUI"])].slice(0, 5);
   return (
     <div {...stylex.props(styles.grid)}>
       <article {...stylex.props(styles.card)}>
@@ -316,7 +292,7 @@ export function Features({ data }: { data: FeatureData }) {
           <div {...stylex.props(styles.screen)}>
             <div {...stylex.props(styles.screenTop)}>
               <span>{data.leader} against the market</span>
-              <span {...stylex.props(styles.tag)}>TODAY</span>
+              <span {...stylex.props(styles.tag)}>SINCE LAUNCH</span>
             </div>
             <div {...stylex.props(styles.figureRow)}>
               <span {...stylex.props(styles.figure)}>{data.lead}</span>
@@ -370,7 +346,7 @@ export function Features({ data }: { data: FeatureData }) {
             <div {...stylex.props(styles.coins)}>
               {pile.map((id, index) => (
                 <span key={id} {...stylex.props(styles.coin)} style={{ animationDelay: `${index * -0.6}s`, zIndex: pile.length - index }}>
-                  <Logo id={id} />
+                  <CoinFace id={id} />
                 </span>
               ))}
             </div>

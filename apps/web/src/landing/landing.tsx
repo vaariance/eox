@@ -2,6 +2,9 @@ import * as stylex from "@stylexjs/stylex";
 import Link from "next/link";
 import { formatChange } from "@/lib/format";
 import { type Board, loadBoard } from "./board-data";
+import { LogoProvider } from "@/components/coin-icon";
+import { CookieSettingsButton } from "@/components/cookie-consent";
+import { getLogos } from "@/lib/data";
 import { Coin } from "./coin";
 import { Faq, type Question } from "./faq";
 import { Features } from "./features";
@@ -115,6 +118,8 @@ const styles = stylex.create({
     borderColor: color.line,
   },
   chipExtra: { display: { default: "inline-flex", [NARROW]: "none" } },
+  chipCompact: { display: { default: "none", [NARROW]: "inline-flex" } },
+  chipMore: { color: color.muted },
 
   product: {
     display: "grid",
@@ -134,7 +139,6 @@ const styles = stylex.create({
     alignItems: { default: "flex-end", [NARROW]: "center" },
     textAlign: { default: "right", [NARROW]: "center" },
   },
-  productTitle: { fontSize: "clamp(2.6rem, 6.4vw, 5rem)" },
   productInfo: {
     gridColumnStart: { default: 2, [NARROW]: 1 },
     display: "flex",
@@ -363,7 +367,7 @@ const styles = stylex.create({
   },
   footTop: {
     display: "grid",
-    gridTemplateColumns: { default: "minmax(0, 1.5fr) repeat(3, minmax(0, 1fr))", [NARROW]: "repeat(2, minmax(0, 1fr))" },
+    gridTemplateColumns: { default: "minmax(0, 1.5fr) repeat(4, minmax(0, 1fr))", [NARROW]: "repeat(2, minmax(0, 1fr))" },
     columnGap: 40,
     rowGap: 48,
     paddingBottom: { default: 80, [NARROW]: 48 },
@@ -385,6 +389,7 @@ const styles = stylex.create({
     outlineColor: color.fg,
     outlineOffset: 4,
   },
+  footButton: { padding: 0, borderWidth: 0, backgroundColor: "transparent", fontFamily: "inherit", textAlign: "left", cursor: "pointer" },
   footFact: { fontSize: 14, color: color.fg },
   footNote: {
     display: "flex",
@@ -444,18 +449,20 @@ const questions: Question[] = [
   { ask: "Where do prices come from?", answer: "From Kraken, once a minute. If Kraken had no trade for a coin in that minute, the price comes from Coinbase, then Bybit." },
   { ask: "Can I move from one coin to another?", answer: "Yes. You can move what you have behind one coin to another coin without cashing out first." },
   { ask: "How do I cash out?", answer: "Choose cash out on any coin you back. It fills at the next price, and then you collect the USDC to your wallet." },
-  { ask: "Are there fees?", answer: "Not today. Relative charges no fees while it is in testing. Solana still charges its usual small network fee." },
+  { ask: "Are there fees?", answer: "A small one: 0.02% of each trade, and never more than 2 USDC. Solana also charges its usual small network fee." },
   { ask: "What do I need to start?", answer: "A Solana wallet set to devnet, a little devnet SOL for network fees, and devnet USDC. The Faucet page in the app links to both." },
   { ask: "Is this real money?", answer: "Not yet. Relative runs on Solana devnet with test USDC, which has no real value." },
 ];
 
 export async function Landing() {
-  const board = await loadBoard();
+  const [board, logos] = await Promise.all([loadBoard(), getLogos()]);
+  const total = Math.max(board?.count ?? 30, ROSTER.length);
   const star = board?.star ?? { rank: 1, id: "SOL", name: "Solana", lead: 0 };
   const up = star.lead >= 0;
   const picks = [...new Set([star.id, ...(board?.top ?? []).map((row) => row.id), "SOL", "BTC", "ETH"])].slice(0, 3);
 
   return (
+    <LogoProvider logos={logos}>
     <div {...stylex.props(styles.page)}>
       <div {...stylex.props(styles.wrap, styles.navBar)}>
         <nav aria-label="Main" {...stylex.props(styles.nav)}>
@@ -475,9 +482,9 @@ export async function Landing() {
         <HeroBackdrop />
         <header {...stylex.props(styles.wrap, styles.hero)}>
           <h1 {...stylex.props(styles.stencil, styles.heroTitle)}>
-            <Stencil lines={["Back your", "Analysis"]} />
+            <Stencil lines={["Trade On", "Performance"]} />
           </h1>
-          <p {...stylex.props(styles.tagline)}>Pick the coin your research says will lead.</p>
+          <p {...stylex.props(styles.tagline)}>Pick the coin your research says will outperform the market.</p>
           <div {...stylex.props(styles.roster)}>
             {ROSTER.map((id, index) => (
               <span key={id} {...stylex.props(styles.chip, index >= ROSTER_NARROW && styles.chipExtra)}>
@@ -485,22 +492,22 @@ export async function Landing() {
                 {id}
               </span>
             ))}
+            <span {...stylex.props(styles.chip, styles.chipMore, styles.chipExtra)}>+{total - ROSTER.length} more</span>
+            <span {...stylex.props(styles.chip, styles.chipMore, styles.chipCompact)}>+{total - ROSTER_NARROW} more</span>
           </div>
         </header>
 
         <section {...stylex.props(styles.wrap)}>
           <div {...stylex.props(styles.product)}>
             <div {...stylex.props(styles.productName)}>
-              <p {...stylex.props(styles.label)}>No. {star.rank} on the board today</p>
-              <h2 {...stylex.props(styles.stencil, styles.productTitle)}>
-                <Stencil lines={[star.id]} />
-              </h2>
+              <p {...stylex.props(styles.label)}>No. {star.rank} on the board</p>
+              <Coin id={star.id} size={96} />
             </div>
             <div {...stylex.props(styles.productInfo)}>
               <p {...stylex.props(styles.label)}>Introduction</p>
-              <p {...stylex.props(styles.intro)}>Every coin is ranked by how it does against the whole market. {star.id} is leading today.</p>
+              <p {...stylex.props(styles.intro)}>Every coin is ranked by how it does against the whole market. {star.id} is leading.</p>
               <span {...stylex.props(styles.figure, up ? styles.ahead : styles.behind)}>{formatChange(star.lead)}</span>
-              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market today</p>
+              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market since launch</p>
               <Link href={`/assets/${star.id}`} {...stylex.props(styles.button)}>Back {star.id} →</Link>
             </div>
           </div>
@@ -637,6 +644,12 @@ export async function Landing() {
               <span {...stylex.props(styles.footFact)}>{board?.count ?? 30} coins ranked</span>
               <span {...stylex.props(styles.footFact)}>Prices every minute</span>
             </div>
+            <nav aria-label="Legal" {...stylex.props(styles.footColumn)}>
+              <p {...stylex.props(styles.label)}>Legal</p>
+              <Link href="/terms" {...stylex.props(styles.footLink)}>Terms of Use</Link>
+              <Link href="/privacy" {...stylex.props(styles.footLink)}>Privacy Policy</Link>
+              <CookieSettingsButton className={stylex.props(styles.footLink, styles.footButton).className} />
+            </nav>
           </div>
           <div {...stylex.props(styles.footNote)}>
             <span>Relative is a test product. Test USDC has no real value.</span>
@@ -648,5 +661,6 @@ export async function Landing() {
         </footer>
       </div>
     </div>
+    </LogoProvider>
   );
 }

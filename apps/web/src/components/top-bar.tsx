@@ -4,7 +4,9 @@ import { Activity, ArrowLeftRight, BarChart3, Droplets, Home, PanelLeftClose, Pa
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { allows } from "@/lib/consent";
 import { stencilPath } from "@/landing/stencil-glyphs";
+import { CookieSettingsButton } from "./cookie-consent";
 import { NetworkSwitcher } from "./network-switcher";
 import { TreeNav } from "./tree-nav";
 import { WalletButton } from "./wallet-button";
@@ -59,7 +61,8 @@ export function SideBar() {
     const next = !collapsed;
     setCollapsed(next);
     try {
-      window.localStorage.setItem(STORE, next ? "collapsed" : "open");
+      if (allows("preferences")) window.localStorage.setItem(STORE, next ? "collapsed" : "open");
+      else window.localStorage.removeItem(STORE);
     } catch {
       return;
     }
@@ -103,10 +106,15 @@ export function SideBar() {
           <Home size={16} aria-hidden="true" />
         </Link>
       ) : (
-        <Link href="/" className="flex h-9 items-center gap-2.5 whitespace-nowrap rounded-control px-2 text-[13px] text-muted transition-colors duration-150 hover:text-ink">
-          <Home size={15} aria-hidden="true" />
-          Home page
-        </Link>
+        <div className="flex flex-col">
+          <Link href="/" className="flex h-9 items-center gap-2.5 whitespace-nowrap rounded-control px-2 text-[13px] text-muted transition-colors duration-150 hover:text-ink">
+            <Home size={15} aria-hidden="true" />
+            Home page
+          </Link>
+          <Link href="/terms" className="flex h-9 items-center gap-2.5 whitespace-nowrap rounded-control px-2 text-[13px] text-muted transition-colors duration-150 hover:text-ink">Terms of Use</Link>
+          <Link href="/privacy" className="flex h-9 items-center gap-2.5 whitespace-nowrap rounded-control px-2 text-[13px] text-muted transition-colors duration-150 hover:text-ink">Privacy Policy</Link>
+          <CookieSettingsButton className="flex h-9 cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-control px-2 text-left text-[13px] text-muted transition-colors duration-150 hover:text-ink" />
+        </div>
       )}
     </aside>
   );

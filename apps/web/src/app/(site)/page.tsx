@@ -4,8 +4,8 @@ import { Landing } from "@/landing/landing";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Relative · Back your analysis",
-  description: "Back the coin your analysis says will do better than the rest of crypto.",
+  title: "Relative · Trade Performance",
+  description: "Back the coin your analysis says will outperform the market.",
 };
 
 export default function LandingPage() {

@@ -1,5 +1,7 @@
 import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, Portfolio, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
 
+import { COLLATERAL } from "./config";
+
 export const PRICE_DIGITS = 8;
 export const SCALE_DIGITS = 12;
 
@@ -41,6 +43,11 @@ export function toNumber(value: string, digits: number): number {
   return Number(BigInt(value)) / 10 ** digits;
 }
 
+export function feeIncluded(fee: string, decimals: number): string {
+  const shown = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: decimals }).format(toNumber(fee, decimals));
+  return `${shown} ${COLLATERAL.symbol} fee included`;
+}
+
 export function currentOf(publications: readonly Publication[]): Publication | null {
   return publications[publications.length - 1] ?? null;
 }
@@ -69,6 +76,10 @@ export function levelSeries(publications: readonly Publication[]): Point[] {
 
 export function latest(points: readonly Point[]): number {
   return points[points.length - 1].value;
+}
+
+export function standingOf(reference: readonly Point[]): number {
+  return reference.length === 0 ? 0 : latest(reference) / 100 - 1;
 }
 
 export function changeSince(points: readonly Point[], seconds: number): number {

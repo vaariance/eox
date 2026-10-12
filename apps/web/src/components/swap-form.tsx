@@ -3,13 +3,15 @@
 import type { Batch } from "@eox/app-api";
 import { ArrowDownUp } from "lucide-react";
 import { useState } from "react";
-import { COLLATERAL, SWAP_CHARGE_BPS } from "@/lib/config";
+import { COLLATERAL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
 import { planRequest } from "@/lib/requests";
-import { CRYPTO_CLASS, type ClassView, holdingsOf, unlockedProblem } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, holdingsOf, toNumber, unitDigits, unlockedProblem } from "@/lib/view";
 import { useAccount } from "./account";
-import { TargetBatch, useOpenBatch } from "./open-batch";
+import { Dots, FeeNote } from "./fee-note";
+import { useOpenBatch } from "./open-batch";
 import { SendButton } from "./send-button";
+import { QUOTE_MESSAGES, useQuote } from "./use-quote";
 
 const VALID_FOR_BATCHES = 3;
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
@@ -20,11 +22,11 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
   const holdings = holdingsOf(portfolio, decimals);
   const open = useOpenBatch(nextBatch);
   const [buying, setBuying] = useState(true);
-  const [amount, setAmount] = useState("250");
+  const [amount, setAmount] = useState("");
 
   const parsed = Number(amount);
+  const empty = amount.trim() === "";
   const valid = Number.isFinite(parsed) && parsed > 0;
-  const unitValue = crypto.unitValue ?? 1;
   const held = buying || holdings === null ? null : (holdings.find((item) => item.classId === CRYPTO_CLASS)?.units ?? 0);
   const unitsProblem = valid && !buying ? unlockedProblem(holdings, CRYPTO_CLASS, parsed) : null;
   const planned = planRequest({
@@ -37,22 +39,22 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
     targetBatch: open.batch?.batch ?? null,
     collateralDecimals: decimals,
   });
-  const gross = valid ? (buying ? parsed / unitValue : parsed * unitValue) : null;
-  const charge = gross !== null && SWAP_CHARGE_BPS !== null ? (gross * SWAP_CHARGE_BPS) / 10000 : null;
-  const estimate = gross === null ? null : gross - (charge ?? 0);
+  const { quote, pending, problem } = useQuote(planned.intent);
+  const quoted = quote === null ? null : buying ? (quote.mintedUnits === null ? null : toNumber(quote.mintedUnits, unitDigits(decimals))) : toNumber(quote.proceeds ?? quote.net, decimals);
+  const blocked = unitsProblem ? QUOTE_MESSAGES.balance : problem ? QUOTE_MESSAGES[problem] : null;
   const give = buying ? COLLATERAL.symbol : "$CRYPTO";
   const get = buying ? "$CRYPTO" : COLLATERAL.symbol;
 
   return (
-    <section className="rounded-card border border-line bg-surface p-4 shadow-card">
-      <form className="flex flex-col gap-3" onSubmit={(event) => event.preventDefault()}>
+    <section className="flex h-full flex-col rounded-card border border-line bg-surface p-4 shadow-card">
+      <form className="flex flex-1 flex-col gap-3" onSubmit={(event) => event.preventDefault()}>
         <div className="rounded-control bg-surface-2 p-3">
           <div className="mb-2 flex items-center justify-between text-xs text-muted">
             <label htmlFor="swap-amount">You give</label>
             {held !== null && <span className="num">You hold {formatAmount(held)} $CRYPTO</span>}
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
-            <input id="swap-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
+            <input id="swap-amount" inputMode="decimal" placeholder="0" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
             <span className={fixed}>{give}</span>
           </div>
         </div>
@@ -66,30 +68,19 @@ export function SwapForm({ crypto, nextBatch, decimals }: { crypto: ClassView; n
         <div className="rounded-control bg-surface-2 p-3">
           <div className="mb-2 block text-xs text-muted">You get (estimate)</div>
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
-            <output htmlFor="swap-amount" className={`${fixed} num`}>{estimate === null ? "—" : `≈ ${formatAmount(estimate)}`}</output>
+            <output htmlFor="swap-amount" className={`${fixed} num`}>{pending ? <Dots /> : quoted === null ? <span className="text-muted">0</span> : <span key={quoted} className="slot-in">≈ {formatAmount(quoted, 4)}</span>}</output>
             <span className={fixed}>{get}</span>
+          </div>
+          <div className="mt-2">
+            <FeeNote pending={pending} quote={quote} decimals={decimals} />
           </div>
         </div>
 
-        <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-muted">Target batch</dt>
-            <dd className="num"><TargetBatch batch={open.batch} seconds={open.seconds} /></dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-muted">Stays valid for</dt>
-            <dd className="num">{VALID_FOR_BATCHES} batches</dd>
-          </div>
-          {SWAP_CHARGE_BPS !== null && (
-            <div className="flex justify-between">
-              <dt className="text-muted">Swap charge</dt>
-              <dd className="num">{charge === null ? `${(SWAP_CHARGE_BPS / 100).toFixed(2)}%` : `${formatAmount(charge)} ${get} (${(SWAP_CHARGE_BPS / 100).toFixed(2)}%)`}</dd>
-            </div>
-          )}
-        </dl>
 
 
-        <SendButton describe={`Swap ${amount} ${give} for ${get}`} intent={planned.intent} label="Swap" connectLabel="Connect wallet to swap" problem={planned.problem ?? unitsProblem} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <div className="mt-auto flex flex-col gap-2">
+          <SendButton describe={`Swap ${amount} ${give} for ${get}`} intent={planned.intent} label={empty ? "Enter an amount" : pending ? "Calculating" : "Swap"} connectLabel="Connect wallet to swap" problem={empty ? "" : (planned.problem ?? blocked ?? (pending ? "" : null))} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        </div>
       </form>
     </section>
   );

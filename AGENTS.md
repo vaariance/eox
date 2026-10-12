@@ -851,3 +851,59 @@ another agent needs to know.
   - **Deployed:** public live API `cox-app-api-live-00005-g99` (request timeout raised to 3,600 s), public fixture API `cox-app-api-00003-mjt` (now trusts `X-Forwarded-For`), and both VM APIs, all at `253208f`. Verified from outside.
 - **Rules for agents:** Godwin: use `new EventSource(`${baseUrl}/v1/stream?wallet=${owner}`)` in the browser instead of polling. See `apps/app-api/README.md` (Real-time stream).
 - **Refs:** commits `acae5a5`..`253208f`.
+
+### 2026-10-11 · Godwin (Claude Code) · Web app on the real-time stream; fee version sent with trades
+
+- **Area:** `apps/web`.
+- **What:** Following Joel's 2026-10-11 real-time stream entry, each tab opens one `EventSource` on `/v1/stream` (`src/components/account.tsx`), starting at `?after=<latest sequence>` and adding `?wallet=` when a wallet is connected on a live API. A `publication` event or a changed `status` re-renders the server pages; a `portfolio` event replaces the wallet's portfolio. The 15 and 20 second polling is removed and only runs as a fallback while the stream is down. The 2 bps fee went live at 17:00 UTC and the API then refused the app's deposit, switch and redeem builds (`expectedFeeVersion is required`); the app now sends `status.fees.active.version` with them, and the trade and swap forms show the active fee and take it off the estimate. At Godwin's request, coins offer only Buy and Sell; redeeming to USDC is offered only for the $CRYPTO class, and the Publications page and the Markets price-source column are removed.
+- **Rules for agents:** One stream per tab; do not add a second `EventSource`. The stream URL is the server's `COX_API_URL` (default `https://api.getrelative.trade`) passed to the browser, so it must be reachable from browsers. The estimate ignores the fee cap. The app does not call the quote routes or show the fee charged on receipts yet.
+- **Open:** No trade has been signed through the app since the fee went live, and the wallet `portfolio` events were not exercised with a real wallet.
+- **Refs:** commits `c6d4193`..`596585b`, `apps/app-api/README.md` (Real-time stream, Trading fees).
+
+### 2026-10-11 · Godwin (Claude Code) · Web app: quotes, snackbar errors, batch wording removed
+
+- **Area:** `apps/web`.
+- **What:** With a wallet connected on a live API, the swap card and the Buy/Sell box call `POST /v1/quotes/{deposit,switch,redeem}` from the browser (`src/components/use-quote.ts`) about half a second after the amount changes and after each publication, show the quoted fee and amount, and keep the action button disabled until the quote for the typed amount has returned. Without a wallet, or if a quote fails, they show the fee terms and a local estimate. Errors from builds, submissions, wallets and the faucet are mapped to plain sentences in `src/lib/errors.ts` and shown in one snackbar (`src/components/snackbar.tsx`); unknown errors get a generic sentence, never the raw text. `API_URL` now comes only from `COX_API_URL` (set on Vercel; `apps/web/.env.example` for local work). At Godwin's request the app no longer shows batch numbers, publication numbers, closing times or the price venue; the expiry dropdown is gone and every request uses 3 batches; the $CRYPTO page shows the swap card and the wallet's position in place of the members table; the Markets table drops the unit value column.
+- **Rules for agents:** Quotes are called from the browser on purpose: the API limits POST routes to 30 a minute per client, and server-side calls from Vercel would share one bucket across all users. Builds and submissions still go through server actions and do share that bucket. Add new error wording to `src/lib/errors.ts`; do not surface raw program or API messages. Supersedes the statement in Godwin's 2026-10-11 "Web app on the real-time stream" entry that the app does not call the quote routes.
+- **Open:** Joel: whether the POST limit should key on the end user when requests arrive through the web app's server. The quoted figures and the snackbar were not seen with a real wallet before deploying. The fee charged on receipts is still not shown.
+- **Refs:** commits `d0ae5dd`..`37fbe7d`, `443f24a`.
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: performance since launch, fee slot, favicon
+
+- **Area:** `apps/web`.
+- **What:** Following review feedback passed on by Godwin, the app's headline comparison is the reference against its starting value of 100, not its hourly change: `standingOf` in `src/lib/view.ts` returns `reference / 100 − 1`. The coin page's Relative reference card, the Markets "Performance" column, the Leading and Trailing cards and the landing page's ranking all use it and say "since launch". Period comparisons stay in the chart controls. The Price card, the Index card and the $CRYPTO level card still show their own one-hour change. The trade and swap cards no longer have a fee row: a fixed slot shows a dot loader while the quote is fetched, then the quoted fee ("0.04 USDC fee included"); amount fields start empty and the button reads "Enter an amount". With no quote the cards show no figures and say that the balance is not enough or that a quote is not available; there is no local estimate. The landing page FAQ now states the 0.02% fee with its 2 USDC cap, a favicon is added, and the hero shows "+N more" after the coin chips.
+- **Rules for agents:** Do not reintroduce a windowed change of the reference as a headline figure. Without a connected wallet the cards show no fee at all, because quotes need a wallet that exists on chain.
+- **Open:** The loading sequence and the balance message were only seen by Godwin with a wallet, not by the agent.
+- **Refs:** commits after `d026eaa` on `dev`; pull request `vaariance/relative#3`.
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: coin logos from CoinGecko and DefiLlama
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's request the app's coin icons no longer come from files in `public/tokens`. Once a day the server asks CoinGecko's `/coins/markets` for the 30 coins' image addresses (`getLogos` in `src/lib/data.ts`, ids in `src/lib/logos.ts`) and passes them to the browser; if an image fails to load, the icon switches to DefiLlama's icon service (`icons.llamao.fi`), then to a letter. CoinGecko returned all 30; DefiLlama has no icon for FET or RENDER. The landing page still uses the eight files in `public/tokens`.
+- **Rules for agents:** `COINGECKO_API_KEY` is a secret, not configuration: a CoinGecko Demo key sent as `x-cg-demo-api-key`. It is optional, belongs in the host's sensitive variables and the untracked `.env.local`, and must never be committed, logged or given a `NEXT_PUBLIC_` name. `src/lib/data.ts` is marked `server-only`; do not import it from client components. A new roster coin needs its CoinGecko id, and a DefiLlama path if one exists, in `src/lib/logos.ts`.
+- **Open:** No key is set on Vercel yet, so the lookup uses CoinGecko's keyless access. CoinGecko asks for attribution on its free plan; none is shown. Joel: a logo address and full name on `/v1/assets` would replace this.
+- **Refs:** `apps/web/README.md` (Secrets).
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: cookie notice, Terms of Use and Privacy Policy
+
+- **Area:** `apps/web`.
+- **What:** Godwin supplied Variance Labs Ltd's devnet Terms of Use and Privacy Policy. They are stored as Markdown in `apps/web/content/legal` and rendered as static pages at `/terms` and `/privacy` by a small parser in `src/lib/legal.ts` (headings, paragraphs, bold, links and one table). At Godwin's instruction the "Draft for review · Version 0.1" lines and the sentences calling the documents proposed were replaced with "Last updated: 12 October 2026"; the rest is the supplied text. A cookie notice (`src/components/cookie-consent.tsx`, `src/lib/consent.ts`) offers Accept, Manage and Reject and stores the choice in the `relative_consent` cookie for 180 days. The only optional item is remembering the sidebar layout in browser storage, which the sidebar now honours. Links to both pages and to the cookie settings are in the landing page footer, the app sidebar and the foot of each legal page.
+- **Rules for agents:** Do not reword `content/legal/*.md`; changes to legal text come from Godwin. The site sets no analytics or advertising cookies, and the notice says so: update the notice and the policy before adding any tracker. Gate any new optional browser storage on `allows(...)` from `src/lib/consent.ts`.
+- **Open:** The Terms speak of accepting them "through the application", but the app has no acceptance step. The Privacy Policy's provider list does not name CoinGecko or DefiLlama, which now receive visitors' IP addresses when coin logos load. Both are for Godwin and whoever reviews the documents.
+- **Refs:** commits `3c6ff5f`..`e0c431e`.
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: landing page logos from CoinGecko; Markets mini chart colours
+
+- **Area:** `apps/web`.
+- **What:** The landing page now takes coin logos from the same lookup as the app pages: `getLogos` (CoinGecko), then DefiLlama, then the file in `public/tokens`, then a letter. `src/landing/coin.tsx` is a client module (`Coin`, `CoinFace`, `CoinNode`) built on the new `useCoinLogo` hook in `src/components/coin-icon.tsx`, and `Landing` wraps the page in `LogoProvider`. The featured coin and the coin pile no longer skip coins without a local file. At Godwin's request the disc behind landing logos is dark grey (`disc`, `#1C1C1F`, in `tokens.stylex.ts`) instead of orange. On Markets, each mini chart takes its colour from the figure beside it: table rows from performance since launch, the Index card from the last hour. Before, both used the last 4 hours, so a green figure could sit next to a red line. Supersedes the statement in Godwin's 2026-10-12 "Web app: coin logos from CoinGecko and DefiLlama" entry that the landing page uses only the files in `public/tokens`.
+- **Rules for agents:** A Markets table line still draws the last 4 hours, so a line's slope can disagree with its colour; the colour follows the Performance column. Use `useCoinLogo` for any new coin image so the fallback order stays the same everywhere.
+- **Open:** The grey disc was checked by computed style, not by eye; the dark Ethereum logo may look faint on it.
+- **Refs:** commits `23c5fbd`, `acfa94b`.
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: cookie banner reworded; leading coin shown by logo
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's instruction the cookie banner now reads "We use cookies and analytics to improve Relative. See our Privacy Policy and Terms of Use.", with both names linked. The landing page's "No. 1 on the board" block shows the leading coin's logo (96px, from the shared lookup) in place of its ticker in stencil lettering. Qualifies the statement in Godwin's 2026-10-12 "Web app: cookie notice, Terms of Use and Privacy Policy" entry that the notice says the site sets no analytics cookies: the banner no longer says that.
+- **Rules for agents:** No analytics tool is installed; the banner wording is Godwin's decision, not a record of what the site does. Do not add a tracker on the strength of the banner: the Privacy Policy still requires naming the provider and getting permission first.
+- **Open:** Godwin: the Manage panel still says "No tracking, analytics or advertising cookies are used on Relative.", and the Privacy Policy says analytics is not authorised; both now disagree with the banner.
+- **Refs:** commits `41eeab9` and the one before this entry.

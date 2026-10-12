@@ -1,4 +1,6 @@
-import { DEFAULT_API_URL, FIXTURE_DEMO_WALLET } from "./config";
+import "server-only";
+import { FIXTURE_DEMO_WALLET } from "./config";
+import { COINGECKO_IDS } from "./logos";
 import { type CoxAsset, type CoxDeployment, type CoxStatus, type CryptoComposition, type Portfolio, type Publication, CoxApiError, createCoxApiClient } from "@eox/app-api";
 
 const HISTORY = 1440;
@@ -7,8 +9,15 @@ const MAX_PAGES = 20;
 const OWNER = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 const configuredWallet = process.env.COX_DEMO_WALLET;
+function configuredApiUrl(): string {
+  const value = process.env.COX_API_URL?.trim();
+  if (!value) throw new Error("COX_API_URL is not set. Add it to apps/web/.env.local or to the hosting environment.");
+  return value.replace(/\/+$/, "");
+}
+
+export const API_URL = configuredApiUrl();
 export const api = createCoxApiClient({
-  baseUrl: process.env.COX_API_URL ?? DEFAULT_API_URL,
+  baseUrl: API_URL,
   fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
 });
 
@@ -65,6 +74,25 @@ export async function getPublications(): Promise<Publication[]> {
     loading = null;
   });
   return loading;
+}
+
+const LOGO_SECONDS = 86400;
+
+export async function getLogos(): Promise<Record<string, string>> {
+  try {
+    const ids = Object.values(COINGECKO_IDS).join(",");
+    const key = process.env.COINGECKO_API_KEY?.trim();
+    const response = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=250&ids=${ids}`, {
+      headers: key ? { accept: "application/json", "x-cg-demo-api-key": key } : { accept: "application/json" },
+      next: { revalidate: LOGO_SECONDS },
+    });
+    if (!response.ok) return {};
+    const coins = (await response.json()) as Array<{ id: string; image?: string }>;
+    const images = new Map(coins.map((coin) => [coin.id, coin.image]));
+    return Object.fromEntries(Object.entries(COINGECKO_IDS).flatMap(([assetId, id]) => (images.get(id) ? [[assetId, images.get(id) as string]] : [])));
+  } catch {
+    return {};
+  }
 }
 
 export async function getDemoPortfolio(): Promise<Portfolio | null> {

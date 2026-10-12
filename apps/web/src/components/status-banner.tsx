@@ -1,7 +1,5 @@
 import type { CoxOrigin, CoxStatus, SystemState } from "@eox/app-api";
 import { CircleAlert, CircleCheck, CirclePause } from "lucide-react";
-import { formatUtcTime, formatWhole } from "@/lib/format";
-import { OpenBatchLabel } from "./open-batch";
 
 const states: Record<SystemState, { label: string; tone: string; Icon: typeof CircleCheck }> = {
   fresh: { label: "Fresh", tone: "text-up", Icon: CircleCheck },
@@ -25,17 +23,8 @@ export function StatusBanner({ status, origin }: { status: CoxStatus; origin: Co
           <state.Icon size={14} aria-hidden="true" />
           {state.label}
         </span>
-        {status.latestSequence === null || status.latestBatch === null ? (
-          <span>No publication yet</span>
-        ) : (
-          <span>
-            Publication <span className="num text-ink">#{formatWhole(status.latestSequence)}</span> for batch{" "}
-            <span className="num text-ink">#{formatWhole(status.latestBatch)}</span>
-            {status.latestCutoff !== null && <span className="num"> ({formatUtcTime(status.latestCutoff)})</span>}
-          </span>
-        )}
-        {status.executing && <span className="text-warn">Filling the accepted batch</span>}
-        {status.currentBatch && <OpenBatchLabel known={status.currentBatch} />}
+        {status.latestSequence === null && <span>Prices have not started yet</span>}
+        {status.executing && <span className="text-warn">Orders are being filled</span>}
         {status.monitor && (
           <span className={mismatch ? "text-down" : undefined}>
             Monitor: <span className={mismatch ? "font-medium" : "text-ink"}>{verdicts[status.monitor.verdict]}</span>
