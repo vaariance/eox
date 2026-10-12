@@ -73,7 +73,19 @@ export class CoxFixtureSource implements CoxSource {
     };
   }
 
-  async publications(now: number): Promise<readonly Publication[]> {
+  async latest(now: number): Promise<Publication | null> {
+    return this.all(now).at(-1) ?? null;
+  }
+
+  async publication(sequence: number, now: number): Promise<Publication | null> {
+    return this.all(now).find((p) => p.identity.sequence === sequence) ?? null;
+  }
+
+  async publications(now: number, after: number | null, limit: number): Promise<readonly Publication[]> {
+    return this.all(now).filter((p) => after === null || p.identity.sequence > after).slice(0, limit);
+  }
+
+  private all(now: number): Publication[] {
     const origin = this.origin(now);
     return this.fixture.publications.map((p) => {
       const cutoff = origin + p.batch * BATCH_SECONDS;
@@ -107,7 +119,7 @@ export class CoxFixtureSource implements CoxSource {
   }
 
   async status(now: number): Promise<CoxStatus> {
-    const latest = (await this.publications(now)).at(-1)!;
+    const latest = this.all(now).at(-1)!;
     const current = batchFor(now, this.origin(now));
     const missedCutoffs = Math.max(0, current.batch - latest.identity.batch - 1);
     return {
@@ -127,7 +139,7 @@ export class CoxFixtureSource implements CoxSource {
   }
 
   async assets(now: number): Promise<CoxAsset[]> {
-    const latest = (await this.publications(now)).at(-1)!;
+    const latest = this.all(now).at(-1)!;
     return this.fixture.assets.map((asset) => {
       const price = latest.prices.find((p) => p.assetId === asset.assetId)!;
       return {

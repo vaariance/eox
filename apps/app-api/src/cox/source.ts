@@ -5,7 +5,9 @@ export interface CoxSource {
   status(now: number): Promise<CoxStatus>;
   assets(now: number): Promise<CoxAsset[]>;
   crypto(): Promise<CryptoComposition>;
-  publications(now: number): Promise<readonly Publication[]>;
+  latest(now: number): Promise<Publication | null>;
+  publication(sequence: number, now: number): Promise<Publication | null>;
+  publications(now: number, after: number | null, limit: number): Promise<readonly Publication[]>;
   portfolio(owner: string): Promise<Portfolio | null>;
   onPublication(listener: (publication: Publication) => void): () => void;
 }

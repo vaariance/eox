@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { COX_APP_API_SCHEMA_VERSION, type CoxErrorCode, type CoxPublicationEvent, type CoxPublicationPage, type Publication } from "@eox/app-api";
 import { CoxLiveStream, StreamLimitError } from "./live-stream.js";
+import { replay } from "./replay.js";
 import type { CoxSource } from "./source.js";
 import type { CoxSubmissions } from "./submissions.js";
 import { FeeChangedError, TransactionInputError, TransactionRejectedError, type CoxTransactions } from "./transactions.js";
@@ -148,14 +149,13 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
 
   async function publication(res: ServerResponse, which: string): Promise<void> {
     const at = now();
-    const all = await source.publications(at);
     if (which === "latest") {
-      const latest = all.at(-1);
+      const latest = await source.latest(at);
       if (!latest) throw new ApiError(404, "NO_PUBLICATION", "no publication has been committed yet");
       return send(res, latest, at);
     }
     const wanted = sequence(which, "sequence");
-    const found = all.find((p) => p.identity.sequence === wanted);
+    const found = await source.publication(wanted, at);
     if (!found) throw new ApiError(404, "PUBLICATION_NOT_FOUND", `publication ${wanted} not found`);
     return send(res, found, at);
   }
@@ -166,7 +166,7 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
     const limit = limitText === null ? DEFAULT_PAGE : sequence(limitText, "limit");
     if (limit < 1 || limit > MAX_PAGE) throw new ApiError(400, "INVALID_REQUEST", `limit must be between 1 and ${MAX_PAGE}`);
     const at = now();
-    const events = (await source.publications(at)).filter((p) => from === null || p.identity.sequence > from).slice(0, limit).map(event);
+    const events = (await source.publications(at, from, limit)).map(event);
     const body: CoxPublicationPage = { events, nextAfter: events.at(-1)?.sequence ?? from };
     return send(res, body, at);
   }
@@ -180,8 +180,12 @@ export function createCoxApiServer(options: CoxApiServerOptions): Server {
       last = p.identity.sequence;
       res.write(`id: ${last}\nevent: publication\ndata: ${JSON.stringify(event(p))}\n\n`);
     };
-    const unsubscribe = source.onPublication(emit);
-    for (const p of await source.publications(now())) emit(p);
+    const pending: Publication[] = [];
+    let replaying = true;
+    const unsubscribe = source.onPublication((p) => (replaying ? pending.push(p) : emit(p)));
+    for (const p of await replay(source, now(), last)) emit(p);
+    replaying = false;
+    for (const p of pending) emit(p);
     const heartbeat = setInterval(() => res.write(": heartbeat\n\n"), HEARTBEAT_MS);
     req.on("close", () => {
       clearInterval(heartbeat);

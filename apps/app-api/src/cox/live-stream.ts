@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { CoxPublicationEvent, CoxStatus, Portfolio, Publication, WalletPortfolioEvent } from "@eox/app-api";
+import { replay } from "./replay.js";
 import type { CoxSource } from "./source.js";
 
 const HEARTBEAT_MS = 15_000;
@@ -79,7 +80,7 @@ export class CoxLiveStream {
     const status = this.status ?? (await this.options.source.status(now));
     if (!this.status) this.remember(status);
     connection.send("status", status);
-    const history = await this.options.source.publications(now);
+    const history = from === null ? [(await this.options.source.latest(now))].filter((p): p is Publication => p !== null) : await replay(this.options.source, now, from);
     const live = connection.pending ?? [];
     connection.pending = null;
     for (const publication of [...history, ...live]) this.publication(connection, publication);
