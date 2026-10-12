@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { formatAmount } from "@/lib/format";
 import { planRequest } from "@/lib/requests";
-import { CRYPTO_CLASS, type ClassView, feeLabel, holdingsOf, quotedFee, toNumber, unitDigits, unlockedProblem } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, holdingsOf, toNumber, unitDigits, unlockedProblem } from "@/lib/view";
 import { useAccount } from "./account";
+import { Dots, FeeNote } from "./fee-note";
 import { useOpenBatch } from "./open-batch";
 import { SendButton } from "./send-button";
 import { QUOTE_MESSAGES, useQuote } from "./use-quote";
@@ -22,17 +23,18 @@ const VALID_FOR = 3;
 const field = "num h-11 w-full rounded-control border border-line bg-bg px-3 text-sm text-ink placeholder:text-muted";
 
 export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: ClassView; crypto: ClassView; nextBatch: Batch | null; decimals: number }) {
-  const { portfolio, owner, live, fee } = useAccount();
+  const { portfolio, owner, live } = useAccount();
   const holdings = holdingsOf(portfolio, decimals);
   const open = useOpenBatch(nextBatch);
   const [side, setSide] = useState<Side>("buy");
-  const [amount, setAmount] = useState("10");
+  const [amount, setAmount] = useState("");
   const [minimum, setMinimum] = useState("");
 
   const buying = side === "buy";
   const from = buying ? CRYPTO_CLASS : claim.id;
   const to = buying ? claim.id : CRYPTO_CLASS;
   const parsed = Number(amount);
+  const empty = amount.trim() === "";
   const valid = Number.isFinite(parsed) && parsed > 0;
   const held = holdings?.find((item) => item.classId === from);
   const available = held ? held.units - held.locked : holdings === null ? null : 0;
@@ -40,7 +42,6 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
   const planned = planRequest({ operation: "switch", fromClass: from, toClass: to, amount, minimum, validForBatches: VALID_FOR, targetBatch: open.batch?.batch ?? null, collateralDecimals: decimals });
   const { quote, pending, problem } = useQuote(planned.intent);
   const quoted = quote === null || quote.mintedUnits === null ? null : toNumber(quote.mintedUnits, unitDigits(decimals));
-  const connected = live && owner !== null;
   const blocked = unitsProblem ? QUOTE_MESSAGES.balance : problem ? QUOTE_MESSAGES[problem] : null;
   const receives = buying ? `${claim.id} units` : "$CRYPTO";
   const needsCrypto = buying && live && owner !== null && available === 0;
@@ -67,8 +68,8 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
             <label htmlFor="trade-amount">{buying ? "You pay ($CRYPTO)" : `You give (${claim.id} units)`}</label>
             {available !== null && <span className="num">Available {formatAmount(available)}</span>}
           </div>
-          <input id="trade-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
-          {!valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
+          <input id="trade-amount" inputMode="decimal" placeholder="0" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
+          {!empty && !valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
           {needsCrypto && (
             <p className="mt-1 text-xs text-muted">
               You have no $CRYPTO yet. <Link href="/swap" className="text-accent underline">Swap USDC for $CRYPTO</Link> first.
@@ -83,16 +84,13 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
         <dl className="mt-1 flex flex-col gap-2 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted">You receive</dt>
-            <dd className="num">{pending ? "…" : quoted === null ? "—" : `≈ ${formatAmount(quoted, 4)} ${receives}`}</dd>
+            <dd className="num">{pending ? <Dots /> : quoted === null ? <span className="text-muted">0 {receives}</span> : <span key={quoted} className="slot-in inline-block">≈ {formatAmount(quoted, 4)} {receives}</span>}</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted">Fee</dt>
-            <dd className="num">{quote ? quotedFee(quote.fee, quote.feeTerms, decimals) : pending ? "…" : connected ? "—" : feeLabel(fee, decimals)}</dd>
-          </div>
+          <FeeNote pending={pending} quote={quote} decimals={decimals} />
         </dl>
 
 
-        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={pending ? "Calculating" : buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={planned.problem ?? (needsCrypto ? "" : blocked) ?? (pending ? "" : null)} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={empty ? "Enter an amount" : pending ? "Calculating" : buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={empty ? "" : (planned.problem ?? (needsCrypto ? "" : blocked) ?? (pending ? "" : null))} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

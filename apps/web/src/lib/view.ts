@@ -1,4 +1,4 @@
-import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, FeeTerms, Portfolio, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
+import type { ClassValuation, CoxAsset, CoxDeployment, CoxStatus, Portfolio, PriceVenue, Publication, PublishedPrice } from "@eox/app-api";
 
 import { COLLATERAL } from "./config";
 
@@ -43,17 +43,9 @@ export function toNumber(value: string, digits: number): number {
   return Number(BigInt(value)) / 10 ** digits;
 }
 
-export function feeLabel(fee: FeeTerms | null, decimals: number): string {
-  if (!fee || fee.bps === 0) return "0";
-  const rate = `${(fee.bps / 100).toFixed(2)}%`;
-  const cap = toNumber(fee.cap, decimals);
-  return cap > 0 ? `${rate}, at most ${cap} ${COLLATERAL.symbol}` : rate;
-}
-
-export function quotedFee(fee: string, terms: FeeTerms, decimals: number): string {
-  const amount = toNumber(fee, decimals);
-  const shown = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: decimals }).format(amount);
-  return `${shown} ${COLLATERAL.symbol} (${(terms.bps / 100).toFixed(2)}%)`;
+export function feeIncluded(fee: string, decimals: number): string {
+  const shown = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: decimals }).format(toNumber(fee, decimals));
+  return `${shown} ${COLLATERAL.symbol} fee included`;
 }
 
 export function currentOf(publications: readonly Publication[]): Publication | null {
@@ -84,6 +76,10 @@ export function levelSeries(publications: readonly Publication[]): Point[] {
 
 export function latest(points: readonly Point[]): number {
   return points[points.length - 1].value;
+}
+
+export function standingOf(reference: readonly Point[]): number {
+  return reference.length === 0 ? 0 : latest(reference) / 100 - 1;
 }
 
 export function changeSince(points: readonly Point[], seconds: number): number {
