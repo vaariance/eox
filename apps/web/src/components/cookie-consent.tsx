@@ -47,7 +47,7 @@ export function CookieConsent() {
         {view === "banner" ? (
           <>
             <p className="mt-2 text-sm text-muted">
-              We use no tracking, analytics or advertising cookies. We only store what the site needs to work. With your OK, we also remember your layout on this device. How we handle data such as IP addresses is in our <Link href="/privacy" className="text-accent underline underline-offset-4">Privacy Policy</Link>
+              We use cookies and analytics to improve Relative. See our <Link href="/privacy" className="text-accent underline underline-offset-4">Privacy Policy</Link> and <Link href="/terms" className="text-accent underline underline-offset-4">Terms of Use</Link>.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" onClick={() => decide(true)} className={primary}>Accept</button>
