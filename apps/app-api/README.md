@@ -41,6 +41,7 @@ The public demonstration endpoint is <https://fixture-api.getrelative.trade>. It
 | `APP_API_TRUST_FORWARDED_FOR` | `true` behind Cloud Run: the client is the last `X-Forwarded-For` entry | Unset |
 | `APP_API_HISTORY_GCS` | `gs://bucket/prefix/` for sealed history segments shared by every instance | `<state dir>/history-<pool>/` |
 | `APP_API_SUBMISSIONS_FIRESTORE_PROJECT` | Google Cloud project whose Firestore holds submission tracking, shared by every instance | Unset: `<state dir>/submissions-<pool>.json` |
+| `APP_API_SUBMISSIONS_FIRESTORE_DATABASE` | Firestore database for submissions; use one of its own so the service account cannot reach other data | `(default)` |
 
 Every RPC endpoint must pass the devnet genesis check at startup. Network failures, 15-second timeouts, HTTP 429 and HTTP 5xx trigger failover. Store authenticated URLs privately. A missing pool or unsealed methodology delays startup and is checked again every 30 seconds.
 

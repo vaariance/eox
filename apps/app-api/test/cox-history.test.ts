@@ -177,6 +177,7 @@ describe("submission stores", () => {
     const calls: string[] = [];
     const request = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(input));
+      expect(url.pathname).toContain("/databases/cox-app-api/documents/");
       calls.push(`${init?.method} ${url.pathname.split("/documents/")[1]}${url.search}`);
       const path = decodeURIComponent(url.pathname.split("/documents/")[1]!);
       if (init?.method === "POST") {
@@ -192,8 +193,8 @@ describe("submission stores", () => {
       }
       return documents.has(path) ? Response.json({ fields: documents.get(path) }) : new Response("{}", { status: 404 });
     }) as typeof fetch;
-    const store = new FirestoreSubmissionStore("colosseum-eox", "coxSubmissionsPool1", async () => "token", request);
-    const other = new FirestoreSubmissionStore("colosseum-eox", "coxSubmissionsPool1", async () => "token", request);
+    const store = new FirestoreSubmissionStore("colosseum-eox", "coxSubmissionsPool1", async () => "token", request, "cox-app-api");
+    const other = new FirestoreSubmissionStore("colosseum-eox", "coxSubmissionsPool1", async () => "token", request, "cox-app-api");
     expect(await store.create(entry)).toBe("created");
     expect(await other.create(entry)).toBe("exists");
     await other.update({ ...entry, state: "confirmed", slot: 4 });
@@ -202,6 +203,7 @@ describe("submission stores", () => {
     expect(await store.get("not-a-signature")).toBeNull();
     expect(calls.find((c) => c.startsWith("PATCH"))).toContain("currentDocument.exists=true");
     expect(() => new FirestoreSubmissionStore("Bad Project", "c", async () => "t")).toThrow("invalid Firestore project");
+    expect(() => new FirestoreSubmissionStore("colosseum-eox", "c", async () => "t", fetch, "../other")).toThrow("invalid Firestore database");
   });
 });
 

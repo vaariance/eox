@@ -67,7 +67,7 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
   const segments = historyGcs ? gcsSegments(historyGcs, token) : directorySegments(join(stateDir, `history-${poolId}`));
   const firestoreProject = process.env.APP_API_SUBMISSIONS_FIRESTORE_PROJECT;
   const store = firestoreProject
-    ? new FirestoreSubmissionStore(firestoreProject, `coxSubmissionsPool${poolId}`, token)
+    ? new FirestoreSubmissionStore(firestoreProject, `coxSubmissionsPool${poolId}`, token, fetch, process.env.APP_API_SUBMISSIONS_FIRESTORE_DATABASE ?? "(default)")
     : new FileSubmissionStore(join(stateDir, `submissions-${poolId}.json`));
   const archive = source ? new PublicationArchive(source, program, addresses(program.programId).pool(poolId), genesis) : null;
   const options = { connection, program, poolId, network, history: { path: join(stateDir, `publications-${poolId}.jsonl`), store: segments }, pollMs, archive, onError: (error: unknown) => console.error("cox indexer tick failed", error) };

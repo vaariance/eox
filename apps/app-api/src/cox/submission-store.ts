@@ -6,6 +6,7 @@ const SCHEMA = "cox.app-api.submissions/v1";
 const MAX_KEPT = 5000;
 const PROJECT = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 const COLLECTION = /^[A-Za-z][A-Za-z0-9_-]{0,99}$/;
+const DATABASE = /^(\(default\)|[a-z][a-z0-9-]{2,61}[a-z0-9])$/;
 const SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
 const RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -65,10 +66,12 @@ export class FirestoreSubmissionStore implements SubmissionStore {
     collection: string,
     private readonly token: () => Promise<string>,
     private readonly request: typeof fetch = fetch,
+    database = "(default)",
   ) {
     if (!PROJECT.test(project)) throw new Error(`invalid Firestore project id: ${project}`);
     if (!COLLECTION.test(collection)) throw new Error(`invalid Firestore collection: ${collection}`);
-    this.base = `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/${collection}`;
+    if (!DATABASE.test(database)) throw new Error(`invalid Firestore database: ${database}`);
+    this.base = `https://firestore.googleapis.com/v1/projects/${project}/databases/${database}/documents/${collection}`;
   }
 
   private async call(url: string, init: RequestInit): Promise<Response> {
