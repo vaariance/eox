@@ -10,7 +10,7 @@ import { Figure, StatCard } from "@/components/stat-card";
 import { TradeForm } from "@/components/trade-form";
 import { getAssets, getDeployment, getPublications, getStatus } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
-import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceSeries, referenceSeries } from "@/lib/view";
+import { CRYPTO_CLASS, changeSince, classViews, currentOf, decimalsOf, findClass, latest, levelSeries, priceSeries, referenceSeries, standingOf } from "@/lib/view";
 
 const HOUR = 3600;
 const SPARK = 60;
@@ -40,7 +40,8 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   const reference = referenceSeries(publications, asset.assetId);
   const level = levelSeries(publications);
   const priceHour = current ? changeSince(price, HOUR) : 0;
-  const referenceHour = current ? changeSince(reference, HOUR) : 0;
+  const relative = current ? standingOf(reference) : 0;
+  const standing = direction(relative);
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,9 +74,9 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
           title="Relative reference"
           aside="starts at 100"
           value={current ? <Figure text={formatAmount(latest(reference), 4)} /> : EMPTY}
-          change={current ? referenceHour : null}
-          caption="last hour"
-          spark={current ? { points: reference.slice(-SPARK), tone: direction(referenceHour) } : null}
+          change={current ? relative : null}
+          caption={standing === "up" ? "ahead of $CRYPTO since launch" : standing === "down" ? "behind $CRYPTO since launch" : "level with $CRYPTO since launch"}
+          spark={current ? { points: reference, tone: standing } : null}
         />
         <StatCard
           icon={Layers}

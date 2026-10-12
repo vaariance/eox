@@ -8,7 +8,7 @@ import { Sparkline } from "@/components/sparkline";
 import { CardTitle, Figure, StatCard } from "@/components/stat-card";
 import { getAssets, getDeployment, getPublications } from "@/lib/data";
 import { direction, formatAmount, formatPrice } from "@/lib/format";
-import { changeSince, decimalsOf, classViews, currentOf, findClass, latest, levelSeries, priceSeries, referenceSeries } from "@/lib/view";
+import { changeSince, decimalsOf, standingOf, classViews, currentOf, findClass, latest, levelSeries, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
 const WINDOW = 4 * HOUR;
@@ -45,9 +45,9 @@ export default async function MarketsPage() {
     ? assets
         .map((asset) => {
           const reference = referenceSeries(publications, asset.assetId);
-          return { id: asset.assetId, reference, hour: changeSince(reference, HOUR) };
+          return { id: asset.assetId, reference, standing: standingOf(reference) };
         })
-        .sort((left, right) => right.hour - left.hour)
+        .sort((left, right) => right.standing - left.standing)
     : [];
   const best = ranked[0] ?? null;
   const worst = ranked.length > 1 ? ranked[ranked.length - 1] : null;
@@ -67,19 +67,19 @@ export default async function MarketsPage() {
         />
         <StatCard
           icon={TrendingUp}
-          title="Leading now"
+          title="Leading"
           value={best ? <><CoinIcon id={best.id} size={28} />{best.id}</> : EMPTY}
-          change={best ? best.hour : null}
-          caption="last hour"
-          spark={best ? { points: best.reference.slice(-SPARK), tone: direction(changeSince(best.reference, WINDOW)) } : null}
+          change={best ? best.standing : null}
+          caption="vs $CRYPTO since launch"
+          spark={best ? { points: best.reference, tone: direction(best.standing) } : null}
         />
         <StatCard
           icon={TrendingDown}
-          title="Trailing now"
+          title="Trailing"
           value={worst ? <><CoinIcon id={worst.id} size={28} />{worst.id}</> : EMPTY}
-          change={worst ? worst.hour : null}
-          caption="last hour"
-          spark={worst ? { points: worst.reference.slice(-SPARK), tone: direction(changeSince(worst.reference, WINDOW)) } : null}
+          change={worst ? worst.standing : null}
+          caption="vs $CRYPTO since launch"
+          spark={worst ? { points: worst.reference, tone: direction(worst.standing) } : null}
         />
         <StatCard icon={Coins} title="Pool TVL" value={<Figure text={formatAmount(active)} unit="USDC" />} caption={`across ${classes.length} classes`} />
       </div>
@@ -96,7 +96,7 @@ export default async function MarketsPage() {
               <th scope="col" className="px-4 py-3 font-normal">Asset</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Price (USD)</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Relative reference</th>
-              <th scope="col" className="px-4 py-3 text-right font-normal">Reference, 1h</th>
+              <th scope="col" className="px-4 py-3 text-right font-normal">Performance</th>
               <th scope="col" className="px-4 py-3 font-normal">Last 4h</th>
               <th scope="col" className="px-4 py-3 text-right font-normal">Class backing</th>
             </tr>
@@ -117,7 +117,7 @@ export default async function MarketsPage() {
                   </th>
                   <td className="num px-4 py-3 text-right">{formatPrice(latest(priceSeries([current], asset.assetId)))}</td>
                   <td className="num px-4 py-3 text-right text-base">{formatAmount(latest(reference), 4)}</td>
-                  <td className="px-4 py-3 text-right"><Change ratio={changeSince(reference, HOUR)} /></td>
+                  <td className="px-4 py-3 text-right"><Change ratio={standingOf(reference)} /></td>
                   <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(changeSince(reference, WINDOW))} /></td>
                   <td className="num px-4 py-3 text-right">{formatAmount(claim.backing)}</td>
                 </RowLink>
