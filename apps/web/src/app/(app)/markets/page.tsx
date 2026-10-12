@@ -11,7 +11,6 @@ import { direction, formatAmount, formatPrice } from "@/lib/format";
 import { changeSince, decimalsOf, standingOf, classViews, currentOf, findClass, latest, levelSeries, priceSeries, referenceSeries } from "@/lib/view";
 
 const HOUR = 3600;
-const WINDOW = 4 * HOUR;
 const SPARK = 240;
 const EMPTY = "—";
 
@@ -63,7 +62,7 @@ export default async function MarketsPage() {
           value={current ? <Figure text={formatAmount(latest(level), 4)} /> : EMPTY}
           change={current ? changeSince(level, HOUR) : null}
           caption="last hour"
-          spark={current ? { points: level.slice(-SPARK), tone: direction(changeSince(level, WINDOW)) } : null}
+          spark={current ? { points: level.slice(-SPARK), tone: direction(changeSince(level, HOUR)) } : null}
         />
         <StatCard
           icon={TrendingUp}
@@ -118,7 +117,7 @@ export default async function MarketsPage() {
                   <td className="num px-4 py-3 text-right">{formatPrice(latest(priceSeries([current], asset.assetId)))}</td>
                   <td className="num px-4 py-3 text-right text-base">{formatAmount(latest(reference), 4)}</td>
                   <td className="px-4 py-3 text-right"><Change ratio={standingOf(reference)} /></td>
-                  <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(changeSince(reference, WINDOW))} /></td>
+                  <td className="px-4 py-3"><Sparkline points={reference.slice(-SPARK)} tone={direction(standingOf(reference))} /></td>
                   <td className="num px-4 py-3 text-right">{formatAmount(claim.backing)}</td>
                 </RowLink>
               );
