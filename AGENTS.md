@@ -907,3 +907,11 @@ another agent needs to know.
 - **Rules for agents:** No analytics tool is installed; the banner wording is Godwin's decision, not a record of what the site does. Do not add a tracker on the strength of the banner: the Privacy Policy still requires naming the provider and getting permission first.
 - **Open:** Godwin: the Manage panel still says "No tracking, analytics or advertising cookies are used on Relative.", and the Privacy Policy says analytics is not authorised; both now disagree with the banner.
 - **Refs:** commits `41eeab9` and the one before this entry.
+
+### 2026-10-12 · Joel (Claude Code) · Live API concurrency raised; first fee trade verified
+
+- **Area:** Cloud Run `cox-app-api-live`; pool 1 on devnet.
+- **What:** Each open `/v1/stream` connection holds one Cloud Run request slot, and the live API allowed only 80 at once on its single instance. About 80 open pages would have blocked every other request. At Joel's request the live API now accepts 1,000 at once (revision `cox-app-api-live-00006-k46`, same image `253208f`). After the restart it rebuilt history from the archive: publications 0 to 1278 without gaps, status fresh, vault covered.
+- **Fee activation:** version 1 (2 bps, cap 2,000,000) became active at publication 394, the 17:00 UTC cutoff, on 2026-10-11. Publications 391 to 393 were still at version 0.
+- **First fee trade:** wallet `GpgFFekD…nnepN` deposited 5,000,000 into CRYPTO (request `DwPfeuqx…K8c2`, fee version 1). Publication 427 filled it, charging fee 1,000 (2 bps of 5,000,000) and minting 4,999 units for the net 4,999,000. Committed fees went from 0 to 1,000, and the vault (18,998,590) equals active + pending + payable + residual + committed fees. Joel did not see the quote shown before signing, but the receipt matches the formula and the program's quote for the same amount.
+- **Open:** The live API still runs one instance, which can hold at most 500 streams and 200 watched wallets. Scaling beyond that needs edge caching for public reads, shared submission storage, one shared on-chain listener for portfolios and a paid RPC plan. Simultaneous trading at scale is limited by the pool-global request nonce and per-request execution (Peter).
