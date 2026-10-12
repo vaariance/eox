@@ -891,3 +891,11 @@ another agent needs to know.
 - **Rules for agents:** Do not reword `content/legal/*.md`; changes to legal text come from Godwin. The site sets no analytics or advertising cookies, and the notice says so: update the notice and the policy before adding any tracker. Gate any new optional browser storage on `allows(...)` from `src/lib/consent.ts`.
 - **Open:** The Terms speak of accepting them "through the application", but the app has no acceptance step. The Privacy Policy's provider list does not name CoinGecko or DefiLlama, which now receive visitors' IP addresses when coin logos load. Both are for Godwin and whoever reviews the documents.
 - **Refs:** commits `3c6ff5f`..`e0c431e`.
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: landing page logos from CoinGecko; Markets mini chart colours
+
+- **Area:** `apps/web`.
+- **What:** The landing page now takes coin logos from the same lookup as the app pages: `getLogos` (CoinGecko), then DefiLlama, then the file in `public/tokens`, then a letter. `src/landing/coin.tsx` is a client module (`Coin`, `CoinFace`, `CoinNode`) built on the new `useCoinLogo` hook in `src/components/coin-icon.tsx`, and `Landing` wraps the page in `LogoProvider`. The featured coin and the coin pile no longer skip coins without a local file. At Godwin's request the disc behind landing logos is dark grey (`disc`, `#1C1C1F`, in `tokens.stylex.ts`) instead of orange. On Markets, each mini chart takes its colour from the figure beside it: table rows from performance since launch, the Index card from the last hour. Before, both used the last 4 hours, so a green figure could sit next to a red line. Supersedes the statement in Godwin's 2026-10-12 "Web app: coin logos from CoinGecko and DefiLlama" entry that the landing page uses only the files in `public/tokens`.
+- **Rules for agents:** A Markets table line still draws the last 4 hours, so a line's slope can disagree with its colour; the colour follows the Performance column. Use `useCoinLogo` for any new coin image so the fallback order stays the same everywhere.
+- **Open:** The grey disc was checked by computed style, not by eye; the dark Ethereum logo may look faint on it.
+- **Refs:** commits `23c5fbd`, `acfa94b`.
