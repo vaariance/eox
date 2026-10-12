@@ -139,7 +139,6 @@ const styles = stylex.create({
     alignItems: { default: "flex-end", [NARROW]: "center" },
     textAlign: { default: "right", [NARROW]: "center" },
   },
-  productTitle: { fontSize: "clamp(2.6rem, 6.4vw, 5rem)" },
   productInfo: {
     gridColumnStart: { default: 2, [NARROW]: 1 },
     display: "flex",
@@ -502,9 +501,7 @@ export async function Landing() {
           <div {...stylex.props(styles.product)}>
             <div {...stylex.props(styles.productName)}>
               <p {...stylex.props(styles.label)}>No. {star.rank} on the board</p>
-              <h2 {...stylex.props(styles.stencil, styles.productTitle)}>
-                <Stencil lines={[star.id]} />
-              </h2>
+              <Coin id={star.id} size={96} />
             </div>
             <div {...stylex.props(styles.productInfo)}>
               <p {...stylex.props(styles.label)}>Introduction</p>
