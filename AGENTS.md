@@ -928,3 +928,13 @@ another agent needs to know.
 - **Rules for agents:** Never delete or overwrite history segments; the service account cannot. A VM redeploy restarts the archiver, which costs a few cutoffs and can briefly show `delayed`.
 - **Open:** Scale-out has not been load-tested. Every instance polls the RPC independently, so RPC load grows with the instance count.
 - **Refs:** commits `88b8d8b`..`a7a8636`, `apps/app-api/README.md`.
+
+### 2026-10-12 · Joel (Claude Code) · Live API load test
+
+- **Area:** Cloud Run `cox-app-api-live` (`00007-c8q`, 1 to 10 instances, 1 vCPU, 1,000 concurrent requests each).
+- **What:** At Joel's request, read routes were load-tested from a temporary VM in europe-west1 (`autocannon`), deleted afterwards. Routes that call the RPC (portfolio, quotes, builds) and streams beyond the 8-per-client cap were not tested.
+  - **50 connections on `/v1/status`:** 2,300 requests/s on one instance, p50 11 ms, p99 80 ms, no errors.
+  - **1,000 connections (status, latest publication, assets):** 5,500 requests/s, p50 73 ms, p99 1.3 s, 0.2 % errors. Cloud Run scaled from 1 to 9 instances about 60 s in, and new instances served within about 1 s of starting. All 908 errors were Cloud Run aborts in one 2 s burst before the new instances were ready; none came from the application.
+  - **5,000 connections (the same routes plus `/v1/publications?limit=100`):** the service reached the 10-instance cap. Throughput was 4,600 requests/s, p50 490 ms and p99 15.8 s, with 5 % 429 or 503 from Cloud Run at the cap and 457 timeouts. The 100-publication page (about 1.2 MB a response) used about 870 MB/s of egress and dominated.
+  - **Publishing:** stayed fresh throughout.
+- **Open:** Ways to lift the ceiling, none applied yet: response compression, a minimum of 2 or 3 warm instances, more instances or larger instances, smaller history pages, and the CDN only for immutable history (Peter's condition).
