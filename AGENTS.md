@@ -915,3 +915,16 @@ another agent needs to know.
 - **Fee activation:** version 1 (2 bps, cap 2,000,000) became active at publication 394, the 17:00 UTC cutoff, on 2026-10-11. Publications 391 to 393 were still at version 0.
 - **First fee trade:** wallet `GpgFFekD…nnepN` deposited 5,000,000 into CRYPTO (request `DwPfeuqx…K8c2`, fee version 1). Publication 427 filled it, charging fee 1,000 (2 bps of 5,000,000) and minting 4,999 units for the net 4,999,000. Committed fees went from 0 to 1,000, and the vault (18,998,590) equals active + pending + payable + residual + committed fees. Joel did not see the quote shown before signing, but the receipt matches the formula and the program's quote for the same amount.
 - **Open:** The live API still runs one instance, which can hold at most 500 streams and 200 watched wallets. Scaling beyond that needs edge caching for public reads, shared submission storage, one shared on-chain listener for portfolios and a paid RPC plan. Simultaneous trading at scale is limited by the pool-global request nonce and per-request execution (Peter).
+
+### 2026-10-12 · Joel (Claude Code) · Live API runs on multiple instances
+
+- **Area:** `apps/app-api`; Cloud Run `cox-app-api-live`; bucket `gs://colosseum-cox-app-api-history-dev`; Firestore database `cox-app-api`; dev VM.
+- **What:** Peter approved only the multi-instance step of the scaling plan. Portfolios, quotes and builds still read the chain on every request, and no chain state is copied into a database.
+  - **History:** indexed history is sealed in immutable blocks of 360 publications. Each block is created only if absent, in the bucket for Cloud Run and in `state/history-<pool>` on the VM. An instance starts from the segment listing and the latest block, reads older blocks on demand, and keeps 8 in memory. Memory stays flat as history grows, and new instances start quickly.
+  - **Stream replay:** a stream without a cursor starts at the latest publication. Replay is capped at 1,440 publications.
+  - **Submissions:** submission tracking is in the separate Firestore database `cox-app-api` (collection `coxSubmissionsPool1`, TTL on `expireAt`, 30 days). The API's service account can reach only that database, not the signer's `(default)` database.
+  - **Deployed:** `cox-app-api-live-00007-c8q` at `a7a8636`, 1 to 10 instances, 1,000 concurrent requests each. Also the fixture API `cox-app-api-00004-grk` and the VM.
+  - **Verified:** the VM's full log migrated into 3 segments on first start. Cloud Run rebuilt from the archive and wrote the same 3 segments to the bucket. Publications 0 to 1359 are served without gaps, status is fresh, and Firestore lookups work.
+- **Rules for agents:** Never delete or overwrite history segments; the service account cannot. A VM redeploy restarts the archiver, which costs a few cutoffs and can briefly show `delayed`.
+- **Open:** Scale-out has not been load-tested. Every instance polls the RPC independently, so RPC load grows with the instance count.
+- **Refs:** commits `88b8d8b`..`a7a8636`, `apps/app-api/README.md`.
