@@ -899,3 +899,11 @@ another agent needs to know.
 - **Rules for agents:** A Markets table line still draws the last 4 hours, so a line's slope can disagree with its colour; the colour follows the Performance column. Use `useCoinLogo` for any new coin image so the fallback order stays the same everywhere.
 - **Open:** The grey disc was checked by computed style, not by eye; the dark Ethereum logo may look faint on it.
 - **Refs:** commits `23c5fbd`, `acfa94b`.
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: cookie banner reworded; leading coin shown by logo
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's instruction the cookie banner now reads "We use cookies and analytics to improve Relative. See our Privacy Policy and Terms of Use.", with both names linked. The landing page's "No. 1 on the board" block shows the leading coin's logo (96px, from the shared lookup) in place of its ticker in stencil lettering. Qualifies the statement in Godwin's 2026-10-12 "Web app: cookie notice, Terms of Use and Privacy Policy" entry that the notice says the site sets no analytics cookies: the banner no longer says that.
+- **Rules for agents:** No analytics tool is installed; the banner wording is Godwin's decision, not a record of what the site does. Do not add a tracker on the strength of the banner: the Privacy Policy still requires naming the provider and getting permission first.
+- **Open:** Godwin: the Manage panel still says "No tracking, analytics or advertising cookies are used on Relative.", and the Privacy Policy says analytics is not authorised; both now disagree with the banner.
+- **Refs:** commits `41eeab9` and the one before this entry.
