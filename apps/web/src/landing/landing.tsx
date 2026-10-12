@@ -480,9 +480,9 @@ export async function Landing() {
         <HeroBackdrop />
         <header {...stylex.props(styles.wrap, styles.hero)}>
           <h1 {...stylex.props(styles.stencil, styles.heroTitle)}>
-            <Stencil lines={["Back your", "Analysis"]} />
+            <Stencil lines={["Trade On", "Performance"]} />
           </h1>
-          <p {...stylex.props(styles.tagline)}>Pick the coin your research says will lead.</p>
+          <p {...stylex.props(styles.tagline)}>Pick the coin your research says will outperform the market.</p>
           <div {...stylex.props(styles.roster)}>
             {ROSTER.map((id, index) => (
               <span key={id} {...stylex.props(styles.chip, index >= ROSTER_NARROW && styles.chipExtra)}>
