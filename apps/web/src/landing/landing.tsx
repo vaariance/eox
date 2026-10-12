@@ -507,7 +507,7 @@ export async function Landing() {
               <p {...stylex.props(styles.label)}>Introduction</p>
               <p {...stylex.props(styles.intro)}>Every coin is ranked by how it does against the whole market. {star.id} is leading.</p>
               <span {...stylex.props(styles.figure, up ? styles.ahead : styles.behind)}>{formatChange(star.lead)}</span>
-              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market since launch</p>
+              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market</p>
               <Link href={`/assets/${star.id}`} {...stylex.props(styles.button)}>Back {star.id} →</Link>
             </div>
           </div>
