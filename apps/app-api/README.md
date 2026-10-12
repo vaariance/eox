@@ -39,6 +39,8 @@ The public demonstration endpoint is <https://fixture-api.getrelative.trade>. It
 | `COX_PUBLICATION_ARCHIVE_GCS` | `gs://bucket/prefix/` of content-addressed `<sequence>/<sha256>.json` records; use instead of the directory | Unset |
 | `APP_API_POST_LIMIT_PER_MINUTE` | Transaction requests per client per minute; 429 `RATE_LIMITED` with `Retry-After` beyond it | `30` |
 | `APP_API_TRUST_FORWARDED_FOR` | `true` behind Cloud Run: the client is the last `X-Forwarded-For` entry | Unset |
+| `APP_API_HISTORY_GCS` | `gs://bucket/prefix/` for sealed history segments shared by every instance | `<state dir>/history-<pool>/` |
+| `APP_API_SUBMISSIONS_FIRESTORE_PROJECT` | Google Cloud project whose Firestore holds submission tracking, shared by every instance | Unset: `<state dir>/submissions-<pool>.json` |
 
 Every RPC endpoint must pass the devnet genesis check at startup. Network failures, 15-second timeouts, HTTP 429 and HTTP 5xx trigger failover. Store authenticated URLs privately. A missing pool or unsealed methodology delays startup and is checked again every 30 seconds.
 
@@ -85,7 +87,7 @@ Errors include `NO_PUBLICATION`, `PUBLICATION_NOT_FOUND`, `UNKNOWN_ASSET`, `UNKN
 | `status` | on connect, then whenever anything except the clock changes: new publication, missed cutoffs, paused or halted, execution, reconciliation or fee terms | the same object as `status` in every response |
 | `portfolio` | with `?wallet=`, on connect and whenever that wallet's positions, requests or receipts change | `{ owner, portfolio }`; `portfolio` is `null` for a wallet with nothing on chain |
 
-Browsers reconnect by themselves, three seconds after a drop, sending the last publication id. The server then resumes publications from there and repeats the current status and portfolio. Status is checked every 5 seconds and right after each publication. A wallet's portfolio is read after each publication and every 15 seconds, once per wallet however many connections watch it. Each client may hold 8 streams, an instance 500 and 200 distinct wallets. Over those limits the response is HTTP 429 `RATE_LIMITED` with `Retry-After`.
+Without a cursor the stream starts at the latest publication. Browsers reconnect by themselves, three seconds after a drop, sending the last publication id. The server then resumes publications from there, at most the last 1,440, and repeats the current status and portfolio. Fetch older history with `GET /v1/publications`. Status is checked every 5 seconds and right after each publication. A wallet's portfolio is read after each publication and every 15 seconds, once per wallet however many connections watch it. Each client may hold 8 streams, an instance 500 and 200 distinct wallets. Over those limits the response is HTTP 429 `RATE_LIMITED` with `Retry-After`.
 
 ```ts
 const stream = new EventSource(`${baseUrl}/v1/stream?wallet=${owner}`);
@@ -94,7 +96,7 @@ stream.addEventListener("status", (e) => onStatus(JSON.parse(e.data)));
 stream.addEventListener("portfolio", (e) => onPortfolio(JSON.parse(e.data)));
 ```
 
-Server-side code can use `createCoxApiClient(...).subscribe({ after, wallet }, onEvent)`, which delivers typed `CoxStreamEvent`s and does not reconnect. `GET /v1/publications/stream` remains for publication-only consumers.
+Server-side code can use `createCoxApiClient(...).subscribe({ after, wallet }, onEvent)`, which delivers typed `CoxStreamEvent`s and does not reconnect. `GET /v1/publications/stream` remains for publication-only consumers and replays at most the last 1,440 publications.
 
 ## Wallet transaction flow
 
@@ -124,7 +126,9 @@ Pools migrated to `COX/FEES/V1` charge `min(floor(gross × bps / 10000), cap)` i
 
 The source reads finalized program accounts through [the COX client](../../packages/cox-client/README.md). Staged position and request changes remain hidden until commitment. Vault reconciliation compares token balance with active + pending + payable + residual + committed fees; a surplus remains covered until a financial instruction records it as residual. Fees staged by an unfinished batch are not counted.
 
-Publications are stored in an append-only `publications-<pool>.jsonl` log, bound to the program and pool. A partial final line is discarded after a crash. Signed submissions use `submissions-<pool>.json`. Preserve both files across deployments.
+Indexed publications are sealed in blocks of 360 into immutable history segments, named `seg-<first>-<last>-<predecessor batch>-<last batch>.json`. Each segment is created only if absent, so instances that index the same block agree on one copy. At start an instance lists the segments, checks from their names that they form one chain, and loads only the latest block. It reads older blocks when asked for them, checking each against its name and the batch chain, and keeps the 8 most recently used. Memory therefore stays flat as history grows. Publications not yet sealed are kept in `publications-<pool>.jsonl` and, on an empty disk, are filled from the publisher archive 16 at a time. A full log written by an earlier release is moved into segments on first start.
+
+Submission tracking is in Firestore when `APP_API_SUBMISSIONS_FIRESTORE_PROJECT` is set: one document per signature in `coxSubmissionsPool<pool>`, with an `expireAt` field 30 days after submission for a TTL policy. Otherwise it is kept in `submissions-<pool>.json`. With segments in Cloud Storage and submissions in Firestore, any instance answers any request, so the service can run several instances.
 
 The program keeps only the latest publication on chain. Earlier sequences come from the publisher's archive (`COX_PUBLICATION_ARCHIVE` or `COX_PUBLICATION_ARCHIVE_GCS`). Each record is checked against its content hash, account hash, decoded state and predecessor chain before it is logged, for both legacy and fee-aware publications. Without an archive, the indexer refuses to skip a gap.
 
