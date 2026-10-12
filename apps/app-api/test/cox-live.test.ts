@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadProgram } from "../src/cox/chain.js";
 import { LiveCoxSource } from "../src/cox/live-source.js";
 import { directorySource, gcsSource, PublicationArchive, PublicationArchiveMissing } from "../src/cox/publication-archive.js";
-import { PublicationLog } from "../src/cox/publication-log.js";
+import { directorySegments, PublicationHistory } from "../src/cox/publication-history.js";
+import { FileSubmissionStore } from "../src/cox/submission-store.js";
 import { createCoxApiServer } from "../src/cox/server.js";
 import { CoxSubmissions } from "../src/cox/submissions.js";
 import { associatedTokenAddress, CoxTransactions, FeeChangedError } from "../src/cox/transactions.js";
@@ -126,9 +127,14 @@ let dir = "";
 let connection: FixtureConnection;
 let ledger = 0n;
 
-function open(logPath = join(dir, "publications.jsonl"), poolId = 0n) {
+function open(path = join(dir, "publications.jsonl"), poolId = 0n) {
   const program = loadProgram(connection as unknown as Connection, idlPath);
-  return LiveCoxSource.open({ connection: connection as unknown as Connection, program, poolId, network: "solana-devnet", logPath });
+  return LiveCoxSource.open({ connection: connection as unknown as Connection, program, poolId, network: "solana-devnet", history: { path, store: directorySegments(join(dir, "segments")) } });
+}
+
+async function seed(...entries: Publication[]): Promise<void> {
+  const history = await PublicationHistory.open({ path: join(dir, "publications.jsonl"), store: directorySegments(join(dir, "segments")), identity: { program: fixture.programAddress, pool: POOL } });
+  for (const entry of entries) await history.append(entry);
 }
 
 beforeEach(() => {
@@ -162,7 +168,7 @@ describe("live COX source on the compiled-program account fixtures", () => {
   });
 
   it("indexes the next finalized publication after the durable log and links it to its predecessor", async () => {
-    new PublicationLog(join(dir, "publications.jsonl"), { program: fixture.programAddress, pool: POOL }).append(originEntry());
+    await seed(originEntry());
     const source = await open();
     const seen: Publication[] = [];
     source.onPublication((p) => seen.push(p));
@@ -195,7 +201,7 @@ describe("live COX source on the compiled-program account fixtures", () => {
   });
 
   it("reports an incident when the vault holds less than the ledger", async () => {
-    new PublicationLog(join(dir, "publications.jsonl"), { program: fixture.programAddress, pool: POOL }).append(originEntry());
+    await seed(originEntry());
     connection.set(VAULT, TOKEN_PROGRAM, tokenAccount(MINT, ledger - 1n));
     const source = await open();
     await source.tick();
@@ -205,7 +211,7 @@ describe("live COX source on the compiled-program account fixtures", () => {
   it("refuses a publication that does not follow the logged predecessor", async () => {
     const wrong = originEntry();
     wrong.identity.stateDigest = "00".repeat(32);
-    new PublicationLog(join(dir, "publications.jsonl"), { program: fixture.programAddress, pool: POOL }).append(wrong);
+    await seed(wrong);
     const source = await open();
     await expect(source.tick()).rejects.toThrow("PublicationPredecessorMismatch");
     expect(await source.publications()).toHaveLength(1);
@@ -231,7 +237,7 @@ describe("transaction rate limit", () => {
     const source = await open();
     const program = loadProgram(connection as unknown as Connection, idlPath);
     const transactions = new CoxTransactions({ connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes });
-    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), feeVersion: async () => 0n });
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, store: new FileSubmissionStore(join(dir, "submissions.json")), feeVersion: async () => 0n });
     const server = createCoxApiServer({ source, transactions, submissions, postLimit: { perMinute: 2, trustForwardedFor: true } });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1/transactions/withdraw`;
@@ -313,7 +319,7 @@ describe("reusable publication account and the publisher archive", () => {
   });
 
   it("indexes a publication whose batch was already reused, leaving the fixed valuation unknown", async () => {
-    new PublicationLog(join(dir, "publications.jsonl"), { program: fixture.programAddress, pool: POOL }).append(originEntry());
+    await seed(originEntry());
     connection.accounts.delete(BATCH);
     const source = await open();
     await source.tick();
@@ -321,20 +327,6 @@ describe("reusable publication account and the publisher archive", () => {
     expect(latest!.identity).toMatchObject({ sequence: 1, stateDigest: STATE_DIGEST });
     expect(latest!.classes.every((c) => c.fixed === null)).toBe(true);
     expect(latest!.flows).toMatchObject({ acceptedDeposits: null, newPayable: null, transferResidual: null, flowResidual: null, executed: 64 });
-  });
-});
-
-describe("publication log", () => {
-  it("drops a partly written last line and refuses a log from another pool", () => {
-    const path = join(dir, "log.jsonl");
-    new PublicationLog(path, { program: fixture.programAddress, pool: POOL }).append(originEntry());
-    appendFileSync(path, '{"identity":{"seq');
-    const log = new PublicationLog(path, { program: fixture.programAddress, pool: POOL });
-    expect(log.nextSequence).toBe(1);
-    log.append({ ...originEntry(), identity: { ...originEntry().identity, sequence: 1, batch: 2, predecessorBatch: 0 } });
-    expect(new PublicationLog(path, { program: fixture.programAddress, pool: POOL }).all.map((p) => p.identity.batch)).toEqual([0, 2]);
-    expect(() => new PublicationLog(path, { program: fixture.programAddress, pool: VAULT })).toThrow("another program or pool");
-    expect(() => log.append({ ...originEntry(), identity: { ...originEntry().identity, sequence: 3 } })).toThrow("out of order");
   });
 });
 
@@ -348,7 +340,7 @@ describe("unsigned transactions and submission", () => {
     const transactions = new CoxTransactions({
       connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes,
     }, () => NOW);
-    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), now: () => NOW, feeVersion: async () => 0n });
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, store: new FileSubmissionStore(join(dir, "submissions.json")), now: () => NOW, feeVersion: async () => 0n });
     return { source, program, transactions, submissions };
   }
 
@@ -416,7 +408,7 @@ describe("unsigned transactions and submission", () => {
     expect(await submissions.get(submission.signature)).toMatchObject({ state: "finalized", slot: 77 });
     expect(await submissions.submit(signed)).toMatchObject({ state: "finalized" });
     expect(connection.sent).toHaveLength(1);
-    const reopened = new CoxSubmissions({ connection: connection as unknown as Connection, programId: new PublicKey(fixture.programAddress), path: join(dir, "submissions.json"), feeVersion: async () => 0n });
+    const reopened = new CoxSubmissions({ connection: connection as unknown as Connection, programId: new PublicKey(fixture.programAddress), store: new FileSubmissionStore(join(dir, "submissions.json")), feeVersion: async () => 0n });
     expect(await reopened.get(submission.signature)).toMatchObject({ state: "finalized", transaction: signed });
     const transfer = SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: new PublicKey(VAULT), lamports: 1 });
     const foreign = new VersionedTransaction(new TransactionMessage({ payerKey: wallet.publicKey, recentBlockhash: built.recentBlockhash, instructions: [transfer] }).compileToV0Message());
@@ -469,13 +461,11 @@ describe("fee upgrade on the compiled fee-account fixtures", () => {
     connection.set(feeMint, TOKEN_PROGRAM, mintAccount(6));
   });
 
-  function seedLog(): void {
+  async function seedLog(): Promise<void> {
     const program = loadProgram(connection as unknown as Connection, idlPath);
     const publication = program.coder.accounts.decode("publication", connection.accounts.get(PUBLICATION)!.data);
     const previous = decodeState(Buffer.from(publication.statePreimage)).previousState;
-    const log = new PublicationLog(join(dir, "publications.jsonl"), { program: fixture.programAddress, pool: POOL });
-    log.append(originEntry());
-    log.append({ ...originEntry(), identity: { ...originEntry().identity, sequence: 1, batch: 1, predecessorSequence: 0, predecessorBatch: 0, stateDigest: Buffer.from(previous).toString("hex") } });
+    await seed(originEntry(), { ...originEntry(), identity: { ...originEntry().identity, sequence: 1, batch: 1, predecessorSequence: 0, predecessorBatch: 0, stateDigest: Buffer.from(previous).toString("hex") } });
   }
 
   async function services(feeVersion = 1n) {
@@ -484,7 +474,7 @@ describe("fee upgrade on the compiled fee-account fixtures", () => {
     const transactions = new CoxTransactions({
       connection: connection as unknown as Connection, program, poolId: 0n, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes,
     }, () => NOW);
-    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, path: join(dir, "submissions.json"), now: () => NOW, feeVersion: async () => feeVersion });
+    const submissions = new CoxSubmissions({ connection: connection as unknown as Connection, programId: program.programId, store: new FileSubmissionStore(join(dir, "submissions.json")), now: () => NOW, feeVersion: async () => feeVersion });
     return { source, program, transactions, submissions };
   }
 
@@ -497,7 +487,7 @@ describe("fee upgrade on the compiled fee-account fixtures", () => {
   }
 
   it("serves the migrated publication with committed and batch fees and reconciles the vault including committed fees", async () => {
-    seedLog();
+    await seedLog();
     const source = await open();
     await source.tick();
     const latest = (await source.publications()).at(-1)!;
@@ -516,7 +506,7 @@ describe("fee upgrade on the compiled fee-account fixtures", () => {
   });
 
   it("restores a schema 3 publication from the publisher archive after a restart", async () => {
-    seedLog();
+    await seedLog();
     const bytes = connection.accounts.get(PUBLICATION)!.data;
     const program = loadProgram(connection as unknown as Connection, idlPath);
     const stateDigest = Buffer.from(program.coder.accounts.decode("publication", bytes).stateDigest).toString("hex");
@@ -534,7 +524,7 @@ describe("fee upgrade on the compiled fee-account fixtures", () => {
     expect(publication.state.feeState?.fees.toString()).toBe("6200");
     expect(slot).toBe(91);
     connection.accounts.delete(PUBLICATION);
-    const restarted = await LiveCoxSource.open({ connection: connection as unknown as Connection, program, poolId: 0n, network: "solana-devnet", logPath: join(dir, "publications.jsonl"), archive });
+    const restarted = await LiveCoxSource.open({ connection: connection as unknown as Connection, program, poolId: 0n, network: "solana-devnet", history: { path: join(dir, "publications.jsonl"), store: directorySegments(join(dir, "segments")) }, archive });
     connection.set(PUBLICATION, new PublicKey(fixture.programAddress), bytes);
     await restarted.tick();
     expect((await restarted.publications()).map((p) => [p.identity.sequence, p.ledger.fees])).toEqual([[0, "0"], [1, "0"], [2, "6200"]]);
@@ -610,7 +600,7 @@ describe("fee upgrade on the compiled fee-account fixtures", () => {
   });
 
   it("matches the committed fee-aware response examples for the web app", async () => {
-    seedLog();
+    await seedLog();
     const { source, program, transactions } = await services();
     await source.tick();
     const holder = Keypair.fromSeed(Buffer.alloc(32, 7)).publicKey.toBase58();
@@ -631,7 +621,7 @@ describe("fee upgrade on the compiled fee-account fixtures", () => {
   });
 
   it("serves quotes over HTTP and answers a changed fee version with FEE_CHANGED", async () => {
-    seedLog();
+    await seedLog();
     const { source, program, transactions, submissions } = await services();
     await source.tick();
     const server = createCoxApiServer({ source, transactions, submissions, now: () => NOW });
