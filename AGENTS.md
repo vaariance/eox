@@ -875,3 +875,11 @@ another agent needs to know.
 - **Rules for agents:** Do not reintroduce a windowed change of the reference as a headline figure. Without a connected wallet the cards show no fee at all, because quotes need a wallet that exists on chain.
 - **Open:** The loading sequence and the balance message were only seen by Godwin with a wallet, not by the agent.
 - **Refs:** commits after `d026eaa` on `dev`; pull request `vaariance/relative#3`.
+
+### 2026-10-12 · Godwin (Claude Code) · Web app: coin logos from CoinGecko and DefiLlama
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's request the app's coin icons no longer come from files in `public/tokens`. Once a day the server asks CoinGecko's `/coins/markets` for the 30 coins' image addresses (`getLogos` in `src/lib/data.ts`, ids in `src/lib/logos.ts`) and passes them to the browser; if an image fails to load, the icon switches to DefiLlama's icon service (`icons.llamao.fi`), then to a letter. CoinGecko returned all 30; DefiLlama has no icon for FET or RENDER. The landing page still uses the eight files in `public/tokens`.
+- **Rules for agents:** `COINGECKO_API_KEY` is a secret, not configuration: a CoinGecko Demo key sent as `x-cg-demo-api-key`. It is optional, belongs in the host's sensitive variables and the untracked `.env.local`, and must never be committed, logged or given a `NEXT_PUBLIC_` name. `src/lib/data.ts` is marked `server-only`; do not import it from client components. A new roster coin needs its CoinGecko id, and a DefiLlama path if one exists, in `src/lib/logos.ts`.
+- **Open:** No key is set on Vercel yet, so the lookup uses CoinGecko's keyless access. CoinGecko asks for attribution on its free plan; none is shown. Joel: a logo address and full name on `/v1/assets` would replace this.
+- **Refs:** `apps/web/README.md` (Secrets).
