@@ -1,6 +1,5 @@
 import { getAssets, getPublications } from "@/lib/data";
 import { referenceSeries, standingOf } from "@/lib/view";
-import { LOGOS } from "./logos";
 
 const DAY = 86400;
 const TOP = 3;
@@ -41,7 +40,7 @@ export async function loadBoard(): Promise<Board | null> {
     const top = ranked.slice(0, TOP);
     const rows = [...top, ...ranked.slice(-BOTTOM)];
     const scale = Math.max(...rows.map((row) => Math.abs(row.lead)), 0.0001);
-    const star = ranked.find((row) => LOGOS.has(row.id)) ?? ranked[0];
+    const star = ranked[0];
     const series = referenceSeries(publications, star.id);
     const end = series[series.length - 1].cutoff;
     const day = series.filter((point) => point.cutoff >= end - DAY);

@@ -2,7 +2,9 @@ import * as stylex from "@stylexjs/stylex";
 import Link from "next/link";
 import { formatChange } from "@/lib/format";
 import { type Board, loadBoard } from "./board-data";
+import { LogoProvider } from "@/components/coin-icon";
 import { CookieSettingsButton } from "@/components/cookie-consent";
+import { getLogos } from "@/lib/data";
 import { Coin } from "./coin";
 import { Faq, type Question } from "./faq";
 import { Features } from "./features";
@@ -454,13 +456,14 @@ const questions: Question[] = [
 ];
 
 export async function Landing() {
-  const board = await loadBoard();
+  const [board, logos] = await Promise.all([loadBoard(), getLogos()]);
   const total = Math.max(board?.count ?? 30, ROSTER.length);
   const star = board?.star ?? { rank: 1, id: "SOL", name: "Solana", lead: 0 };
   const up = star.lead >= 0;
   const picks = [...new Set([star.id, ...(board?.top ?? []).map((row) => row.id), "SOL", "BTC", "ETH"])].slice(0, 3);
 
   return (
+    <LogoProvider logos={logos}>
     <div {...stylex.props(styles.page)}>
       <div {...stylex.props(styles.wrap, styles.navBar)}>
         <nav aria-label="Main" {...stylex.props(styles.nav)}>
@@ -661,5 +664,6 @@ export async function Landing() {
         </footer>
       </div>
     </div>
+    </LogoProvider>
   );
 }
