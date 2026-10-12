@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import Link from "next/link";
 import { formatChange } from "@/lib/format";
 import { type Board, loadBoard } from "./board-data";
+import { CookieSettingsButton } from "@/components/cookie-consent";
 import { Coin } from "./coin";
 import { Faq, type Question } from "./faq";
 import { Features } from "./features";
@@ -365,7 +366,7 @@ const styles = stylex.create({
   },
   footTop: {
     display: "grid",
-    gridTemplateColumns: { default: "minmax(0, 1.5fr) repeat(3, minmax(0, 1fr))", [NARROW]: "repeat(2, minmax(0, 1fr))" },
+    gridTemplateColumns: { default: "minmax(0, 1.5fr) repeat(4, minmax(0, 1fr))", [NARROW]: "repeat(2, minmax(0, 1fr))" },
     columnGap: 40,
     rowGap: 48,
     paddingBottom: { default: 80, [NARROW]: 48 },
@@ -387,6 +388,7 @@ const styles = stylex.create({
     outlineColor: color.fg,
     outlineOffset: 4,
   },
+  footButton: { padding: 0, borderWidth: 0, backgroundColor: "transparent", fontFamily: "inherit", textAlign: "left", cursor: "pointer" },
   footFact: { fontSize: 14, color: color.fg },
   footNote: {
     display: "flex",
@@ -642,6 +644,12 @@ export async function Landing() {
               <span {...stylex.props(styles.footFact)}>{board?.count ?? 30} coins ranked</span>
               <span {...stylex.props(styles.footFact)}>Prices every minute</span>
             </div>
+            <nav aria-label="Legal" {...stylex.props(styles.footColumn)}>
+              <p {...stylex.props(styles.label)}>Legal</p>
+              <Link href="/terms" {...stylex.props(styles.footLink)}>Terms of Use</Link>
+              <Link href="/privacy" {...stylex.props(styles.footLink)}>Privacy Policy</Link>
+              <CookieSettingsButton className={stylex.props(styles.footLink, styles.footButton).className} />
+            </nav>
           </div>
           <div {...stylex.props(styles.footNote)}>
             <span>Relative is a test product. Test USDC has no real value.</span>
