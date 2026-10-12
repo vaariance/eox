@@ -1,5 +1,5 @@
 import { getAssets, getPublications } from "@/lib/data";
-import { changeSince, referenceSeries } from "@/lib/view";
+import { referenceSeries, standingOf } from "@/lib/view";
 import { LOGOS } from "./logos";
 
 const DAY = 86400;
@@ -35,7 +35,7 @@ export async function loadBoard(): Promise<Board | null> {
     const [assets, publications] = await Promise.all([getAssets(), getPublications()]);
     if (publications.length < 2 || assets.length < TOP + BOTTOM) return null;
     const ranked = assets
-      .map((asset) => ({ id: asset.assetId, name: asset.name, lead: changeSince(referenceSeries(publications, asset.assetId), DAY) }))
+      .map((asset) => ({ id: asset.assetId, name: asset.name, lead: standingOf(referenceSeries(publications, asset.assetId)) }))
       .sort((a, b) => b.lead - a.lead)
       .map((row, index) => ({ ...row, rank: index + 1 }));
     const top = ranked.slice(0, TOP);

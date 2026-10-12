@@ -316,7 +316,7 @@ export function Features({ data }: { data: FeatureData }) {
           <div {...stylex.props(styles.screen)}>
             <div {...stylex.props(styles.screenTop)}>
               <span>{data.leader} against the market</span>
-              <span {...stylex.props(styles.tag)}>TODAY</span>
+              <span {...stylex.props(styles.tag)}>SINCE LAUNCH</span>
             </div>
             <div {...stylex.props(styles.figureRow)}>
               <span {...stylex.props(styles.figure)}>{data.lead}</span>

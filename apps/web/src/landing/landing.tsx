@@ -446,7 +446,7 @@ const questions: Question[] = [
   { ask: "Where do prices come from?", answer: "From Kraken, once a minute. If Kraken had no trade for a coin in that minute, the price comes from Coinbase, then Bybit." },
   { ask: "Can I move from one coin to another?", answer: "Yes. You can move what you have behind one coin to another coin without cashing out first." },
   { ask: "How do I cash out?", answer: "Choose cash out on any coin you back. It fills at the next price, and then you collect the USDC to your wallet." },
-  { ask: "Are there fees?", answer: "Not today. Relative charges no fees while it is in testing. Solana still charges its usual small network fee." },
+  { ask: "Are there fees?", answer: "A small one: 0.02% of each trade, and never more than 2 USDC. Solana also charges its usual small network fee." },
   { ask: "What do I need to start?", answer: "A Solana wallet set to devnet, a little devnet SOL for network fees, and devnet USDC. The Faucet page in the app links to both." },
   { ask: "Is this real money?", answer: "Not yet. Relative runs on Solana devnet with test USDC, which has no real value." },
 ];
@@ -496,16 +496,16 @@ export async function Landing() {
         <section {...stylex.props(styles.wrap)}>
           <div {...stylex.props(styles.product)}>
             <div {...stylex.props(styles.productName)}>
-              <p {...stylex.props(styles.label)}>No. {star.rank} on the board today</p>
+              <p {...stylex.props(styles.label)}>No. {star.rank} on the board</p>
               <h2 {...stylex.props(styles.stencil, styles.productTitle)}>
                 <Stencil lines={[star.id]} />
               </h2>
             </div>
             <div {...stylex.props(styles.productInfo)}>
               <p {...stylex.props(styles.label)}>Introduction</p>
-              <p {...stylex.props(styles.intro)}>Every coin is ranked by how it does against the whole market. {star.id} is leading today.</p>
+              <p {...stylex.props(styles.intro)}>Every coin is ranked by how it does against the whole market. {star.id} is leading.</p>
               <span {...stylex.props(styles.figure, up ? styles.ahead : styles.behind)}>{formatChange(star.lead)}</span>
-              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market today</p>
+              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market since launch</p>
               <Link href={`/assets/${star.id}`} {...stylex.props(styles.button)}>Back {star.id} →</Link>
             </div>
           </div>
