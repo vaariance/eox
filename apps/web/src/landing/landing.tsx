@@ -622,6 +622,7 @@ export async function Landing() {
               </span>
               <p {...stylex.props(styles.footText)}>Back the coin your analysis says will do better than the rest of crypto.</p>
               <Link href="/markets" {...stylex.props(styles.button)}>Open app →</Link>
+              <a href="https://x.com/getrelativ" target="_blank" rel="noopener noreferrer" {...stylex.props(styles.footLink)}>X · @getrelativ</a>
             </div>
             <nav aria-label="App" {...stylex.props(styles.footColumn)}>
               <p {...stylex.props(styles.label)}>App</p>
