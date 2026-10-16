@@ -950,3 +950,10 @@ another agent needs to know.
 - **Rules for agents:** The Privy app ID is public; the Privy app secret must never be committed or given a `NEXT_PUBLIC_` name. The Privy app must allow Google, Solana wallets and each site origin. Keep the app API's rule that the user's wallet is the only signer and fee payer; Privy's own gas sponsorship sends transactions itself and would bypass the submit route. Lockfile changes were made with pnpm 10.34.7; pnpm 10.18.3 drops the lockfile's `libc` fields.
 - **Open:** Google users still fund SOL and USDC by hand from the Faucet page; sponsored fees need Joel's builder and submit changes. The Privy app uses Privy's Google credentials, so Google's consent screen names Privy. The Privacy Policy does not yet name Privy (Godwin). Vercel needs `NEXT_PUBLIC_PRIVY_APP_ID` and its origin allowed in Privy before deploying. One-click preset buttons are not built.
 - **Refs:** `apps/web/README.md` (Configuration, Swap, buy and sell).
+
+### 2026-10-16 · Godwin (Claude Code) · Web app: portfolio login prompts open the top-bar login
+
+- **Area:** `apps/web`.
+- **What:** At Godwin's request the Portfolio says "Login to Relative to see your requests", with Login as a highlighted link, and the withdraw button says "Login to withdraw". `openLogin()` in `src/components/signer.tsx` opens whatever the top-bar button opens (Privy, or the wallet list without a Privy app ID). Every `SendButton` is now clickable while logged out and opens login; the other forms still label it "Connect wallet to …".
+- **Rules for agents:** Open login only through `openLogin()`, so every prompt shows the same window as the top bar.
+- **Refs:** `apps/web/src/components/signer.tsx`, `apps/web/src/components/send-button.tsx`.
