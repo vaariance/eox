@@ -6,6 +6,8 @@ import { loadProgram } from "./cox/chain.js";
 import { CoxFixtureSource } from "./cox/fixture-source.js";
 import { LiveCoxSource } from "./cox/live-source.js";
 import { directorySource, gcsSource, PublicationArchive, type ArchiveSource } from "./cox/publication-archive.js";
+import { directorySegments, gcsSegments } from "./cox/publication-history.js";
+import { FileSubmissionStore, FirestoreSubmissionStore } from "./cox/submission-store.js";
 import { GoogleAuth } from "google-auth-library";
 import { checkGenesis, failoverConnection, parseRpcUrls } from "./cox/rpc.js";
 import { createCoxApiServer, type CoxApiServerOptions } from "./cox/server.js";
@@ -52,18 +54,23 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
   const archiveDir = process.env.COX_PUBLICATION_ARCHIVE;
   const archiveGcs = process.env.COX_PUBLICATION_ARCHIVE_GCS;
   if (archiveDir && archiveGcs) throw new Error("set only one of COX_PUBLICATION_ARCHIVE and COX_PUBLICATION_ARCHIVE_GCS");
+  const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
+  const token = async (): Promise<string> => {
+    const value = await auth.getAccessToken();
+    if (!value) throw new Error("no Google access token");
+    return value;
+  };
   let source: ArchiveSource | null = null;
   if (archiveDir) source = directorySource(resolve(archiveDir));
-  if (archiveGcs) {
-    const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/devstorage.read_only"] });
-    source = gcsSource(archiveGcs, async () => {
-      const token = await auth.getAccessToken();
-      if (!token) throw new Error("no Google access token for the publication archive");
-      return token;
-    });
-  }
+  if (archiveGcs) source = gcsSource(archiveGcs, token);
+  const historyGcs = process.env.APP_API_HISTORY_GCS;
+  const segments = historyGcs ? gcsSegments(historyGcs, token) : directorySegments(join(stateDir, `history-${poolId}`));
+  const firestoreProject = process.env.APP_API_SUBMISSIONS_FIRESTORE_PROJECT;
+  const store = firestoreProject
+    ? new FirestoreSubmissionStore(firestoreProject, `coxSubmissionsPool${poolId}`, token, fetch, process.env.APP_API_SUBMISSIONS_FIRESTORE_DATABASE ?? "(default)")
+    : new FileSubmissionStore(join(stateDir, `submissions-${poolId}.json`));
   const archive = source ? new PublicationArchive(source, program, addresses(program.programId).pool(poolId), genesis) : null;
-  const options = { connection, program, poolId, network, logPath: join(stateDir, `publications-${poolId}.jsonl`), pollMs, archive, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
+  const options = { connection, program, poolId, network, history: { path: join(stateDir, `publications-${poolId}.jsonl`), store: segments }, pollMs, archive, onError: (error: unknown) => console.error("cox indexer tick failed", error) };
   for (;;) {
     try {
       const source = await LiveCoxSource.open(options);
@@ -71,7 +78,7 @@ async function live(): Promise<Pick<CoxApiServerOptions, "source" | "transaction
       const transactions = new CoxTransactions({
         connection, program, poolId, pool: source.poolAddress, vault: source.vaultAddress, mint: source.collateralMint, origin: source.manifest.origin, classes: source.classes,
       });
-      const submissions = new CoxSubmissions({ connection, programId: program.programId, path: join(stateDir, `submissions-${poolId}.json`), feeVersion: () => transactions.feeVersion() });
+      const submissions = new CoxSubmissions({ connection, programId: program.programId, store, feeVersion: () => transactions.feeVersion() });
       return { source, transactions, submissions };
     } catch (error) {
       if (!(error instanceof Error) || !["CoxAccountNotFound", "PoolMethodologyNotSealed"].includes(error.message)) throw error;

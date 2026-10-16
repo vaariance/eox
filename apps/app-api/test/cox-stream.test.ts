@@ -47,8 +47,16 @@ class MemorySource implements CoxSource {
     return { label: "x", methodologyDigest: null, members: [] };
   }
 
-  async publications() {
-    return this.published;
+  async latest() {
+    return this.published.at(-1) ?? null;
+  }
+
+  async publication(sequence: number) {
+    return this.published[sequence] ?? null;
+  }
+
+  async publications(_now: number, after: number | null, limit: number) {
+    return this.published.slice(after === null ? 0 : after + 1).slice(0, limit);
   }
 
   async portfolio(owner: string): Promise<Portfolio | null> {
@@ -120,6 +128,17 @@ describe("live stream", () => {
     source.feeVersion = "1";
     await until(() => events.filter((e) => e.type === "status").length === 3);
     expect(events.at(-1)).toMatchObject({ type: "status", data: { fees: { active: { version: "1" } } } });
+    subscription.close();
+  });
+
+  it("starts a stream without a cursor at the latest publication instead of replaying history", async () => {
+    const source = new MemorySource();
+    const client = createCoxApiClient({ baseUrl: await serve(source) });
+    const events: CoxStreamEvent[] = [];
+    const subscription = client.subscribe({}, (event) => events.push(event));
+    await until(() => events.some((e) => e.type === "publication"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(events.filter((e) => e.type === "publication").map((e) => (e.type === "publication" ? e.data.sequence : -1))).toEqual([2]);
     subscription.close();
   });
 

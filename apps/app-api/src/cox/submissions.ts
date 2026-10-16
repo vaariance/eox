@@ -1,16 +1,13 @@
 import { createPublicKey, verify } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 import anchor from "@coral-xyz/anchor";
 import { discriminator } from "@cox/client";
 import { ComputeBudgetProgram, PublicKey, SendTransactionError, VersionedTransaction, type Connection } from "@solana/web3.js";
 import type { Submission, TransactionOperation } from "@eox/app-api";
+import type { StoredSubmission, SubmissionStore } from "./submission-store.js";
 import { FeeChangedError, TransactionInputError, TransactionRejectedError } from "./transactions.js";
 
-const SCHEMA = "cox.app-api.submissions/v1";
 const ASSOCIATED_TOKEN_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 const MAX_TRANSACTION_BYTES = 1232;
-const MAX_KEPT = 5000;
 const OPERATIONS: readonly TransactionOperation[] = ["deposit", "switch", "redeem", "cancel", "refund", "withdraw"];
 const TRADES = new Set<TransactionOperation>(["deposit", "switch", "redeem"]);
 const FEE_INSTRUCTIONS: readonly { operation: TransactionOperation; name: string; length: number }[] = [
@@ -21,14 +18,10 @@ const FEE_INSTRUCTIONS: readonly { operation: TransactionOperation; name: string
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 const SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
 
-interface Stored extends Submission {
-  recentBlockhash: string;
-}
-
 export interface CoxSubmissionsOptions {
   connection: Connection;
   programId: PublicKey;
-  path: string;
+  store: SubmissionStore;
   feeVersion: () => Promise<bigint>;
   now?: () => number;
 }
@@ -44,7 +37,6 @@ function ed25519Key(bytes: Uint8Array) {
 }
 
 export class CoxSubmissions {
-  private readonly entries = new Map<string, Stored>();
   private readonly now: () => number;
   private readonly kinds: Kind[];
 
@@ -54,12 +46,6 @@ export class CoxSubmissions {
       ...OPERATIONS.map((operation) => ({ operation, prefix: discriminator("global", operation), feeLength: null })),
       ...FEE_INSTRUCTIONS.map(({ operation, name, length }) => ({ operation, prefix: discriminator("global", name), feeLength: length })),
     ];
-    mkdirSync(dirname(options.path), { recursive: true });
-    if (existsSync(options.path)) {
-      const stored = JSON.parse(readFileSync(options.path, "utf8")) as { schema: string; submissions: Stored[] };
-      if (stored.schema !== SCHEMA) throw new Error(`unsupported submissions file ${options.path}`);
-      for (const entry of stored.submissions) this.entries.set(entry.signature, entry);
-    }
   }
 
   private inspect(bytes: Buffer): { signature: string; owner: PublicKey; operation: TransactionOperation; recentBlockhash: string; expectedFeeVersion: bigint | null } {
@@ -105,7 +91,7 @@ export class CoxSubmissions {
     if (typeof encoded !== "string" || !BASE64.test(encoded)) throw new TransactionInputError("transaction must be base64");
     const bytes = Buffer.from(encoded, "base64");
     const inspected = this.inspect(bytes);
-    const known = this.entries.get(inspected.signature);
+    const known = await this.options.store.get(inspected.signature);
     if (known) return (await this.get(known.signature))!;
     if (TRADES.has(inspected.operation) && (await this.options.feeVersion()) !== (inspected.expectedFeeVersion ?? 0n)) throw new FeeChangedError();
     let signature: string;
@@ -116,7 +102,7 @@ export class CoxSubmissions {
       throw error;
     }
     if (signature !== inspected.signature) throw new Error("submitted signature differs from the transaction's first signature");
-    const entry: Stored = {
+    const entry: StoredSubmission = {
       signature,
       owner: inspected.owner.toBase58(),
       operation: inspected.operation,
@@ -127,21 +113,21 @@ export class CoxSubmissions {
       error: null,
       recentBlockhash: inspected.recentBlockhash,
     };
-    this.entries.set(signature, entry);
-    this.save();
+    if ((await this.options.store.create(entry)) === "exists") return (await this.get(signature))!;
     return this.view(entry);
   }
 
   async get(signature: string): Promise<Submission | null> {
     if (!SIGNATURE.test(signature)) throw new TransactionInputError("invalid signature");
-    const entry = this.entries.get(signature);
+    const entry = await this.options.store.get(signature);
     if (!entry) return null;
     if (entry.state === "submitted" || entry.state === "confirmed") await this.refresh(entry);
     return this.view(entry);
   }
 
-  private async refresh(entry: Stored): Promise<void> {
+  private async refresh(entry: StoredSubmission): Promise<void> {
     const connection = this.options.connection;
+    const before = JSON.stringify(entry);
     const [status] = (await connection.getSignatureStatuses([entry.signature], { searchTransactionHistory: true })).value;
     if (status) {
       entry.slot = status.slot;
@@ -156,19 +142,11 @@ export class CoxSubmissions {
     } else if (!(await connection.isBlockhashValid(entry.recentBlockhash, { commitment: "confirmed" })).value) {
       entry.state = "expired";
     }
-    this.save();
+    if (JSON.stringify(entry) !== before) await this.options.store.update(entry);
   }
 
-  private view(entry: Stored): Submission {
+  private view(entry: StoredSubmission): Submission {
     const { recentBlockhash: _, ...submission } = entry;
     return submission;
-  }
-
-  private save(): void {
-    const all = [...this.entries.values()].sort((a, b) => a.submittedAt - b.submittedAt);
-    for (const entry of all.slice(0, Math.max(0, all.length - MAX_KEPT))) this.entries.delete(entry.signature);
-    const temporary = `${this.options.path}.tmp`;
-    writeFileSync(temporary, JSON.stringify({ schema: SCHEMA, submissions: [...this.entries.values()] }));
-    renameSync(temporary, this.options.path);
   }
 }

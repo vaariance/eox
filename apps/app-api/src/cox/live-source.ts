@@ -19,7 +19,7 @@ import {
 } from "@eox/app-api";
 import { batchOf, classIds, feeConfiguration, parseManifest, toPublication, type ChainPublication, type Manifest } from "./chain.js";
 import { PublicationArchiveMissing, type PublicationArchive } from "./publication-archive.js";
-import { PublicationLog } from "./publication-log.js";
+import { PublicationHistory, type SegmentStore } from "./publication-history.js";
 import type { CoxSource } from "./source.js";
 
 const REQUEST_STATES: readonly RequestState[] = ["queued", "filled", "condition-failed", "expired", "zero-value-class", "cancelled", "refunded", "safety-rejected"];
@@ -29,13 +29,15 @@ const NO_CLASS = 255;
 const READ_ATTEMPTS = 3;
 const TOKEN_AMOUNT_OFFSET = 64;
 const MINT_DECIMALS_OFFSET = 44;
+const BACKFILL_CONCURRENCY = 16;
+const DEFAULT_PAGE = 1000;
 
 export interface LiveCoxSourceOptions {
   connection: Connection;
   program: Program;
   poolId: bigint;
   network: string;
-  logPath: string;
+  history: { path: string; store: SegmentStore; segmentSize?: number; cacheSegments?: number };
   pollMs?: number;
   archive?: PublicationArchive | null;
   onError?: (error: unknown) => void;
@@ -72,7 +74,7 @@ export class LiveCoxSource implements CoxSource {
     readonly manifest: Manifest,
     readonly collateralMint: PublicKey,
     readonly collateralDecimals: number,
-    private readonly log: PublicationLog,
+    private readonly log: PublicationHistory,
   ) {
     this.reader = new CoxReader(options.program);
     this.poolKey = this.reader.pdas.pool(options.poolId);
@@ -88,7 +90,7 @@ export class LiveCoxSource implements CoxSource {
     if (manifest.assets.length + 1 !== pool.classes.length || manifest.origin !== Number(pool.origin.toString())) throw new Error("PoolManifestMismatch");
     const mint = await options.connection.getAccountInfo(pool.collateralMint, "finalized");
     if (!mint || mint.data.length <= MINT_DECIMALS_OFFSET) throw new Error("CollateralMintMissing");
-    const log = new PublicationLog(options.logPath, { program: options.program.programId.toBase58(), pool: reader.pdas.pool(options.poolId).toBase58() });
+    const log = await PublicationHistory.open({ ...options.history, identity: { program: options.program.programId.toBase58(), pool: reader.pdas.pool(options.poolId).toBase58() } });
     return new LiveCoxSource(options, manifest, pool.collateralMint, mint.data[MINT_DECIMALS_OFFSET]!, log);
   }
 
@@ -131,11 +133,13 @@ export class LiveCoxSource implements CoxSource {
     while (this.log.nextSequence < last) {
       const archive = this.options.archive;
       if (!archive) throw new PublicationArchiveMissing(`publications ${this.log.nextSequence} to ${last - 1} are only in the publisher archive, which is not configured`);
-      const archived = await archive.read(BigInt(this.log.nextSequence));
-      this.append(archived.publication, null, archived.slot);
+      const from = this.log.nextSequence;
+      const count = Math.min(BACKFILL_CONCURRENCY, last - from);
+      const archived = await Promise.all(Array.from({ length: count }, (_, i) => archive.read(BigInt(from + i))));
+      for (const record of archived) await this.append(record.publication, null, record.slot);
     }
-    if (this.log.nextSequence === last) this.append(latest, batchOf(latest, view.batch), view.slot);
-    this.view = { ...view, reconciliation: this.log.all.at(-1)?.identity.sequence === last ? this.reconcile(view, last) : null };
+    if (this.log.nextSequence === last) await this.append(latest, batchOf(latest, view.batch), view.slot);
+    this.view = { ...view, reconciliation: this.log.latest()?.identity.sequence === last ? this.reconcile(view, last) : null };
   }
 
   async pool(): Promise<Pool> {
@@ -172,8 +176,8 @@ export class LiveCoxSource implements CoxSource {
     return { ...feeConfiguration(pool, pool.schemaVersion === 2), migrated: pool.schemaVersion === 2, committed: pool.fees.toString() };
   }
 
-  private append(publication: ChainPublication, batch: Batch | null, slot: number): void {
-    const previous = this.log.all.at(-1) ?? null;
+  private async append(publication: ChainPublication, batch: Batch | null, slot: number): Promise<void> {
+    const previous = this.log.latest();
     const previousDigest = previous ? Buffer.from(previous.identity.stateDigest!, "hex") : Buffer.alloc(32);
     if (!Buffer.from(publication.state.previousState).equals(previousDigest)) throw new Error("PublicationPredecessorMismatch");
     if (!Buffer.from(publication.manifestDigest).equals(Buffer.from(this.manifest.digest, "hex"))) throw new Error("PublicationManifestMismatch");
@@ -184,7 +188,7 @@ export class LiveCoxSource implements CoxSource {
       predecessorBatch: previous?.identity.batch ?? null,
       finalization: { transaction: null, slot },
     });
-    this.log.append(value);
+    await this.log.append(value);
     for (const listener of this.listeners) listener(value);
   }
 
@@ -210,7 +214,7 @@ export class LiveCoxSource implements CoxSource {
   }
 
   async status(now: number): Promise<CoxStatus> {
-    const latest = this.log.all.at(-1) ?? null;
+    const latest = this.log.latest();
     const current = batchFor(now, this.manifest.origin);
     const missedCutoffs = Math.max(0, current.batch - (latest?.identity.batch ?? -1) - 1);
     const view = this.view;
@@ -232,7 +236,7 @@ export class LiveCoxSource implements CoxSource {
   }
 
   async assets(): Promise<CoxAsset[]> {
-    const latest = this.log.all.at(-1) ?? null;
+    const latest = this.log.latest();
     return this.manifest.assets.map((asset, classIndex) => {
       const price = latest?.prices[classIndex] ?? null;
       return {
@@ -253,8 +257,16 @@ export class LiveCoxSource implements CoxSource {
     };
   }
 
-  async publications(): Promise<readonly Publication[]> {
-    return this.log.all;
+  async latest(): Promise<Publication | null> {
+    return this.log.latest();
+  }
+
+  async publication(sequence: number): Promise<Publication | null> {
+    return this.log.get(sequence);
+  }
+
+  async publications(_now = 0, after: number | null = null, limit = DEFAULT_PAGE): Promise<readonly Publication[]> {
+    return this.log.page(after, limit);
   }
 
   onPublication(listener: (publication: Publication) => void): () => void {
