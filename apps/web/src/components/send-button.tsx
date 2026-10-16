@@ -1,7 +1,6 @@
 "use client";
 
 import type { Submission, UnsignedTransaction } from "@eox/app-api";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import { useEffect, useRef, useState } from "react";
 import { buildTransaction, submissionState, submitSigned } from "@/app/actions";
@@ -9,6 +8,7 @@ import { COLLATERAL } from "@/lib/config";
 import { humanError, walletError } from "@/lib/errors";
 import type { Intent } from "@/lib/requests";
 import { useAccount } from "./account";
+import { useSigner } from "./signer";
 import { useSnackbar } from "./snackbar";
 
 const POLL_MS = 2000;
@@ -42,7 +42,7 @@ interface SendButtonProps {
 
 export function SendButton({ intent, label, connectLabel, problem = null, className, quiet = false, describe }: SendButtonProps) {
   const { live, owner, refresh } = useAccount();
-  const { signTransaction } = useWallet();
+  const { sign } = useSigner();
   const { show, fail } = useSnackbar();
   const [mounted, setMounted] = useState(false);
   const [working, setWorking] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
 
   const send = async () => {
     if (!wallet || !intent) return;
-    if (!signTransaction) return fail("This wallet cannot sign this kind of request. Try a different wallet.");
+    if (!sign) return fail("This wallet cannot sign this kind of request. Try a different wallet.");
     setWorking("Preparing");
     try {
       const built = await buildTransaction(wallet, intent);
@@ -83,7 +83,7 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
         return fail("The prepared request did not match your wallet, so it was not signed. Please try again.");
       }
       setWorking("Waiting for your wallet");
-      const signed = await signTransaction(transaction);
+      const signed = await sign(transaction);
       setWorking("Sending");
       const submitted = await submitSigned(encode(signed.serialize()));
       if (!submitted.ok) return fail(humanError(submitted.code, submitted.message));

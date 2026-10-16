@@ -1,10 +1,10 @@
 "use client";
 
 import type { CoxStatus, FeeTerms, Portfolio, WalletPortfolioEvent } from "@eox/app-api";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { walletPortfolio } from "@/app/actions";
+import { useSigner } from "./signer";
 
 const PORTFOLIO_MS = 15000;
 const PAGE_MS = 30000;
@@ -46,9 +46,9 @@ export function AccountProvider({
   fee: FeeTerms | null;
   children: ReactNode;
 }) {
-  const { publicKey } = useWallet();
+  const { address } = useSigner();
   const router = useRouter();
-  const owner = publicKey?.toBase58() ?? null;
+  const owner = address;
   const current = useRef<string | null>(null);
   const start = useRef(sequence);
   const [own, setOwn] = useState<{ owner: string; portfolio: Portfolio | null } | null>(null);

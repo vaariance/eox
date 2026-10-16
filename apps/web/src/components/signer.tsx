@@ -1,0 +1,69 @@
+"use client";
+
+import { usePrivy } from "@privy-io/react-auth";
+import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { VersionedTransaction } from "@solana/web3.js";
+import { type ReactNode, createContext, useContext, useMemo } from "react";
+
+export interface Signer {
+  address: string | null;
+  label: string | null;
+  account: string | null;
+  connecting: boolean;
+  sign: ((transaction: VersionedTransaction) => Promise<VersionedTransaction>) | null;
+  login: (() => void) | null;
+  logout: () => Promise<void>;
+}
+
+const SignerContext = createContext<Signer>({ address: null, label: null, account: null, connecting: false, sign: null, login: null, logout: async () => undefined });
+
+export function useSigner(): Signer {
+  return useContext(SignerContext);
+}
+
+export function AdapterSigner({ children }: { children: ReactNode }) {
+  const { publicKey, wallet, connecting, signTransaction, disconnect } = useWallet();
+  const value = useMemo<Signer>(
+    () => ({
+      address: publicKey?.toBase58() ?? null,
+      label: wallet?.adapter.name ?? null,
+      account: null,
+      connecting,
+      sign: signTransaction ? (transaction) => signTransaction(transaction) : null,
+      login: null,
+      logout: () => disconnect(),
+    }),
+    [publicKey, wallet, connecting, signTransaction, disconnect],
+  );
+  return <SignerContext.Provider value={value}>{children}</SignerContext.Provider>;
+}
+
+const EMBEDDED = "Privy";
+
+export function PrivySigner({ children }: { children: ReactNode }) {
+  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { ready: walletsReady, wallets } = useWallets();
+  const { signTransaction } = useSignTransaction();
+  const wallet = authenticated ? (wallets.find((item) => item.standardWallet.name === EMBEDDED) ?? wallets[0] ?? null) : null;
+  const account = user?.google?.email ?? user?.email?.address ?? null;
+
+  const value = useMemo<Signer>(
+    () => ({
+      address: wallet?.address ?? null,
+      label: wallet ? (wallet.standardWallet.name === EMBEDDED ? "Relative wallet" : wallet.standardWallet.name) : null,
+      account,
+      connecting: !ready || (authenticated && (!walletsReady || wallet === null)),
+      sign: wallet
+        ? async (transaction) => {
+            const { signedTransaction } = await signTransaction({ transaction: transaction.serialize(), wallet, chain: "solana:devnet" });
+            return VersionedTransaction.deserialize(signedTransaction);
+          }
+        : null,
+      login: ready && !authenticated ? () => login() : null,
+      logout: () => logout(),
+    }),
+    [ready, authenticated, walletsReady, wallet, account, signTransaction, login, logout],
+  );
+  return <SignerContext.Provider value={value}>{children}</SignerContext.Provider>;
+}

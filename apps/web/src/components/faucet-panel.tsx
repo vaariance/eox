@@ -1,11 +1,11 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
 import { Check, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { type FaucetBalances, faucetBalances } from "@/app/faucet-actions";
 import { CIRCLE_FAUCET_URL, SOL_FAUCET_URL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
+import { useSigner } from "./signer";
 import { useSnackbar } from "./snackbar";
 
 const card = "rounded-card border border-line bg-surface p-4 shadow-card";
@@ -17,13 +17,13 @@ function show(value: string, digits: number, places = 2): string {
 }
 
 export function FaucetPanel() {
-  const { publicKey } = useWallet();
+  const { address } = useSigner();
   const [mounted, setMounted] = useState(false);
   const [balances, setBalances] = useState<FaucetBalances | null>(null);
   const { fail } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const owner = mounted ? (publicKey?.toBase58() ?? null) : null;
+  const owner = mounted ? address : null;
 
   useEffect(() => setMounted(true), []);
 
