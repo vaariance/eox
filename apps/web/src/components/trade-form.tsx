@@ -3,6 +3,7 @@
 import type { Batch } from "@eox/app-api";
 import Link from "next/link";
 import { useState } from "react";
+import { COLLATERAL } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
 import { planRequest } from "@/lib/requests";
 import { CRYPTO_CLASS, type ClassView, holdingsOf, toNumber, unitDigits, unlockedProblem } from "@/lib/view";
@@ -13,6 +14,7 @@ import { SendButton } from "./send-button";
 import { QUOTE_MESSAGES, useQuote } from "./use-quote";
 
 type Side = "buy" | "sell";
+type Pay = "usdc" | "crypto";
 
 const sides: { id: Side; label: string }[] = [
   { id: "buy", label: "Buy" },
@@ -27,24 +29,27 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
   const holdings = holdingsOf(portfolio, decimals);
   const open = useOpenBatch(nextBatch);
   const [side, setSide] = useState<Side>("buy");
+  const [pay, setPay] = useState<Pay>("usdc");
   const [amount, setAmount] = useState("");
   const [minimum, setMinimum] = useState("");
 
   const buying = side === "buy";
+  const direct = buying && pay === "usdc";
+  const pays = direct ? COLLATERAL.symbol : "$CRYPTO";
   const from = buying ? CRYPTO_CLASS : claim.id;
   const to = buying ? claim.id : CRYPTO_CLASS;
   const parsed = Number(amount);
   const empty = amount.trim() === "";
   const valid = Number.isFinite(parsed) && parsed > 0;
   const held = holdings?.find((item) => item.classId === from);
-  const available = held ? held.units - held.locked : holdings === null ? null : 0;
-  const unitsProblem = valid ? unlockedProblem(holdings, from, parsed) : null;
-  const planned = planRequest({ operation: "switch", fromClass: from, toClass: to, amount, minimum, validForBatches: VALID_FOR, targetBatch: open.batch?.batch ?? null, collateralDecimals: decimals });
+  const available = direct ? null : held ? held.units - held.locked : holdings === null ? null : 0;
+  const unitsProblem = valid && !direct ? unlockedProblem(holdings, from, parsed) : null;
+  const planned = planRequest({ operation: direct ? "deposit" : "switch", fromClass: direct ? null : from, toClass: to, amount, minimum, validForBatches: VALID_FOR, targetBatch: open.batch?.batch ?? null, collateralDecimals: decimals });
   const { quote, pending, problem } = useQuote(planned.intent);
   const quoted = quote === null || quote.mintedUnits === null ? null : toNumber(quote.mintedUnits, unitDigits(decimals));
   const blocked = unitsProblem ? QUOTE_MESSAGES.balance : problem ? QUOTE_MESSAGES[problem] : null;
   const receives = buying ? `${claim.id} units` : "$CRYPTO";
-  const needsCrypto = buying && live && owner !== null && available === 0;
+  const needsCrypto = buying && !direct && live && owner !== null && available === 0;
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 shadow-card">
@@ -65,11 +70,21 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
       <form className="flex flex-col gap-3" onSubmit={(event) => event.preventDefault()}>
         <div>
           <div className="mb-1 flex items-center justify-between text-xs text-muted">
-            <label htmlFor="trade-amount">{buying ? "You pay ($CRYPTO)" : `You give (${claim.id} units)`}</label>
+            <label htmlFor="trade-amount">{buying ? `You pay (${pays})` : `You give (${claim.id} units)`}</label>
             {available !== null && <span className="num">Available {formatAmount(available)}</span>}
           </div>
           <input id="trade-amount" inputMode="decimal" placeholder="0" value={amount} onChange={(event) => setAmount(event.target.value)} className={field} />
           {!empty && !valid && <p className="mt-1 text-xs text-down">Enter an amount above zero.</p>}
+          {buying && (
+            <div role="group" aria-label="Pay with" className="mt-2 flex items-center gap-1 text-xs">
+              <span className="mr-1 text-muted">Pay with</span>
+              {(["usdc", "crypto"] as const).map((item) => (
+                <button key={item} type="button" aria-pressed={pay === item} onClick={() => setPay(item)} className={`h-7 cursor-pointer rounded-pill px-3 transition-colors duration-150 ${pay === item ? "bg-surface-2 text-ink" : "text-muted hover:text-ink"}`}>
+                  {item === "usdc" ? COLLATERAL.symbol : "$CRYPTO"}
+                </button>
+              ))}
+            </div>
+          )}
           {needsCrypto && (
             <p className="mt-1 text-xs text-muted">
               You have no $CRYPTO yet. <Link href="/swap" className="text-accent underline">Swap USDC for $CRYPTO</Link> first.
@@ -90,7 +105,7 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
         </dl>
 
 
-        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} $CRYPTO` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={empty ? "Enter an amount" : pending ? "Calculating" : buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={empty ? "" : (planned.problem ?? (needsCrypto ? "" : blocked) ?? (pending ? "" : null))} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
+        <SendButton describe={buying ? `Buy ${claim.id} with ${amount} ${pays}` : `Sell ${amount} ${claim.id} units for $CRYPTO`} intent={planned.intent} label={empty ? "Enter an amount" : pending ? "Calculating" : buying ? `Buy ${claim.id}` : `Sell ${claim.id}`} connectLabel="Connect wallet to continue" problem={empty ? "" : (planned.problem ?? (needsCrypto ? "" : blocked) ?? (pending ? "" : null))} className="h-11 rounded-pill bg-accent text-sm font-medium text-accent-ink" />
       </form>
     </section>
   );

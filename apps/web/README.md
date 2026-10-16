@@ -60,12 +60,12 @@ Development and production builds use webpack. [`next.config.ts`](next.config.ts
 
 ## Swap, buy and sell
 
-USDC enters and leaves through the Swap page only: it deposits USDC into the
-CRYPTO class and redeems CRYPTO back to USDC (`product.md` version 14), using
-the app API's `buildDeposit` and `buildRedeem`. The page presents CRYPTO as
-what the user pays with. Asset pages have two actions: Buy is a switch from
-CRYPTO into that asset's class, and Sell is a switch back to CRYPTO
-(`buildSwitch`). Cash out, on asset pages and on each Portfolio row, redeems
+The Swap page deposits USDC into the CRYPTO class and redeems CRYPTO back to
+USDC (`product.md` version 14), using the app API's `buildDeposit` and
+`buildRedeem`. Asset pages have two actions. Buy pays with USDC by default,
+as one deposit straight into that asset's class (`buildDeposit`), or with
+$CRYPTO as a switch (`buildSwitch`); the user picks under the amount. Sell is
+a switch back to CRYPTO (`buildSwitch`). Cash out, on asset pages and on each Portfolio row, redeems
 straight from a class to USDC (`buildRedeem`), so leaving does not need a
 sale and a swap. The CRYPTO page has no form; it links to Swap. The app does
 not use `@cox/client/swap`, whose `CRYPTO_CLASS` is 0 while the program and
