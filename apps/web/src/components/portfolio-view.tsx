@@ -65,7 +65,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
             <SendButton
               intent={BigInt(payable) > 0n ? { operation: "withdraw", amount: payable } : null}
               label={BigInt(payable) > 0n ? "Withdraw all" : "Nothing to withdraw"}
-              connectLabel="Connect wallet to withdraw"
+              connectLabel="Login to withdraw"
               className="h-10 w-full rounded-pill bg-accent text-sm font-medium text-accent-ink"
               hideSuccess
             />

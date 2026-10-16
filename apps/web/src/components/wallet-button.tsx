@@ -7,7 +7,7 @@ import { Check, Copy, LogOut, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { shortAddress } from "@/lib/address";
 import { walletError } from "@/lib/errors";
-import { useSigner } from "./signer";
+import { onLogin, useSigner } from "./signer";
 import { useSnackbar } from "./snackbar";
 
 const primary = "flex h-10 cursor-pointer items-center gap-2 whitespace-nowrap rounded-pill bg-accent px-3 text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90 sm:px-4";
@@ -59,6 +59,10 @@ export function WalletButton() {
     if (signer.login) return signer.login();
     dialog.current?.showModal();
   };
+
+  const opener = useRef(open);
+  opener.current = open;
+  useEffect(() => onLogin(() => opener.current()), []);
 
   const pick = (name: WalletName) => {
     setChosen(name);
