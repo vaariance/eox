@@ -69,7 +69,7 @@ export default async function MarketsPage() {
           title="Leading"
           value={best ? <><CoinIcon id={best.id} size={28} />{best.id}</> : EMPTY}
           change={best ? best.standing : null}
-          caption="vs $CRYPTO since launch"
+          caption="vs $CRYPTO"
           spark={best ? { points: best.reference, tone: direction(best.standing) } : null}
         />
         <StatCard
@@ -77,7 +77,7 @@ export default async function MarketsPage() {
           title="Trailing"
           value={worst ? <><CoinIcon id={worst.id} size={28} />{worst.id}</> : EMPTY}
           change={worst ? worst.standing : null}
-          caption="vs $CRYPTO since launch"
+          caption="vs $CRYPTO"
           spark={worst ? { points: worst.reference, tone: direction(worst.standing) } : null}
         />
         <StatCard icon={Coins} title="Pool TVL" value={<Figure text={formatAmount(active)} unit="USDC" />} caption={`across ${classes.length} classes`} />

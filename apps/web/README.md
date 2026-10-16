@@ -21,6 +21,7 @@ Open <http://localhost:3100> for the landing page, or <http://localhost:3100/mar
 | `COX_API_URL` | Required. Server-side base URL for a `cox.app-api/v1` API; the app does not start without it. It is also sent to the browser for the real-time stream, so it must be publicly reachable. The live devnet API is `https://api.getrelative.trade`. Copy `.env.example` to `.env.local` for local work. The fixture API is `https://fixture-api.getrelative.trade`. For a local fixture API, use `http://127.0.0.1:8790`. |
 | `COX_DEMO_WALLET` | Portfolio wallet used with fixture data. Defaults to the first fixture wallet; ignored in live mode. |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Browser wallet-adapter RPC. Defaults to public Solana devnet. This value is exposed to browsers; use only an endpoint intended for public client access. |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | Privy app ID. When set, Log in opens Privy with Google and Solana wallets, Google users get a Privy Solana wallet, and Privy wallets sign without a confirmation window. Unset, the app connects browser wallets through wallet-adapter. The ID is public by design; never put the Privy app secret in a `NEXT_PUBLIC_` variable. The Privy app must allow Google and Solana wallet login and the site's origin. |
 
 ### Secrets
 
@@ -59,12 +60,12 @@ Development and production builds use webpack. [`next.config.ts`](next.config.ts
 
 ## Swap, buy and sell
 
-USDC enters and leaves through the Swap page only: it deposits USDC into the
-CRYPTO class and redeems CRYPTO back to USDC (`product.md` version 14), using
-the app API's `buildDeposit` and `buildRedeem`. The page presents CRYPTO as
-what the user pays with. Asset pages have two actions: Buy is a switch from
-CRYPTO into that asset's class, and Sell is a switch back to CRYPTO
-(`buildSwitch`). Cash out, on asset pages and on each Portfolio row, redeems
+The Swap page deposits USDC into the CRYPTO class and redeems CRYPTO back to
+USDC (`product.md` version 14), using the app API's `buildDeposit` and
+`buildRedeem`. Asset pages have two actions. Buy pays with USDC by default,
+as one deposit straight into that asset's class (`buildDeposit`), or with
+$CRYPTO as a switch (`buildSwitch`); the user picks under the amount. Sell is
+a switch back to CRYPTO (`buildSwitch`). Cash out, on asset pages and on each Portfolio row, redeems
 straight from a class to USDC (`buildRedeem`), so leaving does not need a
 sale and a swap. The CRYPTO page has no form; it links to Swap. The app does
 not use `@cox/client/swap`, whose `CRYPTO_CLASS` is 0 while the program and

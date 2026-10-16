@@ -75,7 +75,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
           aside="starts at 100"
           value={current ? <Figure text={formatAmount(latest(reference), 4)} /> : EMPTY}
           change={current ? relative : null}
-          caption={standing === "up" ? "ahead of $CRYPTO since launch" : standing === "down" ? "behind $CRYPTO since launch" : "level with $CRYPTO since launch"}
+          caption={standing === "up" ? "ahead of $CRYPTO" : standing === "down" ? "behind $CRYPTO" : "level with $CRYPTO"}
           spark={current ? { points: reference, tone: standing } : null}
         />
         <StatCard

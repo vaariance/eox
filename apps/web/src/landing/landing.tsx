@@ -507,7 +507,7 @@ export async function Landing() {
               <p {...stylex.props(styles.label)}>Introduction</p>
               <p {...stylex.props(styles.intro)}>Every coin is ranked by how it does against the whole market. {star.id} is leading.</p>
               <span {...stylex.props(styles.figure, up ? styles.ahead : styles.behind)}>{formatChange(star.lead)}</span>
-              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market since launch</p>
+              <p {...stylex.props(styles.muted)}>{up ? "ahead of" : "behind"} the market</p>
               <Link href={`/assets/${star.id}`} {...stylex.props(styles.button)}>Back {star.id} →</Link>
             </div>
           </div>
@@ -622,6 +622,7 @@ export async function Landing() {
               </span>
               <p {...stylex.props(styles.footText)}>Back the coin your analysis says will do better than the rest of crypto.</p>
               <Link href="/markets" {...stylex.props(styles.button)}>Open app →</Link>
+              <a href="https://x.com/getrelativ" target="_blank" rel="noopener noreferrer" {...stylex.props(styles.footLink)}>X · @getrelativ</a>
             </div>
             <nav aria-label="App" {...stylex.props(styles.footColumn)}>
               <p {...stylex.props(styles.label)}>App</p>

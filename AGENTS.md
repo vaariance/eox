@@ -938,3 +938,15 @@ another agent needs to know.
   - **5,000 connections (the same routes plus `/v1/publications?limit=100`):** the service reached the 10-instance cap. Throughput was 4,600 requests/s, p50 490 ms and p99 15.8 s, with 5 % 429 or 503 from Cloud Run at the cap and 457 timeouts. The 100-publication page (about 1.2 MB a response) used about 870 MB/s of egress and dominated.
   - **Publishing:** stayed fresh throughout.
 - **Open:** Ways to lift the ceiling, none applied yet: response compression, a minimum of 2 or 3 warm instances, more instances or larger instances, smaller history pages, and the CDN only for immutable history (Peter's condition).
+
+### 2026-10-16 · Godwin (Claude Code) · Web app: Google login through Privy, Buy with USDC, performance-position wording
+
+- **Area:** `apps/web`, `pnpm-lock.yaml`; branch `feat/privy-login`.
+- **What:**
+  - **Login:** with `NEXT_PUBLIC_PRIVY_APP_ID` set, Log in opens Privy (`@privy-io/react-auth` 3.47.0) with Google and Solana wallets. Google users get a Privy Solana wallet created at login. Privy wallets sign with no confirmation window (`showWalletUIs: false`). Unset, the app keeps wallet-adapter. Owner and signing go through `useSigner` in `src/components/signer.tsx`. Privy's Solana entry needs `@solana/kit` 5.5.1 and `@solana-program/{system,token,memo}` under webpack; they are direct dependencies.
+  - **Verified on devnet pool 1:** a Google-created wallet signed a 10 USDC deposit into CRYPTO and a 2 USDC deposit straight into ETH; both went through `/v1/transactions/submit` and filled.
+  - **Buy with USDC:** Godwin decided Buy on asset pages pays with USDC by default, as one deposit into the coin's class; paying with $CRYPTO remains as a switch. Supersedes the rule in Godwin's 2026-10-11 "Web app: swap for CRYPTO, then buy and sell assets with CRYPTO" entry that USDC enters only through the Swap page.
+  - **Wording:** holdings are named performance positions ("BTC performance position", "BTC vs $CRYPTO"). Portfolio request history says Back and Exit and reports "ETH units"; the asset page buttons keep Buy and Sell.
+- **Rules for agents:** The Privy app ID is public; the Privy app secret must never be committed or given a `NEXT_PUBLIC_` name. The Privy app must allow Google, Solana wallets and each site origin. Keep the app API's rule that the user's wallet is the only signer and fee payer; Privy's own gas sponsorship sends transactions itself and would bypass the submit route. Lockfile changes were made with pnpm 10.34.7; pnpm 10.18.3 drops the lockfile's `libc` fields.
+- **Open:** Google users still fund SOL and USDC by hand from the Faucet page; sponsored fees need Joel's builder and submit changes. The Privy app uses Privy's Google credentials, so Google's consent screen names Privy. The Privacy Policy does not yet name Privy (Godwin). Vercel needs `NEXT_PUBLIC_PRIVY_APP_ID` and its origin allowed in Privy before deploying. One-click preset buttons are not built.
+- **Refs:** `apps/web/README.md` (Configuration, Swap, buy and sell).

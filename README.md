@@ -1,42 +1,219 @@
-# COX — Crypto Outlook Index
+# Relative
 
-COX measures crypto assets against a common crypto benchmark and makes that
-relative performance tradeable through collateral-backed positions on Solana.
-An asset's dollar price can rise while its performance against the benchmark
-falls. COX separates those two measures.
+**Trade on performance.**
 
-This repository contains the price archive, calculation engine, Solana program,
-transaction clients, APIs, publisher, independent checker and web application.
-The current mechanism is an experimental Solana devnet implementation using
-six-decimal test collateral. It does not support real-money deposits. A running
-service or deployed program alone does not establish end-to-end trading readiness.
+Back the coin you believe will outperform the market. Relative is a trading
+application built by Variance Labs Ltd that measures supported crypto assets
+against a shared benchmark and lets users express their views through
+collateral-backed positions on Solana.
 
-## How it works
+[Try Relative](https://getrelative.trade/markets) ·
+[How the mechanism works](packages/cox/SPEC.md) ·
+[Read the research](#research)
 
-1. Archive closed one-minute candles from Kraken, Coinbase and Bybit using a
-   deterministic fallback and USD conversion policy.
-2. Calculate an equal-weight CRYPTO benchmark and each asset's performance
-   relative to it, using exact fixed-point arithmetic.
-3. Accept a snapshot on Solana and fix the batch's execution values before
-   processing eligible requests.
-4. Finalize position changes and redemption payables together. Users withdraw
-   committed payables in a separate transaction.
+**Current release: Solana devnet.** The pilot covers 30 crypto assets and uses
+Circle's devnet USDC, which has no real monetary value. This is an experimental
+trading mechanism, not a mainnet or real-money release.
 
-New requests become eligible at a future publication; they never execute against
-an immediate price supplied by the submitter. Acceptance windows apply to
-snapshots, not trade completion. An accepted batch retains its prices through
-pauses and restarts and must finish before another publication starts.
+## Why Relative exists
 
-Positions are claims within one closed collateral pool, rather than wallet-held
-BTC, ETH or other spot tokens. The mechanism uses no leverage. Custody accounting
-reconciles vault tokens against active backing, pending deposits, payables and
-non-distributable residual. Reference index levels are separate from redeemable
-position value.
+A green candle answers whether a coin gained in dollars. It does not tell you
+whether choosing that coin was better than holding exposure to the wider market.
+If a coin gains 5% while the benchmark gains 9%, its price has risen, but it has
+lost ground. A coin can also fall in price while outperforming a falling market.
 
-Exchange data is attested by the runtime publisher. Deterministic checks and an
-independent monitor improve verification but do not make unsigned venue data
-trustless. See the [mechanism specification](packages/cox/SPEC.md) for arithmetic,
-accounting, timing and safety rules.
+Relative is for traders whose view is comparative: **"I think this asset will
+perform better than the crypto market from here."** It puts that comparison at
+the centre of the market, with a common benchmark, visible performance references
+and a continuous entry-and-exit process.
+
+Relative trading already exists through price pairs, portfolios and derivatives.
+Our proposition is to bring a shared benchmark, asset selection and funded
+positions into one experience. Users do not have to construct and manage a
+separate long/short portfolio to participate in this mechanism. The resulting
+payoff is specific to Relative's pool; it is not identical to a hedged pair trade.
+
+## The benchmark: what CRYPTO measures
+
+CRYPTO is a **price-performance index of the pilot's 30 admitted assets**. It is
+not a claim to represent every cryptocurrency, the sum of their dollar prices,
+or total crypto market capitalisation.
+
+At each successful publication, the engine measures each asset's price growth
+since the previous accepted publication, takes the equal-weight average of those
+growth factors, and applies it to the previous benchmark level. Every admitted
+asset contributes equally to that interval's calculation. Market cap, trading
+volume and users' allocations do not determine the benchmark weights.
+
+The index starts at 100. Each asset also has a **relative reference** starting at
+100: its price growth since the common origin divided by CRYPTO's growth over
+the same period. Above 100 means it has outperformed since that origin; below
+100 means it has underperformed. A shorter-period change answers a different
+question and must use matching start and end times.
+
+For any matching interval, the idealised comparison is:
+
+```text
+relative change = (1 + asset return) / (1 + CRYPTO return) - 1
+```
+
+| Asset price change | CRYPTO change | Relative change | What happened |
+| --- | --- | --- | --- |
+| +5% | +9% | −3.67% | The coin rose, but fell behind the benchmark. |
+| −5% | −10% | +5.56% | The coin fell, but held up better than the benchmark. |
+| +9% | +9% | 0% | The coin matched the benchmark. |
+
+These are illustrative **reference changes, not promised trading returns**.
+The calculation uses ratios rather than percentage-point subtraction. The
+implementation uses exact fixed-point operations with declared rounding at each
+step; the [specification](packages/cox/SPEC.md#4-reference-engine) defines that order.
+
+The publication target is once per minute. Missing or inadmissible snapshots do
+not become invented prices: the next accepted publication measures from the
+previous accepted one under the benchmark's rebalance-freeze rule. Membership
+is fixed for the current pool; continuous asset admission is future work.
+
+## What you own, and where gains come from
+
+A Relative position is a claim on backing assigned to a class inside the pool.
+Selecting BTC does not buy wallet-held bitcoin. The current app uses the CRYPTO
+claim class as the entry point before switching into an asset-performance class.
+
+**The benchmark level, the asset's relative reference and your redeemable
+position value are three different quantities.** The CRYPTO claim itself can
+change in USDC value; it is not a stablecoin or an ETF holding the benchmark's coins.
+
+The current transfer mechanism, `COX/TRANSFER/MVP-0`, adjusts each funded class's
+backing using its relative growth factor, then normalises the allocations to
+the existing active collateral. CRYPTO's transfer factor is one. Revaluation
+does not create money: increases in one allocation are funded by decreases in
+others, with rounding dust accounted for separately.
+
+For example, suppose an asset class and CRYPTO each have 100 USDC of backing.
+If the asset's relative growth factor is 1.10 and CRYPTO's is 1, the same 200 USDC
+is divided in the ratio 110:100. Ignoring fees and integer rounding, their new
+backing is about 104.76 and 95.24 USDC. The asset's reference grew 10%; its backing
+grew about 4.76%. This illustrates why reference performance and payout differ.
+
+Actual outcomes depend on the funded allocations, entry and exit valuations,
+fees and rounding. With only one funded class, there is no other allocation to
+fund a performance gain. There is no borrowing or leverage, but positions can
+lose value. Correct collateral accounting does not eliminate price-source,
+smart-contract, operational or collateral risks.
+
+The program reconciles the vault against:
+
+```text
+vault = active backing + pending deposits + payable collateral
+        + non-distributable residual + committed trading fees
+```
+
+Pending deposits, completed redemption payables and fees do not participate in
+performance redistribution. A collateral shortfall stops processing. See the
+[transfer and accounting rules](packages/cox/SPEC.md#5-transfer-engine-coxtransfermvp-0).
+
+## The trading journey
+
+```text
+devnet USDC → CRYPTO position → asset-performance position
+            ←                 ←
+
+redeem CRYPTO → available USDC → withdraw to your wallet
+```
+
+1. Connect a Solana-compatible wallet and obtain devnet SOL and USDC through
+   the app's [Faucet page](https://getrelative.trade/faucet).
+2. Use Swap to deposit test USDC into the CRYPTO class.
+3. Buy an asset-performance position by switching from CRYPTO. Sell to switch back.
+4. Redeem CRYPTO, wait for the request to complete, then withdraw the available USDC.
+
+**Transaction confirmation is not trade completion.** Submission reserves funds
+or units. A request becomes eligible at a future publication, never against the
+reference at which it was created. Quotes are estimates; user minimum-output
+conditions are checked after fees.
+
+Acceptance fixes a batch's execution values. Processing can span transactions
+and continue beyond a minute; it does not reprice or cancel the accepted work
+because it is slow. Finalization makes the completed positions and payables
+spendable together. Another publication cannot begin while the batch remains
+unfinished. Cancellation, expiry and refunds follow the request-state rules.
+
+This provides continuous request submission without a fixed market maturity,
+not guaranteed instant execution or withdrawal during failures. Future-publication
+execution alone is not a claim of immunity to front-running or manipulation.
+
+## Fees and revenue
+
+The implemented devnet fee policy starts at **2 basis points (0.02%) per successful
+deposit, switch or redemption, capped at 2 USDC per request**. A 100 USDC trade
+incurs 0.02 USDC before any other effects; a 20,000 USDC trade reaches the 2 USDC
+cap. These are test-token fees on devnet, not real-dollar revenue.
+
+Fees are deducted before minting destination units or crediting redemption
+proceeds. Rejected, cancelled, expired and refunded requests pay no trading fee;
+withdrawing completed proceeds adds none. Solana network costs are separate.
+
+Each request locks its fee configuration at submission. Subsequent configuration
+changes require at least 24 hours' notice and activate through publication
+finalization. Committed fees are accounted for separately from users' backing.
+The [fee-policy extension](packages/cox/SPEC.md#configurable-trading-fees--coxfeesv1)
+defines the limits, administration and versioned accounting.
+
+## Verification and trust
+
+The price pipeline archives closed one-minute candles and uses a deterministic
+selection policy: Kraken, then eligible Coinbase and Bybit fallbacks, with exact
+USD conversion where required. The policy also defines bounded last-trade carry
+and rejection rules. It does not average venues or choose whichever price looks
+most favourable. [Price-source policy](packages/price-feeds/README.md)
+
+The publisher attests to the admitted inputs, and the program checks their
+format, timing, linkage and arithmetic. Archived inputs, methodology hashes,
+publication commitments and receipts make the calculation inspectable.
+Independent monitoring has a separate implementation; its
+[documented verification scope](apps/cox-monitor/README.md) matters when
+interpreting a verdict. Hashes do not establish that an exchange's price was true,
+and archive consistency is not the same as a complete publication audit.
+
+Users sign their own trading requests. Runtime publishing uses a restricted,
+non-exportable KMS key. Administrative and upgrade powers remain separate and
+still exist in the devnet deployment; this is not an operator-free system.
+
+The repository includes arithmetic vectors, simulations and compiled Solana
+tests with SPL token transfers. These support reproducibility and implementation
+checking, not a claim of independent security certification. Current deployment
+identities and recorded builds are in the [deployment guide](packages/cox/deploy/README.md).
+Deployment records are not live service-health reports.
+
+## Research
+
+Relative is the product. **COX (Crypto Outlook Index)** is the crypto-specific
+engine developed from our **Relative Performance Markets (RPM)** research.
+
+| Read | What it explains |
+| --- | --- |
+| [Relative Performance Markets — Paper 1](output/pdf/relative_performance_markets_paper_1.pdf) | The general framework: comparative outcomes, benchmark-relative claims, connections to existing market designs and unresolved financial-design questions. |
+| [COX — Paper 3](output/pdf/cox_paper_3.pdf) | The crypto application: price versus performance, benchmark construction, continuous participation and the distinction between references and closed-pool payouts. Start with sections 1–6. |
+| [Implementation specification](packages/cox/SPEC.md) | The selected devnet rules, ordered integer arithmetic, custody, execution, rolling history and the later fee-policy extension. |
+
+The papers are research manuscripts, not independent audits or proof of product
+demand. Paper 3 predates implementation and leaves choices open that the code and
+specification subsequently resolve. In particular, its original fee assumptions
+must be read with the explicit `COX/FEES/V1` extension. RPM describes the research
+framework; it is not a claim of a new legal exemption or of inventing relative trading.
+
+Earlier EOX research applied comparative measurement to economies. Relative's
+current product focuses on crypto prices. Some package names retain `@eox/` for
+compatibility; the legacy implementation is preserved in the `eox-archive` Git tag.
+
+## What comes next
+
+The next work is to make onboarding and trading simpler, complete monitoring,
+strengthen price-source verification, support controlled asset additions and
+enable agent integrations. These are development directions, not features
+promised by the current release. The current pool remains a fixed 30-asset pilot.
+Independent security and economic review, operational validation and applicable
+legal review remain necessary before a real-money release.
 
 ## Repository map
 
@@ -59,8 +236,8 @@ accounting, timing and safety rules.
 | [Web app](apps/web/README.md) | Market views and wallet interaction |
 | [Dev infrastructure](deploy/dev/README.md) | VM services, logs, database and backups |
 
-Some package names retain the `@eox/` namespace. Use the names in their package
-manifests when running workspace commands.
+Use the names in package manifests, including retained `@eox/` names, when
+running workspace commands.
 
 ## Local setup
 
@@ -83,7 +260,7 @@ host. Copying an `.env` file does not automatically export it to every Node proc
 Start the fixture API and web app in separate terminals:
 
 ```sh
-pnpm --filter @eox/app-api-server start
+APP_API_SOURCE=cox-fixture APP_API_CORS_ORIGIN=http://localhost:3100 pnpm --filter @eox/app-api-server start
 COX_API_URL=http://127.0.0.1:8790 pnpm --filter @eox/web dev
 ```
 
@@ -97,6 +274,8 @@ accounts.
 ```sh
 pnpm -r build
 pnpm -r test
+pnpm cox:check
+pnpm cox:test
 ```
 
 Database-backed tests require PostgreSQL and migrations; program/client checks

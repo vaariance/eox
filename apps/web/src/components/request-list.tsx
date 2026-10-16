@@ -20,11 +20,15 @@ const states: Record<RequestState, { label: string; tone: string; Icon: typeof C
 };
 
 function operationLabel(request: CoxRequest): string {
-  if (request.operation === "deposit") return request.toClass === CRYPTO_CLASS ? "Swap in" : "Buy";
-  if (request.operation === "redeem") return request.fromClass === CRYPTO_CLASS ? "Swap out" : "Cash out";
-  if (request.fromClass === CRYPTO_CLASS) return "Buy";
-  if (request.toClass === CRYPTO_CLASS) return "Sell";
+  if (request.operation === "deposit") return request.toClass === CRYPTO_CLASS ? "Swap in" : "Back";
+  if (request.operation === "redeem") return request.fromClass === CRYPTO_CLASS ? "Swap out" : "Exit";
+  if (request.fromClass === CRYPTO_CLASS) return "Back";
+  if (request.toClass === CRYPTO_CLASS) return "Exit";
   return "Switch";
+}
+
+function unitsOf(classId: string): string {
+  return classId === CRYPTO_CLASS ? nameOf(classId) : `${classId} units`;
 }
 
 function subject(request: CoxRequest): string {
@@ -34,12 +38,12 @@ function subject(request: CoxRequest): string {
 
 function size(request: CoxRequest, decimals: number): string {
   if (request.amount !== null) return `${formatAmount(toNumber(request.amount, decimals))} ${COLLATERAL.symbol}`;
-  return `${formatAmount(toNumber(request.units ?? "0", unitDigits(decimals)))} ${nameOf(request.fromClass ?? "")}`;
+  return `${formatAmount(toNumber(request.units ?? "0", unitDigits(decimals)))} ${unitsOf(request.fromClass ?? "")}`;
 }
 
 function minimum(request: CoxRequest, decimals: number): string {
   if (request.minimumProceeds !== null && BigInt(request.minimumProceeds) > 0n) return `Min ${formatAmount(toNumber(request.minimumProceeds, decimals))} ${COLLATERAL.symbol}`;
-  if (request.minimumUnits !== null && BigInt(request.minimumUnits) > 0n) return `Min ${formatAmount(toNumber(request.minimumUnits, unitDigits(decimals)))} ${nameOf(request.toClass ?? "")}`;
+  if (request.minimumUnits !== null && BigInt(request.minimumUnits) > 0n) return `Min ${formatAmount(toNumber(request.minimumUnits, unitDigits(decimals)))} ${unitsOf(request.toClass ?? "")}`;
   return "No minimum";
 }
 
@@ -47,8 +51,8 @@ function detail(request: CoxRequest, decimals: number): string {
   const state = states[request.state];
   if (request.state === "queued") return `Fills at the next price update · ${minimum(request, decimals)}`;
   if (request.state === "filled" && request.receipt) {
-    if (request.operation === "redeem") return `Received ${formatAmount(toNumber(request.receipt.proceeds, decimals))} ${COLLATERAL.symbol}`;
-    return `Received ${formatAmount(toNumber(request.receipt.minted, unitDigits(decimals)))} ${nameOf(request.toClass ?? "")}`;
+    if (request.operation === "redeem") return `Got ${formatAmount(toNumber(request.receipt.proceeds, decimals))} ${COLLATERAL.symbol}`;
+    return `Got ${formatAmount(toNumber(request.receipt.minted, unitDigits(decimals)))} ${unitsOf(request.toClass ?? "")}`;
   }
   return state.note ?? "";
 }

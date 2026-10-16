@@ -2,11 +2,12 @@
 
 import { WalletReadyState, type WalletName } from "@solana/wallet-adapter-base";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { Check, Copy, LogOut, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { shortAddress } from "@/lib/address";
 import { walletError } from "@/lib/errors";
+import { useSigner } from "./signer";
 import { useSnackbar } from "./snackbar";
 
 const primary = "flex h-10 cursor-pointer items-center gap-2 whitespace-nowrap rounded-pill bg-accent px-3 text-sm font-medium text-accent-ink transition-opacity duration-150 hover:opacity-90 sm:px-4";
@@ -14,7 +15,9 @@ const row = "flex h-11 w-full cursor-pointer items-center gap-3 rounded-control 
 
 export function WalletButton() {
   const { connection } = useConnection();
-  const { wallets, wallet, select, connect, disconnect, publicKey, connected, connecting } = useWallet();
+  const { wallets, wallet, select, connect, connected, connecting: adapterConnecting } = useWallet();
+  const signer = useSigner();
+  const connecting = adapterConnecting || signer.connecting;
   const dialog = useRef<HTMLDialogElement>(null);
   const [chosen, setChosen] = useState<WalletName | null>(null);
   const { fail } = useSnackbar();
@@ -25,7 +28,7 @@ export function WalletButton() {
   useEffect(() => setMounted(true), []);
 
   const available = wallets.filter((item) => item.readyState === WalletReadyState.Installed || item.readyState === WalletReadyState.Loadable);
-  const address = mounted ? (publicKey?.toBase58() ?? null) : null;
+  const address = mounted ? signer.address : null;
 
   useEffect(() => {
     if (!chosen || wallet?.adapter.name !== chosen || connected || connecting) return;
@@ -39,10 +42,10 @@ export function WalletButton() {
 
   useEffect(() => {
     setBalance(null);
-    if (!publicKey) return;
+    if (!signer.address) return;
     let current = true;
     connection
-      .getBalance(publicKey)
+      .getBalance(new PublicKey(signer.address))
       .then((lamports) => {
         if (current) setBalance(lamports / LAMPORTS_PER_SOL);
       })
@@ -50,9 +53,10 @@ export function WalletButton() {
     return () => {
       current = false;
     };
-  }, [connection, publicKey]);
+  }, [connection, signer.address]);
 
   const open = () => {
+    if (signer.login) return signer.login();
     dialog.current?.showModal();
   };
 
@@ -74,14 +78,14 @@ export function WalletButton() {
 
   const leave = () => {
     dialog.current?.close();
-    disconnect().catch(() => undefined);
+    signer.logout().catch(() => undefined);
   };
 
   return (
     <>
       <button type="button" onClick={open} className={primary}>
         <Wallet size={16} aria-hidden="true" />
-        {address ? <span className="num">{shortAddress(address)}</span> : mounted && connecting ? "Connecting" : <>Connect<span className="hidden sm:inline"> wallet</span></>}
+        {address ? <span className="num">{shortAddress(address)}</span> : mounted && connecting ? "Connecting" : signer.login ? "Log in" : <>Connect<span className="hidden sm:inline"> wallet</span></>}
       </button>
 
       <dialog
@@ -102,7 +106,8 @@ export function WalletButton() {
         {!mounted ? null : address ? (
           <div className="flex flex-col gap-1 p-3">
             <dl className="mb-2 flex flex-col gap-2 px-3 text-sm">
-              <div className="flex justify-between"><dt className="text-muted">Wallet</dt><dd>{wallet?.adapter.name}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted">Wallet</dt><dd>{signer.label}</dd></div>
+              {signer.account && <div className="flex justify-between"><dt className="text-muted">Signed in as</dt><dd>{signer.account}</dd></div>}
               <div className="flex justify-between"><dt className="text-muted">Address</dt><dd className="num">{shortAddress(address)}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Devnet SOL</dt><dd className="num">{balance === null ? "…" : balance.toFixed(4)}</dd></div>
             </dl>
@@ -112,7 +117,7 @@ export function WalletButton() {
             </button>
             <button type="button" onClick={leave} className={row}>
               <LogOut size={16} aria-hidden="true" />
-              Disconnect
+              {signer.account ? "Log out" : "Disconnect"}
             </button>
           </div>
         ) : (

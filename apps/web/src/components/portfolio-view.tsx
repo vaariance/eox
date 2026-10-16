@@ -8,7 +8,7 @@ import { shortAddress } from "@/lib/address";
 import { COLLATERAL } from "@/lib/config";
 import { costBasis, paidFor } from "@/lib/basis";
 import { direction, formatAmount, formatSigned } from "@/lib/format";
-import { CRYPTO_CLASS, type ClassView, nameOf, toNumber, unitDigits } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, nameOf, positionName, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { useOpenBatch } from "./open-batch";
 import { RequestList } from "./request-list";
@@ -54,8 +54,7 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
         <h1 className="font-display text-title font-semibold tracking-tight">Portfolio</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           {who}
-        </p>
-      </div>
+        </p>      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
@@ -75,15 +74,15 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
       </div>
 
       <section className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
-        <h2 className="border-b border-line px-4 py-3 text-sm font-medium">Positions</h2>
+        <h2 className="border-b border-line px-4 py-3 text-sm font-medium">Performance positions</h2>
         {rows.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted">No positions yet.</p>
         ) : (
           <table className="w-full min-w-[940px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
-                <th scope="col" className="px-4 py-3 font-normal">Class</th>
-                <th scope="col" className="px-4 py-3 text-right font-normal">Units</th>
+                <th scope="col" className="px-4 py-3 font-normal">Position</th>
+                <th scope="col" className="px-4 py-3 text-right font-normal">Position units</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Locked in requests</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Unit value</th>
                 <th scope="col" className="px-4 py-3 text-right font-normal">Paid ({COLLATERAL.symbol})</th>
@@ -96,7 +95,8 @@ export function PortfolioView({ classes, status, decimals }: { classes: ClassVie
               {rows.map((row) => (
                 <tr key={row.classId} onClick={(event) => !(event.target as HTMLElement).closest("button, a, [role=status]") && router.push(`/portfolio/${row.classId}`)} className="cursor-pointer border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-surface-2">
                   <th scope="row" className="px-4 py-3 text-left font-medium">
-                    <Link href={`/portfolio/${row.classId}`} className="underline-offset-4 hover:underline">{nameOf(row.classId)}</Link>
+                    <Link href={`/portfolio/${row.classId}`} className="underline-offset-4 hover:underline">{positionName(row.classId)}</Link>
+                    <span className="mt-0.5 block text-xs font-normal text-muted">{row.classId === CRYPTO_CLASS ? "Tracks the index" : `${row.classId} vs $CRYPTO`}</span>
                   </th>
                   <td className="num px-4 py-3 text-right">{formatAmount(row.units, 4)}</td>
                   <td className="num px-4 py-3 text-right">{formatAmount(row.locked, 4)}</td>
