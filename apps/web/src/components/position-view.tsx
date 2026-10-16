@@ -8,7 +8,7 @@ import { costBasis, paidFor } from "@/lib/basis";
 import { COLLATERAL } from "@/lib/config";
 import { direction, formatAmount, formatPrice, formatSigned, formatUtcTime } from "@/lib/format";
 import { tradesOf } from "@/lib/trades";
-import { CRYPTO_CLASS, type ClassView, type Point, type ValuePoint, holdingsOf, nameOf } from "@/lib/view";
+import { CRYPTO_CLASS, type ClassView, type Point, type ValuePoint, holdingsOf, nameOf, positionName, positionNote } from "@/lib/view";
 import { useAccount } from "./account";
 import { AssetChart, type Series } from "./asset-chart";
 import { useOpenBatch } from "./open-batch";
@@ -81,25 +81,26 @@ export function PositionView({ classId, claim, crypto, values, reference, price,
     ...(reference.length > 1 ? [{ id: "reference", label: "Relative reference", points: reference, digits: 4, marks }] : []),
     ...(price.length > 1 ? [{ id: "price", label: "Price (USD)", points: price, digits: price[price.length - 1].value >= 1 ? 2 : 6, marks }] : []),
   ];
-  const empty = loading ? "Loading your position." : live && !owner ? "Connect a wallet to see your position." : `You hold no ${nameOf(classId)} right now.`;
+  const empty = loading ? "Loading your position." : live && !owner ? "Connect a wallet to see your position." : `You have no ${positionName(classId)} right now.`;
 
   return (
     <div className="flex flex-col gap-4">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted">
         <Link href="/portfolio" className="hover:text-ink">Portfolio</Link>
         <ChevronRight size={12} aria-hidden="true" />
-        <span className="text-ink">{nameOf(classId)}</span>
+        <span className="text-ink">{positionName(classId)}</span>
       </nav>
 
       <section className="rounded-card border border-line bg-surface shadow-card">
         <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3">
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <h1 className="font-display text-2xl font-semibold tracking-tight">{nameOf(classId)}</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight">{positionName(classId)}</h1>
             <span className="num text-2xl">{unitValue === null ? "—" : formatAmount(unitValue, 6)}</span>
             {percent !== null && change !== null && (
               <span className={`num text-sm ${tone}`}>{formatSigned(change, 6)} {COLLATERAL.symbol} ({formatSigned(percent, 3)}%)</span>
             )}
             <span className="text-xs text-muted">Unit value</span>
+            <p className="w-full text-xs text-muted">{positionNote(classId)}</p>
           </div>
           {holding && classId === CRYPTO_CLASS && (
             <span className="flex flex-col items-end gap-1">
@@ -118,7 +119,7 @@ export function PositionView({ classId, claim, crypto, values, reference, price,
           <dl className="flex flex-wrap divide-x divide-line border-t border-line">
             <Stat label="Bought at">{entry === null ? "—" : formatAmount(entry, 6)}</Stat>
             <Stat label={lastExit ? sides[lastExit.side] : "Sold at"}>{lastExit?.price == null ? "—" : formatAmount(lastExit.price, 6)}</Stat>
-            <Stat label="Units">{formatAmount(units, 4)}</Stat>
+            <Stat label="Position units">{formatAmount(units, 4)}</Stat>
             <Stat label={`Paid (${COLLATERAL.symbol})`}>{paid === null ? "—" : formatAmount(paid, 4)}</Stat>
             <Stat label={`Worth now (${COLLATERAL.symbol})`}>{worth === null ? "n/a" : formatAmount(worth, 6)}</Stat>
             <Stat label="Gain or loss" tone={tone}>{change === null ? "—" : `${formatSigned(change, 6)}${percent === null ? "" : ` (${formatSigned(percent, 3)}%)`}`}</Stat>

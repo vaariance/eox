@@ -3,7 +3,7 @@
 import { COLLATERAL } from "@/lib/config";
 import { costBasis, paidFor } from "@/lib/basis";
 import { direction, formatAmount, formatSigned } from "@/lib/format";
-import { holdingsOf, nameOf } from "@/lib/view";
+import { holdingsOf, positionName, positionNote } from "@/lib/view";
 import { useAccount } from "./account";
 
 export function MyPosition({ classId, unitValue, decimals }: { classId: string; unitValue: number | null; decimals: number }) {
@@ -13,14 +13,15 @@ export function MyPosition({ classId, unitValue, decimals }: { classId: string; 
   const paid = holding ? paidFor(costBasis(portfolio?.requests ?? [], decimals), classId, holding.units) : null;
   const change = worth === null || paid === null ? null : worth - paid;
   const tone = change === null ? "" : { up: "text-up", down: "text-down", flat: "text-muted" }[direction(change)];
-  const none = loading ? "Loading your position." : live && !owner ? "Connect a wallet to see your position." : `You hold no ${nameOf(classId)}.`;
+  const none = loading ? "Loading your position." : live && !owner ? "Connect a wallet to see your position." : `You have no ${positionName(classId)}.`;
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 shadow-card">
       <h2 className="text-sm font-medium">Your position</h2>
+      <p className="mt-1 text-xs text-muted">{positionNote(classId)}</p>
       {holding ? (
         <dl className="mt-3 flex flex-col gap-2 text-sm">
-          <div className="flex justify-between"><dt className="text-muted">You hold</dt><dd className="num">{formatAmount(holding.units, 4)}</dd></div>
+          <div className="flex justify-between"><dt className="text-muted">Position units</dt><dd className="num">{formatAmount(holding.units, 4)}</dd></div>
           <div className="flex justify-between"><dt className="text-muted">Locked in requests</dt><dd className="num">{formatAmount(holding.locked, 4)}</dd></div>
           {paid !== null && (
             <div className="flex justify-between"><dt className="text-muted">Paid</dt><dd className="num">{formatAmount(paid, 4)} {COLLATERAL.symbol}</dd></div>

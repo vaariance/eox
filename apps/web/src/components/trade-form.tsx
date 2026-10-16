@@ -48,7 +48,7 @@ export function TradeForm({ claim, crypto, nextBatch, decimals }: { claim: Class
   const { quote, pending, problem } = useQuote(planned.intent);
   const quoted = quote === null || quote.mintedUnits === null ? null : toNumber(quote.mintedUnits, unitDigits(decimals));
   const blocked = unitsProblem ? QUOTE_MESSAGES.balance : problem ? QUOTE_MESSAGES[problem] : null;
-  const receives = buying ? `${claim.id} units` : "$CRYPTO";
+  const receives = buying ? `${claim.id} position units` : "$CRYPTO";
   const needsCrypto = buying && !direct && live && owner !== null && available === 0;
 
   return (
