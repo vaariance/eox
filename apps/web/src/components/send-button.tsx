@@ -8,7 +8,7 @@ import { COLLATERAL } from "@/lib/config";
 import { humanError, walletError } from "@/lib/errors";
 import type { Intent } from "@/lib/requests";
 import { useAccount } from "./account";
-import { useSigner } from "./signer";
+import { openLogin, useSigner } from "./signer";
 import { useSnackbar } from "./snackbar";
 
 const POLL_MS = 2000;
@@ -58,6 +58,7 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
 
   const wallet = mounted ? owner : null;
   const ready = live && wallet !== null && intent !== null && problem === null && working === null;
+  const clickable = ready || (mounted && wallet === null);
 
   const track = async (first: Submission) => {
     let submission = first;
@@ -102,7 +103,7 @@ export function SendButton({ intent, label, connectLabel, problem = null, classN
 
   return (
     <>
-      <button type="button" disabled={!ready} onClick={send} className={`${className} transition-opacity duration-150 ${ready ? "cursor-pointer hover:opacity-90" : "opacity-50"}`}>
+      <button type="button" disabled={!clickable} onClick={wallet === null ? openLogin : send} className={`${className} transition-opacity duration-150 ${clickable ? "cursor-pointer hover:opacity-90" : "opacity-50"}`}>
         {text}
       </button>
       {wallet && live && problem && working === null && !quiet && <p className="text-xs text-muted">{problem}</p>}

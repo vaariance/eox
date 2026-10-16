@@ -7,6 +7,7 @@ import { formatAmount } from "@/lib/format";
 import { CRYPTO_CLASS, nameOf, toNumber, unitDigits } from "@/lib/view";
 import { useAccount } from "./account";
 import { SendButton } from "./send-button";
+import { openLogin } from "./signer";
 
 const states: Record<RequestState, { label: string; tone: string; Icon: typeof Clock; note: string | null }> = {
   queued: { label: "Queued", tone: "text-warn", Icon: Clock, note: null },
@@ -64,7 +65,15 @@ export function RequestList({ classId = null, status, decimals }: { classId?: st
   const { portfolio, owner, live, loading } = useAccount();
   const all = portfolio?.requests ?? [];
   const requests = classId === null ? all : all.filter((request) => request.fromClass === classId || request.toClass === classId);
-  const empty = loading ? "Loading your requests." : live && !owner ? "Connect a wallet to see your requests." : "No requests yet.";
+  const empty = loading ? (
+    "Loading your requests."
+  ) : live && !owner ? (
+    <>
+      <button type="button" onClick={openLogin} className="cursor-pointer font-medium text-accent underline underline-offset-4 hover:opacity-80">Login</button> to Relative to see your requests.
+    </>
+  ) : (
+    "No requests yet."
+  );
   return (
     <section className="rounded-card border border-line bg-surface shadow-card">
       <h2 className="border-b border-line px-4 py-3 text-sm font-medium">Your requests</h2>

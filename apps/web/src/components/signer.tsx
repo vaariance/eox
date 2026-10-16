@@ -22,6 +22,17 @@ export function useSigner(): Signer {
   return useContext(SignerContext);
 }
 
+const LOGIN_EVENT = "relative:login";
+
+export function openLogin(): void {
+  window.dispatchEvent(new Event(LOGIN_EVENT));
+}
+
+export function onLogin(listener: () => void): () => void {
+  window.addEventListener(LOGIN_EVENT, listener);
+  return () => window.removeEventListener(LOGIN_EVENT, listener);
+}
+
 export function AdapterSigner({ children }: { children: ReactNode }) {
   const { publicKey, wallet, connecting, signTransaction, disconnect } = useWallet();
   const value = useMemo<Signer>(
